@@ -1,0 +1,13 @@
+name = "ParametricOptInterface"
+uuid = "0ce4ce61-57bf-432b-a095-efac525d185e"
+authors = ["Tomás Gutierrez <tomasfmgutierrez@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
