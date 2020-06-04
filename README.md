@@ -5,3 +5,9 @@ GSOC 2020 project
 | **Build Status** | **Coverage** | 
 |:-----------------:|:-----------------:|
 | [![Build Status][build-img]][build-url] | [![Codecov branch][codecov-img]][codecov-url]|
+
+[build-img]: https://travis-ci.com/tomasfmg/ParametricOptInterface.jl.svg?branch=master
+[build-url]: https://travis-ci.com/tomasfmg/ParametricOptInterface
+
+[codecov-img]: https://codecov.io/gh/LAMPSPUC/StateSpaceModels.jl/coverage.svg?branch=master
+[codecov-url]: https://codecov.io/gh/LAMPSPUC/StateSpaceModels.jl?branch=master
