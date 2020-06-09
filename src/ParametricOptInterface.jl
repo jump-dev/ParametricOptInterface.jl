@@ -23,6 +23,7 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
     end
 end
 
+
 function MOI.add_variable(model::ParametricOptimizer)
     model.last_index_added += 1
     v_p = MOI.VariableIndex(model.last_index_added)
@@ -201,7 +202,26 @@ function MOI.get(model::ParametricOptimizer, attr::T) where {
 end
 
 
+### new functions
 
+function MOI.add_constraint(model::ParametricOptimizer, f::MOI.VectorOfVariables, set::MOI.AbstractVectorSet) where T   
+    if any(haskey(model.parameters, f.variables) for i = 1:length(f.variables))
+        error("VectorOfVariables does not allow parameters")
+    else
+        return MOI.add_constraint(model.optimizer, f, set)
+    end
+end
 
+function MOI.add_constraint(model::ParametricOptimizer, f::MOI.VectorAffineFunction{T}, set::MOI.AbstractVectorSet) where T   
+    if any(haskey(model.parameters, f.terms[i].variable_index) for i = 1:length(f.terms))
+        error("VectorAffineFunction does not allow parameters")
+    else
+        return MOI.add_constraint(model.optimizer, f, set)
+    end
+end
+
+function MOI.instantiate(model::ParametricOptimizer, with_bridge_type::Union{Nothing, Type}=nothing, with_names::Bool=false)
+    MOI.instantiate(model.optimizer, with_bridge_type = with_bridge_type, with_names = with_names)
+end
 
 end # module
