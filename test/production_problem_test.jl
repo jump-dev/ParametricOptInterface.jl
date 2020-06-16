@@ -61,6 +61,4 @@
     @test MOI.get(optimizer, MOI.ObjectiveValue()) == 5.0
     @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [1.0, 0.0] 
 
-
-
 end
