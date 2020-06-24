@@ -183,10 +183,14 @@ function MOI.get(model::ParametricOptimizer, attr::T) where {
                                                                 T <: Union{
                                                                     MOI.TerminationStatus,
                                                                     MOI.ObjectiveValue,
-                                                                    MOI.PrimalStatus,
+                                                                    MOI.PrimalStatus
                                                                     }
                                                             }
     return MOI.get(model.optimizer, attr)
+end
+
+function MOI.set(model::ParametricOptimizer, attr::T, bool::Bool) where {T <: MOI.Silent}
+    MOI.set(model.optimizer, MOI.Silent(), bool)
 end
 
 function MOI.add_constraint(model::ParametricOptimizer, f::MOI.VectorOfVariables, set::MOI.AbstractVectorSet) where T   
@@ -341,7 +345,6 @@ function MOI.set(model::ParametricOptimizer, attr::MOI.ObjectiveFunction{F}, f::
         !any(haskey(model.parameters, f.quadratic_terms[j].variable_index_2) for j = 1:length(f.quadratic_terms)))
         
         MOI.set(model.optimizer, attr, f) 
-        @show("Success")
         return
     else
         aff_params = MOI.ScalarAffineTerm{T}[] #outside declaration so it has default value
@@ -539,11 +542,11 @@ function MOI.optimize!(model::ParametricOptimizer)
                     param_new_1 = model.updated_parameters[j.variable_index_1]
                     param_new_2 = model.updated_parameters[j.variable_index_2]
                     param_constant += j.coefficient * param_new_1 * param_new_2                
-                else if haskey(model.updated_parameters, j.variable_index_1)
+                elseif haskey(model.updated_parameters, j.variable_index_1)
                     param_new_1 = model.updated_parameters[j.variable_index_1]
                     param_old_2 = model.parameters[j.variable_index_2]
                     param_constant += j.coefficient * param_new_1 * param_old_2
-                else if haskey(model.updated_parameters, j.variable_index_2) 
+                elseif haskey(model.updated_parameters, j.variable_index_2) 
                     param_old_1 = model.parameters[j.variable_index_1]
                     param_new_2 = model.updated_parameters[j.variable_index_2]
                     param_constant += j.coefficient * param_old_1 * param_new_2
@@ -564,11 +567,11 @@ function MOI.optimize!(model::ParametricOptimizer)
                     param_new_1 = model.updated_parameters[j.variable_index_1]
                     param_new_2 = model.updated_parameters[j.variable_index_2]
                     objective_constant += j.coefficient * param_new_1 * param_new_2
-                else if haskey(model.updated_parameters, j.variable_index_1)
+                elseif haskey(model.updated_parameters, j.variable_index_1)
                     param_new_1 = model.updated_parameters[j.variable_index_1]
                     param_old_2 = model.parameters[j.variable_index_2]
                     objective_constant += j.coefficient * param_new_1 * param_old_2
-                else if haskey(model.updated_parameters, j.variable_index_2) 
+                elseif haskey(model.updated_parameters, j.variable_index_2) 
                     param_old_1 = model.parameters[j.variable_index_1]
                     param_new_2 = model.updated_parameters[j.variable_index_2]
                     objective_constant += j.coefficient * param_old_1 * param_new_2
