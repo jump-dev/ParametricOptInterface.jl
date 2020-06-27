@@ -1,7 +1,8 @@
 @testset "Quadratic objective - parameter in the affine part" begin
 
-    opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), Ipopt.Optimizer())
-
+    ipopt = Ipopt.Optimizer()
+    MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
+    opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
     optimizer = POI.ParametricOptimizer(opt_in)
 
     Q = [3.0 2.0; 2.0 1.0]
@@ -63,8 +64,9 @@ end
 
 @testset "Quadratic constraints - parameters in the quadratic part" begin
 
-    opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), Ipopt.Optimizer())
-
+    ipopt = Ipopt.Optimizer()
+    MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
+    opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
     optimizer = POI.ParametricOptimizer(opt_in)
 
     Q = [3.0 2.0; 2.0 1.0]
@@ -134,8 +136,9 @@ end
 
 @testset "Affine constraint with parameters in QP" begin
 
-    opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), Ipopt.Optimizer())
-
+    ipopt = Ipopt.Optimizer()
+    MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
+    opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
     optimizer = POI.ParametricOptimizer(opt_in)
 
     Q = [4.0 1.0; 1.0 2.0]

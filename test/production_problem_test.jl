@@ -1,6 +1,7 @@
 @testset "Production Problem" begin
 
     optimizer = POI.ParametricOptimizer(GLPK.Optimizer())
+    
 
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 1.0]
