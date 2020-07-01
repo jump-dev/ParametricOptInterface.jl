@@ -539,30 +539,33 @@ function MOI.optimize!(model::ParametricOptimizer)
             end
         end
 
-        for (ci, fparam) in model.quadratic_constraint_cache_pp
+        for (ci, fparam) in model.quadratic_constraint_cache_pp 
             param_constant = 0
             for j in fparam
                 if haskey(model.updated_parameters, j.variable_index_1) && haskey(model.updated_parameters, j.variable_index_2)
                     param_new_1 = model.updated_parameters[j.variable_index_1]
                     param_new_2 = model.updated_parameters[j.variable_index_2]
-                    param_constant += j.coefficient * param_new_1 * param_new_2                
+                    param_old_1 = model.parameters[j.variable_index_1]
+                    param_old_2 = model.parameters[j.variable_index_2]
+                    param_constant += j.coefficient * ((param_new_1 * param_new_2)-(param_old_1 * param_old_2))
                 elseif haskey(model.updated_parameters, j.variable_index_1)
                     param_new_1 = model.updated_parameters[j.variable_index_1]
-                    param_old_2 = model.parameters[j.variable_index_2]
-                    param_constant += j.coefficient * param_new_1 * param_old_2
-                elseif haskey(model.updated_parameters, j.variable_index_2) 
                     param_old_1 = model.parameters[j.variable_index_1]
+                    param_old_2 = model.parameters[j.variable_index_2]
+                    param_constant += j.coefficient * param_old_2 * (param_new_1 - param_old_1)
+                elseif haskey(model.updated_parameters, j.variable_index_2) 
                     param_new_2 = model.updated_parameters[j.variable_index_2]
-                    param_constant += j.coefficient * param_old_1 * param_new_2
+                    param_old_1 = model.parameters[j.variable_index_1]
+                    param_old_2 = model.parameters[j.variable_index_2]
+                    param_constant += j.coefficient * param_old_1 * (param_new_2 - param_old_2)
                 end
             end
             if param_constant != 0
                 set = MOI.get(model.optimizer, MOI.ConstraintSet(), model.quadratic_added_cache[ci])
-                set = typeof(set)(param_constant)
+                set = POI.update_constant!(set, param_constant)
                 MOI.set(model.optimizer, MOI.ConstraintSet(), model.quadratic_added_cache[ci], set)
             end
         end
-
 
         if !isempty(model.quadratic_objective_cache_pp)
             objective_constant = 0
@@ -570,70 +573,100 @@ function MOI.optimize!(model::ParametricOptimizer)
                 if haskey(model.updated_parameters, j.variable_index_1) && haskey(model.updated_parameters, j.variable_index_2)
                     param_new_1 = model.updated_parameters[j.variable_index_1]
                     param_new_2 = model.updated_parameters[j.variable_index_2]
-                    objective_constant += j.coefficient * param_new_1 * param_new_2
+                    param_old_1 = model.parameters[j.variable_index_1]
+                    param_old_2 = model.parameters[j.variable_index_2]
+                    objective_constant += j.coefficient * ((param_new_1 * param_new_2)-(param_old_1 * param_old_2))
                 elseif haskey(model.updated_parameters, j.variable_index_1)
                     param_new_1 = model.updated_parameters[j.variable_index_1]
-                    param_old_2 = model.parameters[j.variable_index_2]
-                    objective_constant += j.coefficient * param_new_1 * param_old_2
-                elseif haskey(model.updated_parameters, j.variable_index_2) 
                     param_old_1 = model.parameters[j.variable_index_1]
+                    param_old_2 = model.parameters[j.variable_index_2]
+                    objective_constant += j.coefficient * param_old_2 * (param_new_1 - param_old_1)
+                elseif haskey(model.updated_parameters, j.variable_index_2) 
                     param_new_2 = model.updated_parameters[j.variable_index_2]
-                    objective_constant += j.coefficient * param_old_1 * param_new_2
+                    param_old_1 = model.parameters[j.variable_index_1]
+                    param_old_2 = model.parameters[j.variable_index_2]
+                    objective_constant += j.coefficient * param_old_1 * (param_new_2 - param_old_2)
                 end
             end
             if objective_constant != 0
                 F = MOI.get(model.optimizer, MOI.ObjectiveFunctionType())
                 f = MOI.get(model.optimizer, MOI.ObjectiveFunction{F}())
                 fvar = if F == MathOptInterface.ScalarAffineFunction{Float64}
-                    MOI.ScalarAffineFunction(f.terms, objective_constant)
+                    MOI.ScalarAffineFunction(f.terms, f.constant + objective_constant)
                 else
-                    MOI.ScalarQuadraticFunction(f.affine_terms, f.quadratic_terms, objective_constant)                
+                    MOI.ScalarQuadraticFunction(f.affine_terms, f.quadratic_terms, f.constant + objective_constant)                
                 end
-                MOI.set(model.optimizer,MOI.ObjectiveFunction{F}(), fvar)       
+                MOI.set(model.optimizer,MOI.ObjectiveFunction{F}(), fvar)            
             end
         end
+
+        constraint_aux_dict = Dict{Any,Any}()
 
         for (ci, fparam) in model.quadratic_constraint_cache_pv
-            new_affine_terms = MOI.ScalarAffineTerm{T}[]
             for j in fparam
                 if haskey(model.updated_parameters, j.variable_index_1)
-                    param_old_1 = model.parameters[j.variable_index_1]
-                    param_new_1 = model.updated_parameters[j.variable_index_1]
-                    push!(new_affine_terms, MOI.ScalarAffineTerm{T}(param_new_1 - param_old_1, j.variable_index_2))
+                    coef = fparam.coefficient
+                    param_new = model.updated_parameters[j.variable_index_1]
+                    if haskey(constraint_aux_dict, (ci, j.variable_index_2))
+                        constraint_aux_dict[(ci, j.variable_index_2)] += param_new*coef
+                    else
+                        constraint_aux_dict[(ci, j.variable_index_2)] = param_new*coef
+                    end
                 end
-            end
-            if length(new_affine_terms) != 0
-                cons = MOI.get(model.optimizer, MOI.ConstraintFunction(), model.quadratic_added_cache[ci])
-                cons.affine_terms = vcat(cons.affine_terms, new_affine_terms)
-                new_cons = if F == MathOptInterface.ScalarAffineFunction{Float64}
-                    MOI.ScalarAffineFunction(cons.terms, objective_constant)
-                else
-                    MOI.ScalarQuadraticFunction(cons.affine_terms, f.quadratic_terms, objective_constant)                
-                end
-                # How can I set new_cons as the function in the constraint?
             end
         end
 
-        if !isempty(model.quadratic_objective_cache_pv)
-            new_affine_terms = MOI.ScalarAffineTerm{T}[]
-            for j in model.quadratic_objective_cache_pv
-                if haskey(model.updated_parameters, j.variable_index_1)
-                    param_old_1 = model.parameters[j.variable_index_1]
-                    param_new_1 = model.updated_parameters[j.variable_index_1]
-                    push!(new_affine_terms, MOI.ScalarAffineTerm{T}(param_new_1 - param_old_1, j.variable_index_2))
+        for (ci, fparam) in model.quadratic_constraint_variables_associated_to_parameters_cache
+            for j in fparam
+                if haskey(model.updated_parameters, j.variable_index)
+                    coef = j.coefficient
+                    if haskey(constraint_aux_dict, (ci, j.variable_index))
+                        constraint_aux_dict[(ci, j.variable_index_2)] += coef
+                    else
+                        constraint_aux_dict[(ci, j.variable_index_2)] = coef
+                    end
                 end
-            end
-            if length(new_affine_terms) != 0
-                F = MOI.get(model.optimizer, MOI.ObjectiveFunctionType())
-                f = MOI.get(model.optimizer, MOI.ObjectiveFunction{F}())
-                fvar = if F == MathOptInterface.ScalarAffineFunction{Float64}
-                    MOI.ScalarAffineFunction(vcat(f.terms, new_affine_terms), objective_constant)
-                else
-                    MOI.ScalarQuadraticFunction(vcat(f.affine_terms, new_affine_terms), f.quadratic_terms, objective_constant)                
-                end
-                MOI.set(model.optimizer,MOI.ObjectiveFunction{F}(), fvar)       
             end
         end
+
+        for (key, value) in constraint_aux_dict
+            MOI.modify(model.optimizer, key[1], MOI.ScalarCoefficientChange(key[2], value))
+        end
+
+
+        objective_aux_dict = Dict{Any,Any}()
+
+        if !isempty(model.quadratic_objective_cache_pv)
+            for j in model.quadratic_objective_cache_pv
+                if haskey(model.updated_parameters, j.variable_index_1)
+                    coef = j.coefficient
+                    param_new = model.updated_parameters[j.variable_index_1]
+                    if haskey(objective_aux_dict, (j.variable_index))
+                        objective_aux_dict[(j.variable_index_2)] += param_new*coef
+                    else
+                        objective_aux_dict[(j.variable_index_2)] = param_new*coef
+                    end
+                end
+            end
+        end
+
+        for j in model.quadratic_objective_variables_associated_to_parameters_cache
+            if haskey(model.updated_parameters, j.variable_index)
+                coef = j.coefficient
+                if haskey(objective_aux_dict, j.variable_index)
+                    objective_aux_dict[j.variable_index_2] += coef
+                else
+                    objective_aux_dict[j.variable_index_2] = coef
+                end
+            end
+        end
+
+        F_pv = MOI.get(model.optimizer, MOI.ObjectiveFunctionType())
+
+        for (key, value) in objective_aux_dict
+            MOI.modify(model.optimizer, MOI.ObjectiveFunction{F_pv}(), MOI.ScalarCoefficientChange(key, value))
+        end
+
 
         for (i, val) in model.updated_parameters
             model.parameters[i] = val
