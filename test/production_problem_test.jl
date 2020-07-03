@@ -1,6 +1,7 @@
 @testset "Production Problem" begin
 
     optimizer = POI.ParametricOptimizer(GLPK.Optimizer())
+    
 
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 1.0]
@@ -60,7 +61,5 @@
     @test MOI.get(optimizer, MOI.VariablePrimal(), z) == 3.0
     @test MOI.get(optimizer, MOI.ObjectiveValue()) == 5.0
     @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [1.0, 0.0] 
-
-
 
 end
