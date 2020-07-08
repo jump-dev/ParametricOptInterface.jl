@@ -8,5 +8,6 @@ const ATOL = 1e-4
 
 include("production_problem_test.jl")
 include("quadratic_tests.jl")
+include("quad_tests.jl")
 
 
