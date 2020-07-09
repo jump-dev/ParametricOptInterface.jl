@@ -3,12 +3,13 @@ const MOI = MathOptInterface
 const MOIU = MathOptInterface.Utilities
 
 
-Q = [4.0 1.0; 1.0 2.0]
-q = [1.0; 1.0]
-G = [1.0 1.0; 1.0 0.0; 0.0 1.0; -1.0 -1.0; -1.0 0.0; 0.0 -1.0]
-h = [1.0; 0.7; 0.7; -1.0; 0.0; 0.0];
+Q = [3.0 2.0; 2.0 1.0]
+q = [1.0, 6.0]
+G = [2.0 3.0; 1.0 1.0]
+h = [4.0; 3.0]
 
 model = Ipopt.Optimizer()
+
 x = MOI.add_variables(model, 2)
 
 # define objective
@@ -31,13 +32,11 @@ MOI.set(model, MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(), ob
 MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
 # add constraints
-for i in 1:6
-    MOI.add_constraint(
-        model,
-        MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(G[i,:], x), 0.0),
-        MOI.LessThan(h[i])
-    )
-end
+MOI.add_constraint(model, MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(G[1,:], x), 0.0), MOI.GreaterThan(h[1]))
+MOI.add_constraint(model, MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(G[2,:], x), 0.0), MOI.GreaterThan(h[2]))
+
+MOI.optimize!(model)
 
 MOI.get(model, MOI.ObjectiveValue())
 MOI.get(model, MOI.VariablePrimal(), x)
+

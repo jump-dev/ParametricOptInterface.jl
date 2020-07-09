@@ -535,7 +535,7 @@ function MOI.optimize!(model::ParametricOptimizer)
                 else
                     MOI.ScalarQuadraticFunction(f.affine_terms, f.quadratic_terms, f.constant + objective_constant)                
                 end
-                MOI.set(model.optimizer,MOI.ObjectiveFunction{F}(), fvar)       
+                MOI.set(model.optimizer,MOI.ObjectiveFunction{F}(), fvar)
             end
         end
 
@@ -594,9 +594,9 @@ function MOI.optimize!(model::ParametricOptimizer)
                 fvar = if F == MathOptInterface.ScalarAffineFunction{Float64}
                     MOI.ScalarAffineFunction(f.terms, f.constant + objective_constant)
                 else
-                    MOI.ScalarQuadraticFunction(f.affine_terms, f.quadratic_terms, f.constant + objective_constant)                
+                    MOI.ScalarQuadraticFunction(f.affine_terms, f.quadratic_terms, f.constant + objective_constant)
                 end
-                MOI.set(model.optimizer,MOI.ObjectiveFunction{F}(), fvar)            
+                MOI.set(model.optimizer,MOI.ObjectiveFunction{F}(), fvar)
             end
         end
 
@@ -617,14 +617,12 @@ function MOI.optimize!(model::ParametricOptimizer)
         end
 
         for (ci, fparam) in model.quadratic_constraint_variables_associated_to_parameters_cache
-            for j in fparam
-                if haskey(model.updated_parameters, j.variable_index)
-                    coef = j.coefficient
-                    if haskey(constraint_aux_dict, (ci, j.variable_index))
-                        constraint_aux_dict[(ci, j.variable_index_2)] += coef
-                    else
-                        constraint_aux_dict[(ci, j.variable_index_2)] = coef
-                    end
+            for j in fparam.terms
+                coef = j.coefficient
+                if haskey(constraint_aux_dict, (ci, j.variable_index))#
+                    constraint_aux_dict[(ci, j.variable_index)] += coef
+                else
+                    constraint_aux_dict[(ci, j.variable_index)] = coef
                 end
             end
         end
@@ -633,7 +631,6 @@ function MOI.optimize!(model::ParametricOptimizer)
             MOI.modify(model.optimizer, key[1], MOI.ScalarCoefficientChange(key[2], value))
         end
 
-
         objective_aux_dict = Dict{Any,Any}()
 
         if !isempty(model.quadratic_objective_cache_pv)
@@ -641,7 +638,7 @@ function MOI.optimize!(model::ParametricOptimizer)
                 if haskey(model.updated_parameters, j.variable_index_1)
                     coef = j.coefficient
                     param_new = model.updated_parameters[j.variable_index_1]
-                    if haskey(objective_aux_dict, (j.variable_index))
+                    if haskey(objective_aux_dict, (j.variable_index_2))
                         objective_aux_dict[(j.variable_index_2)] += param_new*coef
                     else
                         objective_aux_dict[(j.variable_index_2)] = param_new*coef
@@ -651,13 +648,11 @@ function MOI.optimize!(model::ParametricOptimizer)
         end
 
         for j in model.quadratic_objective_variables_associated_to_parameters_cache
-            if haskey(model.updated_parameters, j.variable_index)
-                coef = j.coefficient
-                if haskey(objective_aux_dict, j.variable_index)
-                    objective_aux_dict[j.variable_index_2] += coef
-                else
-                    objective_aux_dict[j.variable_index_2] = coef
-                end
+            coef = j.coefficient
+            if haskey(objective_aux_dict, j.variable_index)
+                objective_aux_dict[j.variable_index] += coef
+            else
+                objective_aux_dict[j.variable_index] = coef
             end
         end
 
@@ -666,7 +661,6 @@ function MOI.optimize!(model::ParametricOptimizer)
         for (key, value) in objective_aux_dict
             MOI.modify(model.optimizer, MOI.ObjectiveFunction{F_pv}(), MOI.ScalarCoefficientChange(key, value))
         end
-
 
         for (i, val) in model.updated_parameters
             model.parameters[i] = val
