@@ -15,18 +15,18 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
     updated_parameters::Dict{MOI.VariableIndex, T}
     variables::Dict{MOI.VariableIndex, MOI.VariableIndex}
     last_index_added::Int
-    affine_constraint_cache::Dict{Any, Array{MOI.ScalarAffineTerm{Float64},1}}
-    quadratic_constraint_cache_pv::Dict{Any, Array{MOI.ScalarQuadraticTerm{Float64},1}} #param*var
-    quadratic_constraint_cache_pp::Dict{Any, Array{MOI.ScalarQuadraticTerm{Float64},1}} #param*param
-    quadratic_constraint_cache_pc::Dict{Any, Array{MOI.ScalarAffineTerm{Float64},1}} #param*cons
-    quadratic_constraint_variables_associated_to_parameters_cache::Dict{Any, Array{MOI.ScalarAffineTerm{Float64},1}} ##################
-    quadratic_added_cache::Dict{Any, Any} 
+    affine_constraint_cache::Dict{MOI.ConstraintIndex, Array{MOI.ScalarAffineTerm{Float64},1}}
+    quadratic_constraint_cache_pv::Dict{MOI.ConstraintIndex, Array{MOI.ScalarQuadraticTerm{Float64},1}} #param*var
+    quadratic_constraint_cache_pp::Dict{MOI.ConstraintIndex, Array{MOI.ScalarQuadraticTerm{Float64},1}} #param*param
+    quadratic_constraint_cache_pc::Dict{MOI.ConstraintIndex, Array{MOI.ScalarAffineTerm{Float64},1}} #param*cons
+    quadratic_constraint_variables_associated_to_parameters_cache::Dict{MOI.ConstraintIndex, Array{MOI.ScalarAffineTerm{Float64},1}} 
+    quadratic_added_cache::Dict{MOI.ConstraintIndex, MOI.ConstraintIndex} 
     last_quad_add_added::Int
     affine_objective_cache::Array{MOI.ScalarAffineTerm{T},1}
     quadratic_objective_cache_pv::Array{MOI.ScalarQuadraticTerm{T},1}
     quadratic_objective_cache_pp::Array{MOI.ScalarQuadraticTerm{T},1}
     quadratic_objective_cache_pc::Array{MOI.ScalarAffineTerm{T},1}
-    quadratic_objective_variables_associated_to_parameters_cache::Array{MOI.ScalarAffineTerm{T},1} ##################
+    quadratic_objective_variables_associated_to_parameters_cache::Array{MOI.ScalarAffineTerm{T},1}
     function ParametricOptimizer(optimizer::OT) where OT
         new{Float64, OT}(
             optimizer,
@@ -34,12 +34,12 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
             Dict{MOI.VariableIndex, Float64}(),
             Dict{MOI.VariableIndex, MOI.VariableIndex}(),
             0,
-            Dict{Any, Array{MOI.ScalarAffineTerm{Float64},1}}(),
-            Dict{Any, Array{MOI.ScalarQuadraticTerm{Float64},1}}(),
-            Dict{Any, Array{MOI.ScalarQuadraticTerm{Float64},1}}(),
-            Dict{Any, Array{MOI.ScalarAffineTerm{Float64},1}}(),
-            Dict{Any, Array{MOI.ScalarAffineTerm{Float64},1}}(),
-            Dict{Any, Any}(),
+            Dict{MOI.ConstraintIndex, Array{MOI.ScalarAffineTerm{Float64},1}}(),
+            Dict{MOI.ConstraintIndex, Array{MOI.ScalarQuadraticTerm{Float64},1}}(),
+            Dict{MOI.ConstraintIndex, Array{MOI.ScalarQuadraticTerm{Float64},1}}(),
+            Dict{MOI.ConstraintIndex, Array{MOI.ScalarAffineTerm{Float64},1}}(),
+            Dict{MOI.ConstraintIndex, Array{MOI.ScalarAffineTerm{Float64},1}}(),
+            Dict{MOI.ConstraintIndex, MOI.ConstraintIndex}(),
             0,
             Array{MOI.ScalarAffineTerm{Float64},1}(),
             Array{MOI.ScalarQuadraticTerm{Float64},1}(),
