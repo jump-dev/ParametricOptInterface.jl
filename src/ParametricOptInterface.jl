@@ -670,6 +670,5 @@ function MOI.optimize!(model::ParametricOptimizer)
     MOI.optimize!(model.optimizer)
 end
 
-
 end # module
 

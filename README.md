@@ -11,3 +11,7 @@ GSOC 2020 project
 
 [codecov-img]: http://codecov.io/github/tomasfmg/ParametricOptInterface.jl/coverage.svg?branch=master
 [codecov-url]: http://codecov.io/github/tomasfmg/ParametricOptInterface.jl?branch=master
+
+
+Repository with implementation allowing parameters in MathOptInterface.jl problems.
+
