@@ -5,12 +5,16 @@
 
     x = MOI.add_variables(optimizer,2)
     y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
-
-    @test_throws ErrorException("Cannot constrain a parameter") MOI.add_constraint(optimizer, MOI.SingleVariable(y), MOI.EqualTo(0.0))
+    z = MOI.VariableIndex(4)
+    cz = MOI.ConstraintIndex{MOI.SingleVariable, POI.Parameter}(4)
 
     for x_i in x
         MOI.add_constraint(optimizer, MOI.SingleVariable(x_i), MOI.GreaterThan(0.0))
     end
+
+    @test_throws ErrorException("Cannot constrain a parameter") MOI.add_constraint(optimizer, MOI.SingleVariable(y), MOI.EqualTo(0.0))
+
+    @test_throws ErrorException("Variable not in the model") MOI.add_constraint(optimizer, MOI.SingleVariable(z), MOI.GreaterThan(0.0))
 
     cons1 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 1.0], [x[1], y]), 0.0)
     
@@ -26,7 +30,11 @@
 
     @test MOI.get(optimizer, MOI.VariablePrimal(), x[1]) == 2
 
+    @test_throws ErrorException("Variable not in the model") MOI.get(optimizer, MOI.VariablePrimal(), z)
+
     MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(1.0))
+
+    @test_throws ErrorException("Parameter not in the model") MOI.set(optimizer, MOI.ConstraintSet(), cz, POI.Parameter(1.0))
 
     MOI.optimize!(optimizer)
 
@@ -42,5 +50,6 @@
     MOI.optimize!(optimizer)
 
     @test MOI.get(optimizer, MOI.ObjectiveValue()) == 1
+
 
 end
