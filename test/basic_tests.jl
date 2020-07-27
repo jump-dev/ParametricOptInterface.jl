@@ -164,3 +164,49 @@ end
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 45.0, atol = ATOL)
 
 end
+
+@testset "Quadratic constraint no parameters" begin
+    ipopt = Ipopt.Optimizer()
+    MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
+    opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
+    optimizer = POI.ParametricOptimizer(opt_in)
+
+    A = [0.0 1.0; 1.0 0.0]
+    a = [0.0, 0.0]
+    c = [2.0, 1.0]
+
+    x = MOI.add_variables(optimizer, 2)
+
+    for x_i in x
+        MOI.add_constraint(optimizer, MOI.SingleVariable(x_i), MOI.GreaterThan(1.0))
+        MOI.add_constraint(optimizer, MOI.SingleVariable(x_i), MOI.LessThan(5.0))
+    end
+
+
+    quad_terms = MOI.ScalarQuadraticTerm{Float64}[]
+
+    push!(quad_terms, MOI.ScalarQuadraticTerm(A[1,2], x[1], x[2]))
+
+    constraint_function = MOI.ScalarQuadraticFunction(
+                            MOI.ScalarAffineTerm.(a, x),
+                            [MOI.ScalarQuadraticTerm(A[1,2], x[1], x[2])],
+                            0.0
+                        )
+
+    MOI.add_constraint(optimizer, constraint_function, MOI.LessThan(9.0))
+
+    
+    obj_func = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(c, [x[1], x[2]]), 0.0)
+    MOI.set(optimizer, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(), obj_func)
+    MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+
+    MOI.optimize!(optimizer)
+
+    @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 11.8, atol = ATOL)
+    @test isapprox(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 5.0, atol = ATOL)
+    @test isapprox(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 1.8, atol = ATOL)
+
+end
+
+
+
