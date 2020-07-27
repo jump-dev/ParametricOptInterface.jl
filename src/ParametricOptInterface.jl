@@ -616,7 +616,7 @@ function MOI.optimize!(model::ParametricOptimizer)
         for (ci, fparam) in model.quadratic_constraint_cache_pv
             for j in fparam
                 if haskey(model.updated_parameters, j.variable_index_1)
-                    coef = fparam.coefficient
+                    coef = j.coefficient
                     param_new = model.updated_parameters[j.variable_index_1]
                     if haskey(constraint_aux_dict, (ci, j.variable_index_2))
                         constraint_aux_dict[(ci, j.variable_index_2)] += param_new*coef
