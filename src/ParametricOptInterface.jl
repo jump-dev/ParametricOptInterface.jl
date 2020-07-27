@@ -306,7 +306,7 @@ function MOI.add_constraint(model::ParametricOptimizer, f::MOI.ScalarQuadraticFu
             const_term += j.coefficient * model.parameters[j.variable_index_1] * model.parameters[j.variable_index_2]
         end
 
-        f_quad = if isempty(quad_terms)
+        f_quad = if !isempty(quad_terms)
             MOI.ScalarQuadraticFunction(
                         aff_terms,
                         quad_terms,
@@ -325,10 +325,21 @@ function MOI.add_constraint(model::ParametricOptimizer, f::MOI.ScalarQuadraticFu
         new_ci = MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{Float64}, typeof(set)}(model.last_quad_add_added)
         model.quadratic_added_cache[new_ci] = ci
 
-        model.quadratic_constraint_cache_pv[new_ci] = quad_aff_vars
-        model.quadratic_constraint_cache_pp[new_ci] = quad_params
-        model.quadratic_constraint_cache_pc[new_ci] = aff_params
-        model.quadratic_constraint_variables_associated_to_parameters_cache[new_ci] = variables_associated_to_parameters
+        if !isempty(quad_aff_vars)
+            model.quadratic_constraint_cache_pv[new_ci] = quad_aff_vars
+        end
+
+        if !isempty(quad_params)
+            model.quadratic_constraint_cache_pp[new_ci] = quad_params
+        end
+
+        if !isempty(aff_params)
+            model.quadratic_constraint_cache_pc[new_ci] = aff_params
+        end
+
+        if !isempty(variables_associated_to_parameters)
+            model.quadratic_constraint_variables_associated_to_parameters_cache[new_ci] = variables_associated_to_parameters
+        end
 
         return ci
     end
