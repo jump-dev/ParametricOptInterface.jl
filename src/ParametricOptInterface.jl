@@ -5,10 +5,30 @@ const MOI = MathOptInterface
 const MOIU = MathOptInterface.Utilities
 const POI = ParametricOptInterface
 
+"""
+    Parameter(Float64)
+
+The `Parameter` structure stores the numerical value associated to a given parameter.
+# Example:
+```julia-repl
+julia> ParametricOptInterface.Parameter(5)
+ParametricOptInterface.Parameter(5)
+```
+"""
 struct Parameter <: MOI.AbstractScalarSet
     val::Float64
 end
 
+"""
+    ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimizer
+
+Declares a `ParametricOptimizer`, which allows the handling of parameters in a optimization model.
+# Example:
+```julia-repl
+julia> ParametricOptInterface.ParametricOptimizer(GLPK.Optimizer())
+ParametricOptInterface.ParametricOptimizer{Float64,GLPK.Optimizer}
+```
+"""
 mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimizer
     optimizer::OT 
     parameters::Dict{MOI.VariableIndex, T}
@@ -16,9 +36,9 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
     variables::Dict{MOI.VariableIndex, MOI.VariableIndex}
     last_index_added::Int
     affine_constraint_cache::Dict{MOI.ConstraintIndex, Array{MOI.ScalarAffineTerm{Float64},1}}
-    quadratic_constraint_cache_pv::Dict{MOI.ConstraintIndex, Array{MOI.ScalarQuadraticTerm{Float64},1}} #param*var
-    quadratic_constraint_cache_pp::Dict{MOI.ConstraintIndex, Array{MOI.ScalarQuadraticTerm{Float64},1}} #param*param
-    quadratic_constraint_cache_pc::Dict{MOI.ConstraintIndex, Array{MOI.ScalarAffineTerm{Float64},1}} #param*cons
+    quadratic_constraint_cache_pv::Dict{MOI.ConstraintIndex, Array{MOI.ScalarQuadraticTerm{Float64},1}}
+    quadratic_constraint_cache_pp::Dict{MOI.ConstraintIndex, Array{MOI.ScalarQuadraticTerm{Float64},1}}
+    quadratic_constraint_cache_pc::Dict{MOI.ConstraintIndex, Array{MOI.ScalarAffineTerm{Float64},1}}
     quadratic_constraint_variables_associated_to_parameters_cache::Dict{MOI.ConstraintIndex, Array{MOI.ScalarAffineTerm{Float64},1}} 
     quadratic_added_cache::Dict{MOI.ConstraintIndex, MOI.ConstraintIndex} 
     last_quad_add_added::Int
@@ -58,6 +78,19 @@ function MOI.add_variable(model::ParametricOptimizer)
     return v_p
 end
 
+"""
+    MOI.add_constrained_variable(model::ParametricOptimizer, set::Parameter)
+
+Adds a parameter, that is, a variable parameterized to the value provided in `set`, to the `model` specified.
+The `model` must be a `ParametricOptInterface.ParametricOptimizer` model.
+Returns the MOI.VariableIndex of the parameterized variable and the MOI.ConstraintIndex associated.
+
+#Example:
+```julia-repl
+julia> w, cw = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
+(MathOptInterface.VariableIndex(1), MathOptInterface.ConstraintIndex{MathOptInterface.SingleVariable,ParametricOptInterface.Parameter}(1))
+```
+"""
 function MOI.add_constrained_variable(model::ParametricOptimizer, set::Parameter)
     model.last_index_added += 1
     p = MOI.VariableIndex(model.last_index_added)
@@ -124,6 +157,17 @@ function MOI.get(model::ParametricOptimizer, attr::MOI.VariablePrimal, v::MOI.Va
     end
 end
 
+"""
+    MOI.set(model::ParametricOptimizer, ::MOI.ConstraintSet, cp::MOI.ConstraintIndex{MOI.SingleVariable, P}, set::P) where {P <: Parameter}
+
+Sets the parameter to a given value, using its `MOI.ConstraintIndex` as reference.
+
+#Example:
+```julia-repl
+julia> MOI.set(optimizer, MOI.ConstraintSet(), cw, POI.Parameter(2.0))
+2.0
+```
+"""
 function MOI.set(model::ParametricOptimizer, ::MOI.ConstraintSet, cp::MOI.ConstraintIndex{MOI.SingleVariable, P}, set::P) where {P <: Parameter}
     p = MOI.VariableIndex(cp.value)
     if haskey(model.parameters, p)
