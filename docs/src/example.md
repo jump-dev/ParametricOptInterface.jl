@@ -110,7 +110,6 @@ julia> MOI.optimize!(optimizer)
 # Only the objective function value changes
 julia> @test isapprox.(MOI.get(optimizer, MOI.ObjectiveValue()), 9, atol = 1e-4)
 julia> @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [1.0, 1.0]
-
 ```
 
 

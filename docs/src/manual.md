@@ -45,27 +45,21 @@ a function that is not listed here, it will return an unsupported error.
 In order to use parameters, the user needs to declare a `ParametricOptimizer` on top of a `MOI` optimizer, such as `GLPK.Optimizer()`.
 
 ```julia
-
 using ParametricOptInterface, MathOptInterface, GLPK
-
 # Rename ParametricOptInterface and MathOptInterface to simplify the code
 const POI = ParametricOptInterface
 const MOI = MathOptInterface
-
 # Define a ParametricOptimizer on top of the MOI optimizer
 optimizer = POI.ParametricOptimizer(GLPK.Optimizer())
-
 ```
 
 ### Parameters
 
 A `Parameter` is a variable with a fixed value that can be changed by the user.
 
-```docs
-Parameter
-```
-
 ### Adding a new parameter to a model
+
+To add a parameter to a model, we must use the `MOI.add_constrained_variable()` function, passing as its arguments the model and a `Parameter` with its given value:
 
 ```julia
 y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
