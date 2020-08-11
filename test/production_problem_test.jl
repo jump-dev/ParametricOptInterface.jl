@@ -59,7 +59,7 @@
     @test MOI.get(optimizer, MOI.VariablePrimal(), y) == 1.0
     @test MOI.get(optimizer, MOI.VariablePrimal(), z) == 1.0
     @test isapprox.(MOI.get(optimizer, MOI.ObjectiveValue()), 9, atol = ATOL)
-    @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [1.0, 1.0] 
+    @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [1.0, 1.0]
 
     MOI.set(optimizer, MOI.ConstraintSet(), cw, POI.Parameter(0.0))
     

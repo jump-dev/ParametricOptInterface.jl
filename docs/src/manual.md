@@ -20,7 +20,9 @@ wrapper around `MOI`, responsible for receiving variables, constants and paramet
 
 As `POI` receives parameters, it must analyze and decide how they should be handled on the lower level optimization model (the `MOI` model).
 
-## Supported constraints
+## Usage
+
+### Supported constraints
 
 This is a list of supported `MOI` constraint functions that can handle parameters. If you try to add a parameter to 
 a function that is not listed here, it will return an unsupported error.
@@ -31,20 +33,17 @@ a function that is not listed here, it will return an unsupported error.
 |    `ScalarQuadraticFunction`    |
 
 
-## Supported objective functions
+### Supported objective functions
 
 |  MOI Function | 
 |:-------|
 |    `ScalarAffineFunction`    |
 |    `ScalarQuadraticFunction`    |
 
-## Declare a ParametricOptimizer
+### Declare a ParametricOptimizer
 
-in order to use parameters, the user needs to declare a `ParametricOptimizer` on top of a `MOI` optimizer, such as `GLPK.Optimizer()`.
+In order to use parameters, the user needs to declare a `ParametricOptimizer` on top of a `MOI` optimizer, such as `GLPK.Optimizer()`.
 
-```@docs
-ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimizer
-```
 ```julia
 
 using ParametricOptInterface, MathOptInterface, GLPK
@@ -58,7 +57,7 @@ optimizer = POI.ParametricOptimizer(GLPK.Optimizer())
 
 ```
 
-## Parameters
+### Parameters
 
 A `Parameter` is a variable with a fixed value that can be changed by the user.
 
@@ -66,13 +65,13 @@ A `Parameter` is a variable with a fixed value that can be changed by the user.
 Parameter
 ```
 
-## Adding a new parameter to a model
+### Adding a new parameter to a model
 
 ```julia
 y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
 ```
 
-## Changing the parameter value
+### Changing the parameter value
 
 To change a given parameter's value, access its `ConstraintIndex` and set it to the new value using the `Parameter` structure.
 
