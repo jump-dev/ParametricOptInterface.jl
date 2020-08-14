@@ -6,6 +6,7 @@ deps/deps.jl
 Manifest.toml
 .DS_Store
 .github
-test/rascunho.jl
+test/draft.jl
+test/profile_test.jl
 test/MOItests.jl
 test/quadratic_tests.jl

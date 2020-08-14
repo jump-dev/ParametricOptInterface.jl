@@ -47,6 +47,7 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
     quadratic_objective_cache_pp::Array{MOI.ScalarQuadraticTerm{T},1}
     quadratic_objective_cache_pc::Array{MOI.ScalarAffineTerm{T},1}
     quadratic_objective_variables_associated_to_parameters_cache::Array{MOI.ScalarAffineTerm{T},1}
+    multiplicative_parameters::BitSet
     function ParametricOptimizer(optimizer::OT) where OT
         new{Float64, OT}(
             optimizer,
@@ -65,7 +66,8 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
             Array{MOI.ScalarQuadraticTerm{Float64},1}(),
             Array{MOI.ScalarQuadraticTerm{Float64},1}(),
             Array{MOI.ScalarAffineTerm{Float64},1}(),
-            Array{MOI.ScalarAffineTerm{Float64},1}()
+            Array{MOI.ScalarAffineTerm{Float64},1}(),
+            BitSet()
         )
     end
 end
@@ -95,7 +97,8 @@ function MOI.add_constrained_variable(model::ParametricOptimizer, set::Parameter
     model.last_index_added += 1
     p = MOI.VariableIndex(model.last_index_added)
     model.parameters[p] = set.val
-    return p, MOI.ConstraintIndex{MOI.SingleVariable, typeof(set)}(model.last_index_added)
+    cp = MOI.ConstraintIndex{MOI.SingleVariable, typeof(set)}(model.last_index_added)
+    return p, cp
 end
 
 function MOI.add_constraint(model::ParametricOptimizer, f::MOI.SingleVariable, set::MOI.AbstractScalarSet) 
@@ -284,18 +287,25 @@ function MOI.add_constraint(model::ParametricOptimizer, f::MOI.ScalarQuadraticFu
                     # Thus, it creates an affine term. Convention: param as 1, var as 2
                     aux = MOI.ScalarQuadraticTerm(i.coefficient, i.variable_index_1, i.variable_index_2)
                     push!(quad_aff_vars, aux)
-                    push!(aux_variables_associated_to_parameters, i.variable_index_2)  
+                    push!(aux_variables_associated_to_parameters, i.variable_index_2)
+                    
+                    push!(model.multiplicative_parameters, i.variable_index_1.value)
 
                 elseif haskey(model.variables, i.variable_index_1) && haskey(model.parameters, i.variable_index_2)
                     # Check convention defined above
                     aux = MOI.ScalarQuadraticTerm(i.coefficient, i.variable_index_2, i.variable_index_1)
                     push!(quad_aff_vars, aux)
-                    push!(aux_variables_associated_to_parameters, i.variable_index_1)          
+                    push!(aux_variables_associated_to_parameters, i.variable_index_1)
+
+                    push!(model.multiplicative_parameters, i.variable_index_2.value)
 
                 elseif haskey(model.parameters, i.variable_index_1) && haskey(model.parameters, i.variable_index_2)
                     # This is the case where both variable_index_1,2 are actually parameters
                     aux = MOI.ScalarQuadraticTerm(i.coefficient, i.variable_index_1, i.variable_index_2)
                     push!(quad_params, aux)
+
+                    push!(model.multiplicative_parameters, i.variable_index_1.value)
+                    push!(model.multiplicative_parameters, i.variable_index_2.value)
 
                 else
                     error("Constraint uses a variable that is not in the model")
@@ -427,6 +437,8 @@ function MOI.set(model::ParametricOptimizer, attr::MOI.ObjectiveFunction{F}, f::
                     aux = MOI.ScalarQuadraticTerm(i.coefficient, i.variable_index_1, i.variable_index_2)
                     push!(quad_aff_vars, aux)
                     push!(aux_variables_associated_to_parameters, i.variable_index_2)
+
+                    push!(model.multiplicative_parameters, i.variable_index_1.value)
                     
                 elseif haskey(model.variables, i.variable_index_1) && haskey(model.parameters, i.variable_index_2)
                     # Check convention defined above
@@ -434,10 +446,15 @@ function MOI.set(model::ParametricOptimizer, attr::MOI.ObjectiveFunction{F}, f::
                     push!(quad_aff_vars, aux)
                     push!(aux_variables_associated_to_parameters, i.variable_index_1)
 
+                    push!(model.multiplicative_parameters, i.variable_index_2.value)
+
                 elseif haskey(model.parameters, i.variable_index_1) && haskey(model.parameters, i.variable_index_2)
                     # This is the case where both variable_index_1,2 are actually parameters
                     aux = MOI.ScalarQuadraticTerm(i.coefficient, i.variable_index_1, i.variable_index_2)
                     push!(quad_params, aux)
+
+                    push!(model.multiplicative_parameters, i.variable_index_1.value)
+                    push!(model.multiplicative_parameters, i.variable_index_2.value)
 
                 else
                     error("Constraint uses a variable that is not in the model")
@@ -551,7 +568,7 @@ function MOI.optimize!(model::ParametricOptimizer)
                 F = MOI.get(model.optimizer, MOI.ObjectiveFunctionType())
                 f = MOI.get(model.optimizer, MOI.ObjectiveFunction{F}())
                 fvar = MOI.ScalarAffineFunction(f.terms, f.constant + objective_constant)
-                MOI.set(model.optimizer,MOI.ObjectiveFunction{F}(), fvar)       
+                MOI.set(model.optimizer,MOI.ObjectiveFunction{F}(), fvar)
             end
         end
 
@@ -725,5 +742,28 @@ function MOI.optimize!(model::ParametricOptimizer)
     MOI.optimize!(model.optimizer)
 end
 
+### Duals
+
+function MOI.get(model::ParametricOptimizer, attr::T, ci::MOI.ConstraintIndex) where {T <: MOI.ConstraintDual}
+    return MOI.get(model.optimizer, attr, ci)
+end
+
+function MOI.get(model::ParametricOptimizer, attr::T, cp::MOI.ConstraintIndex{MOI.SingleVariable,POI.Parameter}) where {T <: MOI.ConstraintDual}
+    
+    if !is_additive(model, cp)
+        error("Cannot calculate the dual of a multiplicative parameter")
+    end
+    
+    return MOI.get(model.optimizer, attr, cp)
+end
+
+function is_additive(model::ParametricOptimizer, cp::MOI.ConstraintIndex)
+    if cp.value in model.multiplicative_parameters
+        return false
+    end
+    return true
+end
+    
 end # module
+
 
