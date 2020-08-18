@@ -465,7 +465,7 @@ end
 
     MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(2.0))
     MOI.optimize!(optimizer)
-    @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 8.6609, atol = ATOL)
+    @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 8.2376, atol = ATOL)
 end
 
 

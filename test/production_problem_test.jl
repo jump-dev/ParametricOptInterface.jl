@@ -115,10 +115,10 @@ end
     end
 
     cons1 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(A1, [x[1], x[2], y]), 0.0)
-    MOI.add_constraint(optimizer, cons1, MOI.LessThan(b1))
+    ci1 = MOI.add_constraint(optimizer, cons1, MOI.LessThan(b1))
 
     cons2 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(A2, [x[1], x[2], z]), 0.0)
-    MOI.add_constraint(optimizer, cons2, MOI.LessThan(b2))
+    ci2 = MOI.add_constraint(optimizer, cons2, MOI.LessThan(b2))
 
     @test cons1.terms[1].coefficient == 2
     @test cons2.terms[3].variable_index == MOI.VariableIndex(5)
@@ -133,14 +133,16 @@ end
 
     MOI.get(optimizer, MOI.PrimalStatus())
 
-    @test isapprox.(MOI.get(optimizer, MOI.ObjectiveValue()), 28/3, atol = ATOL)
-    @test isapprox.(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 4/3, atol = ATOL)
-    @test isapprox.(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 4/3, atol = ATOL)
+    @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 28/3, atol = ATOL)
+    @test isapprox(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 4/3, atol = ATOL)
+    @test isapprox(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 4/3, atol = ATOL)
 
     @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cy), -5, atol = ATOL)
     @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cz), -2/6, atol = ATOL)
     @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cw), 2.0, atol = ATOL)
 
+    @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cy), 3*MOI.get(optimizer, MOI.ConstraintDual(), ci1), atol = 1e-4)
+    @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cz), 0.5*MOI.get(optimizer, MOI.ConstraintDual(), ci2), atol = 1e-4)
 
     MOI.set(optimizer, MOI.ConstraintSet(), cw, POI.Parameter(2.0))
     MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(1.0))
