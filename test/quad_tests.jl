@@ -144,15 +144,6 @@ end
     MOI.set(optimizer, MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(), objective_function)
     MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
-    # add constraints
-    for i in 1:2
-        MOI.add_constraint(
-            optimizer,
-            MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(G[i,:], [x[1], x[2], y, w]), 0.0),
-            MOI.GreaterThan(h[i])
-        )
-    end
-
     MOI.add_constraint(optimizer, MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(G[1,:], [x[1], x[2], y, w]), 0.0), MOI.GreaterThan(h[1]))
     MOI.add_constraint(optimizer, MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(G[2,:], [x[1], x[2], y, w]), 0.0), MOI.GreaterThan(h[2]))
 
