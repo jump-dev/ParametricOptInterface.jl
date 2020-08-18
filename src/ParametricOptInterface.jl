@@ -749,12 +749,15 @@ function MOI.get(model::ParametricOptimizer, attr::T, ci::MOI.ConstraintIndex) w
 end
 
 function MOI.get(model::ParametricOptimizer, attr::T, cp::MOI.ConstraintIndex{MOI.SingleVariable,POI.Parameter}) where {T <: MOI.ConstraintDual}
-    
     if !is_additive(model, cp)
         error("Cannot calculate the dual of a multiplicative parameter")
     end
-    
-    return MOI.get(model.optimizer, attr, cp)
+    param_dual = 0
+    param_dual += parameter_dual_in_affine_constraint(model, cp)
+    param_dual += parameter_dual_in_affine_objective(model, cp)
+    param_dual += parameter_dual_in_quadratic_constraint_affine_part(model, cp)
+    param_dual += parameter_dual_in_quadratic_objective_affine_part(model, cp)    
+    return param_dual
 end
 
 function is_additive(model::ParametricOptimizer, cp::MOI.ConstraintIndex)
@@ -762,6 +765,53 @@ function is_additive(model::ParametricOptimizer, cp::MOI.ConstraintIndex)
         return false
     end
     return true
+end
+
+function parameter_dual_in_affine_constraint(model::POI.ParametricOptimizer, cp::MOI.ConstraintIndex)
+    param_dual_affine_constraint = 0
+    for (ci, param_array) in model.affine_constraint_cache
+        for param in param_array
+            if cp.value == param.variable_index.value
+                cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
+                param_dual_affine_constraint += cons_dual*param.coefficient
+            end
+        end
+    end
+    return param_dual_affine_constraint
+end
+
+function parameter_dual_in_affine_objective(model::POI.ParametricOptimizer, cp::MOI.ConstraintIndex)
+    param_dual_affine_objective = 0
+        for param in model.affine_objective_cache
+            if cp.value == param.variable_index.value
+                param_dual_affine_objective += param.coefficient
+            end
+        end
+    return param_dual_affine_objective
+end
+
+function parameter_dual_in_quadratic_constraint_affine_part(model::POI.ParametricOptimizer, cp::MOI.ConstraintIndex)
+    param_dual_quadratic_constraint_affine_part = 0
+    for (poi_ci, param_array) in model.quadratic_constraint_cache_pc
+        moi_ci = model.quadratic_added_cache[poi_ci]
+        for param in param_array
+            if cp.value == param.variable_index.value
+                cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), moi_ci)
+                param_dual_quadratic_constraint_affine_part += cons_dual*param.coefficient
+            end
+        end
+    end
+    return param_dual_quadratic_constraint_affine_part
+end
+
+function parameter_dual_in_quadratic_objective_affine_part(model::POI.ParametricOptimizer, cp::MOI.ConstraintIndex)
+    param_dual_quadratic_objective_affine_part = 0
+        for param in model.quadratic_objective_cache_pc
+            if cp.value == param.variable_index.value
+                param_dual_quadratic_objective_affine_part += param.coefficient
+            end
+        end
+    return param_dual_quadratic_objective_affine_part
 end
     
 end # module
