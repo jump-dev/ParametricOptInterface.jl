@@ -72,3 +72,12 @@ To change a given parameter's value, access its `ConstraintIndex` and set it to 
 ```julia
 MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(2.0))
 ```
+
+### Retrieving the dual of a parameter
+
+Given an optimized model, one can calculate the dual associated to a parameters, **as long as it is an additive term in the constraints or objective**.
+One can do so by getting the `MOI.ConstraintDual` attribute of the paraameter's `MOI.ConstraintIndex`:
+
+```julia
+MOI.get(optimizer, MOI.ConstraintDual, cy)
+```
