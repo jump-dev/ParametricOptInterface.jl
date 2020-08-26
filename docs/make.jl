@@ -21,5 +21,5 @@ makedocs(
 )
 
 deploydocs(
-    repo = "github.com/tomasfmg/ParametricOptInterface.jl.git",
+    repo = "github.com/jump-dev/ParametricOptInterface.jl.git",
 )
