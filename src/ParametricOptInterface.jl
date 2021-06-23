@@ -32,6 +32,7 @@ ParametricOptInterface.ParametricOptimizer{Float64,GLPK.Optimizer}
 mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimizer
     optimizer::OT 
     parameters::Dict{MOI.VariableIndex, T}
+    parameters_name::Dict{MOI.VariableIndex, String}
     updated_parameters::Dict{MOI.VariableIndex, T}
     variables::Dict{MOI.VariableIndex, MOI.VariableIndex}
     last_index_added::Int
@@ -51,6 +52,7 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
         new{Float64, OT}(
             optimizer,
             Dict{MOI.VariableIndex, Float64}(),
+            Dict{MOI.VariableIndex, String}(),
             Dict{MOI.VariableIndex, Float64}(),
             Dict{MOI.VariableIndex, MOI.VariableIndex}(),
             0,
@@ -68,6 +70,105 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
             Array{MOI.ScalarAffineTerm{Float64},1}()
         )
     end
+end
+
+function MOI.is_empty(model::ParametricOptimizer)
+    return MOI.is_empty(model.optimizer) &&
+    isempty(model.parameters) &&
+    isempty(model.parameters_name) &&
+    isempty(model.variables) &&
+    isempty(model.updated_parameters) &&
+    isempty(model.variables) &&
+    model.last_index_added == 0 &&
+    isempty(model.affine_constraint_cache) &&
+    isempty(model.quadratic_constraint_cache_pv) &&
+    isempty(model.quadratic_constraint_cache_pp) &&
+    isempty(model.quadratic_constraint_cache_pc) &&
+    isempty(model.quadratic_constraint_variables_associated_to_parameters_cache) &&
+    isempty(model.quadratic_added_cache) &&
+    model.last_quad_add_added == 0 &&
+    isempty(model.affine_objective_cache) &&
+    isempty(model.quadratic_objective_cache_pv) &&
+    isempty(model.quadratic_objective_cache_pp) &&
+    isempty(model.quadratic_objective_cache_pc) &&
+    isempty(model.quadratic_objective_variables_associated_to_parameters_cache)
+end
+
+function MOI.supports_constraint(
+    model::ParametricOptimizer,
+    F::Type{<:MOI.AbstractFunction},
+    S::Type{<:MOI.AbstractSet})
+
+    return MOI.supports_constraint(model.optimizer, F, S)
+end
+
+function MOI.supports(
+    model::ParametricOptimizer,
+    attr::Union{MOI.ObjectiveSense,
+            MOI.ObjectiveFunction{MOI.SingleVariable},
+            MOI.ObjectiveFunction{MOI.ScalarAffineFunction{T}},
+            }) where T
+    return MOI.supports(model.optimizer, attr)
+end
+
+function MOI.empty!(model::ParametricOptimizer{T}) where T
+    MOI.empty!(model.optimizer)
+    model.parameters = Dict{MOI.VariableIndex, Float64}()
+    model.parameters_name = Dict{MOI.VariableIndex, String}()
+    model.updated_parameters = Dict{MOI.VariableIndex, Float64}()
+    model.variables = Dict{MOI.VariableIndex, MOI.VariableIndex}()
+    model.last_index_added = 0
+    model.affine_constraint_cache = Dict{MOI.ConstraintIndex, Array{MOI.ScalarAffineTerm{Float64},1}}()
+    model.quadratic_constraint_cache_pv = Dict{MOI.ConstraintIndex, Array{MOI.ScalarQuadraticTerm{Float64},1}}()
+    model.quadratic_constraint_cache_pp = Dict{MOI.ConstraintIndex, Array{MOI.ScalarQuadraticTerm{Float64},1}}()
+    model.quadratic_constraint_cache_pc = Dict{MOI.ConstraintIndex, Array{MOI.ScalarAffineTerm{Float64},1}}()
+    model.quadratic_constraint_variables_associated_to_parameters_cache = Dict{MOI.ConstraintIndex, Array{MOI.ScalarAffineTerm{Float64},1}}()
+    model.quadratic_added_cache = Dict{MOI.ConstraintIndex, MOI.ConstraintIndex}()
+    model.last_quad_add_added = 0
+    model.affine_objective_cache = Array{MOI.ScalarAffineTerm{Float64},1}()
+    model.quadratic_objective_cache_pv = Array{MOI.ScalarQuadraticTerm{Float64},1}()
+    model.quadratic_objective_cache_pp = Array{MOI.ScalarQuadraticTerm{Float64},1}()
+    model.quadratic_objective_cache_pc = Array{MOI.ScalarAffineTerm{Float64},1}()
+    model.quadratic_objective_variables_associated_to_parameters_cache = Array{MOI.ScalarAffineTerm{Float64},1}()
+    return
+end
+
+function MOI.set(model::ParametricOptimizer, attr::MOI.VariableName, v::MOI.VariableIndex, name::String)
+    if haskey(model.parameters, v)
+        model.parameters_name[v] = name
+    else
+        return MOI.set(model.optimizer, attr, v, name)
+    end 
+end
+
+function MOI.get(model::ParametricOptimizer, attr::MOI.VariableName, v::MOI.VariableIndex)
+    if haskey(model.parameters, v)
+        return model.parameters_name[v]
+    else
+        return MOI.get(model.optimizer, attr, v)
+    end
+end
+
+function MOI.supports(model::ParametricOptimizer, attr::MOI.VariableName, tp::Type{MOI.VariableIndex})
+    MOI.supports(model.optimizer, attr, tp)
+end
+
+function MOI.set(model::ParametricOptimizer, attr::MOI.ConstraintName, c::MOI.ConstraintIndex, name::String)
+    MOI.set(model.optimizer, attr, c, name)
+end
+
+function MOI.get(model::ParametricOptimizer, attr::MOI.ConstraintName, c::MOI.ConstraintIndex)
+    MOI.get(model.optimizer, attr, c)
+end
+
+function MOI.supports(model::ParametricOptimizer, attr::MOI.ConstraintName, tp::Type{MOI.ConstraintIndex})
+    MOI.supports(model.optimizer, attr, tp)
+end
+
+struct ParameterRef <: MOI.AbstractOptimizerAttribute end
+
+function MOI.get(model::ParametricOptimizer, attr::ParameterRef, v::MOI.VariableIndex)
+    MOI.ConstraintIndex{MOI.SingleVariable, POI.Parameter}(v.value)
 end
 
 function MOI.add_variable(model::ParametricOptimizer)
