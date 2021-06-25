@@ -98,8 +98,16 @@ function MOI.supports_constraint(
     model::ParametricOptimizer,
     F::Type{<:MOI.AbstractFunction},
     S::Type{<:MOI.AbstractSet})
-
+    
     return MOI.supports_constraint(model.optimizer, F, S)
+end
+
+function MOI.supports_constraint(
+    model::ParametricOptimizer,
+    F::Type{MOI.ScalarQuadraticFunction{T}},
+    S::Type{<:MOI.AbstractSet}) where T
+
+    return MOI.supports_constraint(model.optimizer, MOI.ScalarAffineFunction{T}, S)
 end
 
 function MOI.supports(
@@ -169,6 +177,64 @@ struct ParameterRef <: MOI.AbstractOptimizerAttribute end
 
 function MOI.get(model::ParametricOptimizer, attr::ParameterRef, v::MOI.VariableIndex)
     MOI.ConstraintIndex{MOI.SingleVariable, POI.Parameter}(v.value)
+end
+
+function MOI.get(model::ParametricOptimizer, attr::MOI.ConstraintFunction, ci::MOI.ConstraintIndex{F, S}) where {F, S}
+    MOI.get(model.optimizer, attr, ci)
+end
+
+function MOI.get(model::ParametricOptimizer, attr::MOI.ConstraintSet, ci::MOI.ConstraintIndex{F, S}) where {F, S}  
+    if MOI.is_valid(model.optimizer, ci)
+        return MOI.get(model.optimizer, attr, ci)
+    else
+        return throw(MOI.InvalidIndex(ci))
+    end
+end
+
+function MOI.get(model::ParametricOptimizer, attr::MOI.ObjectiveSense)
+    MOI.get(model.optimizer, attr)
+end
+
+function MOI.get(model::ParametricOptimizer, attr::MOI.ObjectiveFunctionType)
+    MOI.get(model.optimizer, attr)
+end
+
+function MOI.get(
+    model::ParametricOptimizer,
+    attr::MOI.ObjectiveFunction{F}) where F <: Union{MOI.SingleVariable,MOI.ScalarAffineFunction{T}} where T
+
+    MOI.get(model.optimizer, attr)
+end
+
+function MOI.get(model::ParametricOptimizer, ::MOI.ListOfConstraints)
+    constraints = Set{Tuple{DataType, DataType}}()
+    inner_ctrs = MOI.get(model.optimizer, MOI.ListOfConstraints())
+    for (F, S) in inner_ctrs
+        push!(constraints, (F,S))
+    end
+    # error("TODO")
+    # deal with deleted parameters
+    collect(constraints)
+end
+
+function MOI.get(
+    model::ParametricOptimizer,
+    attr::MOI.ListOfConstraintIndices{F, S}
+) where {S, F<:Union{
+    MOI.VectorOfVariables,
+    MOI.SingleVariable,
+}}
+    MOI.get(model.optimizer, attr)
+end
+
+function MOI.get(
+    model::ParametricOptimizer,
+    ::MOI.ListOfConstraintIndices{F, S}
+) where {S<:MOI.AbstractSet, F<:Union{
+    MOI.ScalarAffineFunction{T},
+    MOI.VectorAffineFunction{T},
+}} where T
+    MOI.get(model.optimizer, MOI.ListOfConstraintIndices{F, S}())
 end
 
 function MOI.add_variable(model::ParametricOptimizer)
