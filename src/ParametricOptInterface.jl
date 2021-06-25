@@ -121,23 +121,23 @@ end
 
 function MOI.empty!(model::ParametricOptimizer{T}) where T
     MOI.empty!(model.optimizer)
-    model.parameters = Dict{MOI.VariableIndex, Float64}()
-    model.parameters_name = Dict{MOI.VariableIndex, String}()
-    model.updated_parameters = Dict{MOI.VariableIndex, Float64}()
-    model.variables = Dict{MOI.VariableIndex, MOI.VariableIndex}()
+    empty!(model.parameters)
+    empty!(model.parameters_name)
+    empty!(model.updated_parameters)
+    empty!(model.variables)
     model.last_index_added = 0
-    model.affine_constraint_cache = Dict{MOI.ConstraintIndex, Array{MOI.ScalarAffineTerm{Float64},1}}()
-    model.quadratic_constraint_cache_pv = Dict{MOI.ConstraintIndex, Array{MOI.ScalarQuadraticTerm{Float64},1}}()
-    model.quadratic_constraint_cache_pp = Dict{MOI.ConstraintIndex, Array{MOI.ScalarQuadraticTerm{Float64},1}}()
-    model.quadratic_constraint_cache_pc = Dict{MOI.ConstraintIndex, Array{MOI.ScalarAffineTerm{Float64},1}}()
-    model.quadratic_constraint_variables_associated_to_parameters_cache = Dict{MOI.ConstraintIndex, Array{MOI.ScalarAffineTerm{Float64},1}}()
-    model.quadratic_added_cache = Dict{MOI.ConstraintIndex, MOI.ConstraintIndex}()
+    empty!(model.affine_constraint_cache)
+    empty!(model.quadratic_constraint_cache_pv)
+    empty!(model.quadratic_constraint_cache_pp)
+    empty!(model.quadratic_constraint_cache_pc)
+    empty!(model.quadratic_constraint_variables_associated_to_parameters_cache)
+    empty!(model.quadratic_added_cache)
     model.last_quad_add_added = 0
-    model.affine_objective_cache = Array{MOI.ScalarAffineTerm{Float64},1}()
-    model.quadratic_objective_cache_pv = Array{MOI.ScalarQuadraticTerm{Float64},1}()
-    model.quadratic_objective_cache_pp = Array{MOI.ScalarQuadraticTerm{Float64},1}()
-    model.quadratic_objective_cache_pc = Array{MOI.ScalarAffineTerm{Float64},1}()
-    model.quadratic_objective_variables_associated_to_parameters_cache = Array{MOI.ScalarAffineTerm{Float64},1}()
+    empty!(model.affine_objective_cache)
+    empty!(model.quadratic_objective_cache_pv)
+    empty!(model.quadratic_objective_cache_pp)
+    empty!(model.quadratic_objective_cache_pc)
+    empty!(model.quadratic_objective_variables_associated_to_parameters_cache)
     return
 end
 
@@ -173,11 +173,12 @@ function MOI.supports(model::ParametricOptimizer, attr::MOI.ConstraintName, tp::
     MOI.supports(model.optimizer, attr, tp)
 end
 
-struct ParameterRef <: MOI.AbstractOptimizerAttribute end
+struct ParameterValue <: MOI.AbstractVariableAttribute end
 
-function MOI.get(model::ParametricOptimizer, attr::ParameterRef, v::MOI.VariableIndex)
-    MOI.ConstraintIndex{MOI.SingleVariable, POI.Parameter}(v.value)
-end
+function MOI.set(model::ParametricOptimizer, ::ParameterValue, vi::MOI.VariableIndex, val)
+    cv = MOI.ConstraintIndex{MOI.SingleVariable, POI.Parameter}(vi.value)
+    MOI.set(model, MOI.ConstraintSet(), cv, POI.Parameter(val))
+end 
 
 function MOI.get(model::ParametricOptimizer, attr::MOI.ConstraintFunction, ci::MOI.ConstraintIndex{F, S}) where {F, S}
     MOI.get(model.optimizer, attr, ci)
@@ -262,17 +263,18 @@ function MOI.add_constrained_variable(model::ParametricOptimizer, set::Parameter
     model.last_index_added += 1
     p = MOI.VariableIndex(model.last_index_added)
     model.parameters[p] = set.val
-    return p, MOI.ConstraintIndex{MOI.SingleVariable, typeof(set)}(model.last_index_added)
+    cp = MOI.ConstraintIndex{MOI.SingleVariable, typeof(set)}(model.last_index_added)
+    return p, cp
 end
 
-function MOI.add_constraint(model::ParametricOptimizer, f::MOI.SingleVariable, set::MOI.AbstractScalarSet) 
+function MOI.add_constraint(model::ParametricOptimizer, f::MOI.SingleVariable, set::MOI.AbstractScalarSet)
     if haskey(model.parameters, f.variable)
         error("Cannot constrain a parameter")
-   elseif haskey(model.variables, f.variable)
-       return MOI.add_constraint(model.optimizer, f, set)
-   else
-       error("Variable not in the model")
-   end
+    elseif haskey(model.variables, f.variable)
+        return MOI.add_constraint(model.optimizer, f, set)
+    else
+        error("Variable not in the model")
+    end
 end
 
 function MOI.add_constraint(model::ParametricOptimizer, f::MOI.ScalarAffineFunction{T}, set::MOI.AbstractScalarSet) where T   
@@ -594,7 +596,7 @@ function MOI.set(model::ParametricOptimizer, attr::MOI.ObjectiveFunction{F}, f::
                     aux = MOI.ScalarQuadraticTerm(i.coefficient, i.variable_index_1, i.variable_index_2)
                     push!(quad_aff_vars, aux)
                     push!(aux_variables_associated_to_parameters, i.variable_index_2)
-                    
+
                 elseif haskey(model.variables, i.variable_index_1) && haskey(model.parameters, i.variable_index_2)
                     # Check convention defined above
                     aux = MOI.ScalarQuadraticTerm(i.coefficient, i.variable_index_2, i.variable_index_1)
@@ -659,21 +661,22 @@ function MOI.set(model::ParametricOptimizer, attr::MOI.ObjectiveFunction{F}, f::
             const_term += j.coefficient * model.parameters[j.variable_index_1] * model.parameters[j.variable_index_2]
         end
 
-
-        f_quad = if !isempty(quad_terms)
-            MOI.ScalarQuadraticFunction(
+        if !isempty(quad_terms)
+            f_quad = MOI.ScalarQuadraticFunction(
                         aff_terms,
                         quad_terms,
                         const_term 
                     )
+
+            MOI.set(model.optimizer, attr, f_quad)
         else
-            MOI.ScalarAffineFunction(
+           f_quad = MOI.ScalarAffineFunction(
                         aff_terms,
                         const_term
                     )
-        end
 
-        MOI.set(model.optimizer, attr, f_quad)
+            MOI.set(model.optimizer, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(), f_quad)
+        end
 
         model.quadratic_objective_cache_pv = quad_aff_vars
         model.quadratic_objective_cache_pp = quad_params
@@ -839,7 +842,7 @@ function MOI.optimize!(model::ParametricOptimizer)
         end
 
         for (ci, fparam) in model.quadratic_constraint_variables_associated_to_parameters_cache
-            for j in fparam.terms
+            for j in fparam
                 coef = j.coefficient
                 if haskey(constraint_aux_dict, (ci, j.variable_index))#
                     constraint_aux_dict[(ci, j.variable_index)] += coef
@@ -849,8 +852,9 @@ function MOI.optimize!(model::ParametricOptimizer)
             end
         end
 
-        for (key, value) in constraint_aux_dict
-            MOI.modify(model.optimizer, key[1], MOI.ScalarCoefficientChange(key[2], value))
+        for ((ci, vi), value) in constraint_aux_dict
+            old_ci = model.quadratic_added_cache[ci]
+            MOI.modify(model.optimizer, old_ci, MOI.ScalarCoefficientChange(vi, value))
         end
 
         objective_aux_dict = Dict{Any,Any}()
