@@ -238,6 +238,25 @@ function MOI.get(
     MOI.get(model.optimizer, MOI.ListOfConstraintIndices{F, S}())
 end
 
+# function MOI.supports_add_constrained_variables(
+#     model::ParametricOptimizer, ::Type{S}) where {S<:MOI.AbstractVectorSet}
+#     return MOI.supports_add_constrained_variables(model.optimizer, S)
+# end
+# function MOI.supports_add_constrained_variables(
+#     model::ParametricOptimizer, ::Type{S}) where {S<:MOI.AbstractScalarSet}
+#     return MOI.supports_add_constrained_variables(model.optimizer, S)
+# end
+
+function MOI.supports_add_constrained_variable(
+    model::ParametricOptimizer, ::Type{Parameter})
+    return true
+end
+
+function MOI.supports_add_constrained_variables(
+    model::ParametricOptimizer, ::Type{MOI.Reals})
+    return MOI.supports_add_constrained_variables(model.optimizer, MOI.Reals)
+end
+
 function MOI.add_variable(model::ParametricOptimizer)
     model.last_index_added += 1
     v_p = MOI.VariableIndex(model.last_index_added)

@@ -1,4 +1,4 @@
-using Test, ParametricOptInterface, MathOptInterface, GLPK, Ipopt
+using Test, ParametricOptInterface, MathOptInterface, GLPK, Ipopt, JuMP
 
 const POI = ParametricOptInterface
 const MOI = MathOptInterface
@@ -9,5 +9,5 @@ const ATOL = 1e-4
 include("production_problem_test.jl")
 include("basic_tests.jl")
 include("quad_tests.jl")
-
+include("jump_tests.jl")
 
