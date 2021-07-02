@@ -5,7 +5,6 @@ docs/build/
 deps/deps.jl
 Manifest.toml
 .DS_Store
-.github
 test/draft.jl
 test/MOItests.jl
 test/quadratic_tests.jl
