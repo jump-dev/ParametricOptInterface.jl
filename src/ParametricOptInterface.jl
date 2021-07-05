@@ -96,9 +96,12 @@ end
 
 function MOI.supports_constraint(
     model::ParametricOptimizer,
-    F::Type{<:MOI.AbstractFunction},
-    S::Type{<:MOI.AbstractSet})
-    
+    F::Union{Type{MOI.SingleVariable}, 
+             Type{MOI.ScalarAffineFunction{T}}, 
+             Type{MOI.VectorOfVariables}, 
+             Type{MOI.VectorAffineFunction{T}}},
+    S::Type{<:MOI.AbstractSet}) where T
+
     return MOI.supports_constraint(model.optimizer, F, S)
 end
 
@@ -115,6 +118,7 @@ function MOI.supports(
     attr::Union{MOI.ObjectiveSense,
             MOI.ObjectiveFunction{MOI.SingleVariable},
             MOI.ObjectiveFunction{MOI.ScalarAffineFunction{T}},
+            MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{T}}
             }) where T
     return MOI.supports(model.optimizer, attr)
 end
@@ -169,7 +173,7 @@ function MOI.get(model::ParametricOptimizer, attr::MOI.ConstraintName, c::MOI.Co
     MOI.get(model.optimizer, attr, c)
 end
 
-function MOI.supports(model::ParametricOptimizer, attr::MOI.ConstraintName, tp::Type{MOI.ConstraintIndex})
+function MOI.supports(model::ParametricOptimizer, attr::MOI.ConstraintName, tp::Type{<:MOI.ConstraintIndex})
     MOI.supports(model.optimizer, attr, tp)
 end
 
@@ -180,43 +184,48 @@ function MOI.set(model::ParametricOptimizer, ::ParameterValue, vi::MOI.VariableI
     MOI.set(model, MOI.ConstraintSet(), cv, POI.Parameter(val))
 end 
 
-function MOI.get(model::ParametricOptimizer, attr::MOI.ConstraintFunction, ci::MOI.ConstraintIndex{F, S}) where {F, S}
-    MOI.get(model.optimizer, attr, ci)
-end
+# TODO
+# This is not correct, you need to put the parameters back into the function
+# function MOI.get(model::ParametricOptimizer, attr::MOI.ConstraintFunction, ci::MOI.ConstraintIndex{F, S}) where {F, S}
+#     MOI.get(model.optimizer, attr, ci)
+# end
 
 function MOI.get(model::ParametricOptimizer, attr::MOI.ConstraintSet, ci::MOI.ConstraintIndex{F, S}) where {F, S}  
-    if MOI.is_valid(model.optimizer, ci)
-        return MOI.get(model.optimizer, attr, ci)
-    else
-        return throw(MOI.InvalidIndex(ci))
-    end
+    MOI.throw_if_not_valid(model, ci)
+    return MOI.get(model.optimizer, attr, ci)
 end
 
 function MOI.get(model::ParametricOptimizer, attr::MOI.ObjectiveSense)
     MOI.get(model.optimizer, attr)
 end
 
-function MOI.get(model::ParametricOptimizer, attr::MOI.ObjectiveFunctionType)
-    MOI.get(model.optimizer, attr)
-end
+# TODO
+# This is not correct, you might have transformed a quadratic function into an affine function,
+# you need to give the type that was given by the user, not the type of the inner model.
+# function MOI.get(model::ParametricOptimizer, attr::MOI.ObjectiveFunctionType)
+#     MOI.get(model.optimizer, attr)
+# end
 
-function MOI.get(
-    model::ParametricOptimizer,
-    attr::MOI.ObjectiveFunction{F}) where F <: Union{MOI.SingleVariable,MOI.ScalarAffineFunction{T}} where T
+# TODO
+# Same as ConstraintFunction getter. And you also need to convert to F
+# function MOI.get(
+#     model::ParametricOptimizer,
+#     attr::MOI.ObjectiveFunction{F}) where F <: Union{MOI.SingleVariable,MOI.ScalarAffineFunction{T}} where T
 
-    MOI.get(model.optimizer, attr)
-end
+#     MOI.get(model.optimizer, attr)
+# end
 
-function MOI.get(model::ParametricOptimizer, ::MOI.ListOfConstraints)
-    constraints = Set{Tuple{DataType, DataType}}()
-    inner_ctrs = MOI.get(model.optimizer, MOI.ListOfConstraints())
-    for (F, S) in inner_ctrs
-        push!(constraints, (F,S))
-    end
-    # error("TODO")
-    # deal with deleted parameters
-    collect(constraints)
-end
+# TODO
+# You might have transformed quadratic functions into affine functions so this is incorrect
+# function MOI.get(model::ParametricOptimizer, ::MOI.ListOfConstraints)
+#     constraints = Set{Tuple{DataType, DataType}}()
+#     inner_ctrs = MOI.get(model.optimizer, MOI.ListOfConstraints())
+#     for (F, S) in inner_ctrs
+#         push!(constraints, (F,S))
+#     end
+
+#     collect(constraints)
+# end
 
 function MOI.get(
     model::ParametricOptimizer,
@@ -228,23 +237,16 @@ function MOI.get(
     MOI.get(model.optimizer, attr)
 end
 
-function MOI.get(
-    model::ParametricOptimizer,
-    ::MOI.ListOfConstraintIndices{F, S}
-) where {S<:MOI.AbstractSet, F<:Union{
-    MOI.ScalarAffineFunction{T},
-    MOI.VectorAffineFunction{T},
-}} where T
-    MOI.get(model.optimizer, MOI.ListOfConstraintIndices{F, S}())
-end
-
-# function MOI.supports_add_constrained_variables(
-#     model::ParametricOptimizer, ::Type{S}) where {S<:MOI.AbstractVectorSet}
-#     return MOI.supports_add_constrained_variables(model.optimizer, S)
-# end
-# function MOI.supports_add_constrained_variables(
-#     model::ParametricOptimizer, ::Type{S}) where {S<:MOI.AbstractScalarSet}
-#     return MOI.supports_add_constrained_variables(model.optimizer, S)
+# TODO
+# You might have transformed quadratic functions into affine functions so this is incorrect
+# function MOI.get(
+#     model::ParametricOptimizer,
+#     ::MOI.ListOfConstraintIndices{F, S}
+# ) where {S<:MOI.AbstractSet, F<:Union{
+#     MOI.ScalarAffineFunction{T},
+#     MOI.VectorAffineFunction{T},
+# }} where T
+#     MOI.get(model.optimizer, MOI.ListOfConstraintIndices{F, S}())
 # end
 
 function MOI.supports_add_constrained_variable(
