@@ -136,15 +136,15 @@ function MOI.add_constraint(model::ParametricOptimizer, f::MOI.ScalarAffineFunct
 end
 
 function update_constant!(s::MOI.LessThan{T}, val) where T
-    MOI.LessThan{T}(s.upper - val)
+    return MOI.LessThan{T}(s.upper - val)
 end
 
 function update_constant!(s::MOI.GreaterThan{T}, val) where T
-    MOI.GreaterThan{T}(s.lower - val)
+    return MOI.GreaterThan{T}(s.lower - val)
 end
 
 function update_constant!(s::MOI.EqualTo{T}, val) where T
-    MOI.EqualTo{T}(s.value - val)
+    return MOI.EqualTo{T}(s.value - val)
 end
 
 function MOI.get(model::ParametricOptimizer, attr::MOI.VariablePrimal, v::MOI.VariableIndex)
