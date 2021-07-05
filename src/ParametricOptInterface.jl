@@ -748,7 +748,7 @@ function MOI.get(model::ParametricOptimizer, attr::T, ci::MOI.ConstraintIndex) w
     return MOI.get(model.optimizer, attr, ci)
 end
 
-function MOI.get(model::ParametricOptimizer, attr::T, cp::MOI.ConstraintIndex{MOI.SingleVariable,POI.Parameter}) where {T <: MOI.ConstraintDual}
+function MOI.get(model::ParametricOptimizer, attr::MOI.ConstraintDual, cp::MOI.ConstraintIndex{MOI.SingleVariable,POI.Parameter})
     if !is_additive(model, cp)
         error("Cannot calculate the dual of a multiplicative parameter")
     end
@@ -794,9 +794,10 @@ function parameter_dual_in_quadratic_constraint_affine_part(model::POI.Parametri
     param_dual_quadratic_constraint_affine_part = 0
     for (poi_ci, param_array) in model.quadratic_constraint_cache_pc
         moi_ci = model.quadratic_added_cache[poi_ci]
+        cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), moi_ci)'
+
         for param in param_array
             if cp.value == param.variable_index.value
-                cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), moi_ci)
                 param_dual_quadratic_constraint_affine_part += cons_dual*param.coefficient
             end
         end
