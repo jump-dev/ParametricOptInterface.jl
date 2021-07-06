@@ -3,7 +3,6 @@ using ParametricOptInterface
 using MathOptInterface
 using GLPK
 using Ipopt
-using BenchmarkTools
 
 const POI = ParametricOptInterface
 const MOI = MathOptInterface
@@ -14,5 +13,4 @@ const ATOL = 1e-4
 include("production_problem_test.jl")
 include("basic_tests.jl")
 include("quad_tests.jl")
-include("benchmarks.jl")
 
