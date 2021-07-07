@@ -1,4 +1,9 @@
-using Test, ParametricOptInterface, MathOptInterface, GLPK, Ipopt, JuMP
+using Test 
+using ParametricOptInterface
+using MathOptInterface
+using GLPK
+using Ipopt
+using JuMP
 
 const POI = ParametricOptInterface
 const MOI = MathOptInterface
