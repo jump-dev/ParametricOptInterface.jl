@@ -1,5 +1,5 @@
 push!(LOAD_PATH, "./src")
-using ParametricOptInterface, MathOptInterface, GLPK
+using ParametricOptInterface, MathOptInterface, Ipopt
 
 const POI = ParametricOptInterface
 const MOI = MathOptInterface
@@ -21,13 +21,103 @@ MOI.Benchmarks.@add_benchmark function add_constraint_svf(new_model)
     return
 end
 
-MOI.Benchmarks.@add_benchmark function add_constraint_saf(new_model)
+MOI.Benchmarks.@add_benchmark function add_constraint_saf_1(new_model)
+    model = new_model()
+    x = MOI.add_variables(model, 10_000)
+    y, _ = MOI.add_constrained_variable(model, POI.Parameter(0))
+    for _ in 1:10_000
+        MOI.add_constraint(model, 
+            MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(ones(102), [x[1:100]; y; y]), 0.0), 
+            MOI.GreaterThan(1.0)
+        )
+    end
+    return
+end
+
+MOI.Benchmarks.@add_benchmark function add_constraint_saf_2(new_model)
+    model = new_model()
+    x = MOI.add_variables(model, 10_000)
+    y, _ = MOI.add_constrained_variable(model, POI.Parameter(0))
+    for i in 1:10_000
+        MOI.add_constraint(model, 
+            MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 0.5], [x[i], y]), 0.0), 
+            MOI.GreaterThan(1.0)
+        )
+    end
+    return
+end
+
+MOI.Benchmarks.@add_benchmark function add_constraint_saf_3(new_model)
     model = new_model()
     x = MOI.add_variables(model, 10_000)
     for i in 1:10_000
-        y, cy = MOI.add_constrained_variable(model, POI.Parameter(0))
-        con = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 0.5], [x[i], y]), 0.0)
-        MOI.add_constraint(model, con, MOI.GreaterThan(1.0))
+        MOI.add_constraint(model, 
+            MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 0.5], [x[i], x[1]]), 0.0), 
+            MOI.GreaterThan(1.0)
+        )
+    end
+    return
+end
+
+MOI.Benchmarks.@add_benchmark function add_constraint_sqf_1(new_model)
+    model = new_model()
+    x = MOI.add_variables(model, 10_000)
+    for i in 1:10_000
+        MOI.add_constraint(model, 
+            MOI.ScalarQuadraticFunction(
+                MOI.ScalarAffineTerm.([1.0, 0.5], [x[i], x[1]]),
+                [MOI.ScalarQuadraticTerm(1.0, x[1], x[i])],
+                0.0), 
+            MOI.GreaterThan(1.0)
+        )
+    end
+    return
+end
+
+MOI.Benchmarks.@add_benchmark function add_constraint_sqf_2(new_model)
+    model = new_model()
+    x = MOI.add_variables(model, 10_000)
+    y, _ = MOI.add_constrained_variable(model, POI.Parameter(0))
+    for i in 1:10_000
+        MOI.add_constraint(model, 
+            MOI.ScalarQuadraticFunction(
+                MOI.ScalarAffineTerm.([1.0, 0.5], [x[i], x[1]]),
+                [MOI.ScalarQuadraticTerm(1.0, y, x[i])],
+                0.0), 
+            MOI.GreaterThan(1.0)
+        )
+    end
+    return
+end
+
+MOI.Benchmarks.@add_benchmark function add_constraint_sqf_3(new_model)
+    model = new_model()
+    x = MOI.add_variables(model, 10_000)
+    y, _ = MOI.add_constrained_variable(model, POI.Parameter(0))
+    for i in 1:10_000
+        MOI.add_constraint(model, 
+            MOI.ScalarQuadraticFunction(
+                MOI.ScalarAffineTerm.([1.0, 0.5], [x[i], x[1]]),
+                [MOI.ScalarQuadraticTerm(1.0, x[i], y)],
+                0.0), 
+            MOI.GreaterThan(1.0)
+        )
+    end
+    return
+end
+
+MOI.Benchmarks.@add_benchmark function add_constraint_sqf_3(new_model)
+    model = new_model()
+    x = MOI.add_variables(model, 10_000)
+    y, _ = MOI.add_constrained_variable(model, POI.Parameter(0))
+    for i in 1:10_000
+        MOI.add_constraint(model, 
+            MOI.ScalarQuadraticFunction(
+                MOI.ScalarAffineTerm.([1.0, 0.5], [x[i], x[1]]),
+                [MOI.ScalarQuadraticTerm(1.0, y, y)],
+                0.0), 
+            MOI.GreaterThan(1.0)
+        )
     end
     return
 end
@@ -54,8 +144,8 @@ end
 if length(ARGS) != 2
     print_help()
 else
-    const Benchmarks = GLPK.MOI.Benchmarks
-    const suite = Benchmarks.suite(() -> POI.ParametricOptimizer(GLPK.Optimizer()); exclude = [r"delete", r"copy"])
+    const Benchmarks = MOI.Benchmarks
+    const suite = Benchmarks.suite(() -> POI.ParametricOptimizer(Ipopt.Optimizer()); exclude = [r"delete", r"copy"])
     if ARGS[1] == "--new"
         Benchmarks.create_baseline(
             suite, ARGS[2]; directory = @__DIR__, verbose = true
