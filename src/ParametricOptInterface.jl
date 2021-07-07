@@ -414,15 +414,19 @@ function MOI.set(model::ParametricOptimizer, ::MOI.ConstraintSet, cp::MOI.Constr
     end
 end
 
+function empty_objective_function_caches!(model:: ParametricOptimizer)
+    empty!(model.affine_objective_cache)
+    empty!(model.quadratic_objective_cache_pv)
+    empty!(model.quadratic_objective_cache_pp)
+    empty!(model.quadratic_objective_cache_pc)
+    return nothing
+end
+
 function MOI.set(model::ParametricOptimizer, attr::MOI.ObjectiveFunction, f::MOI.ScalarAffineFunction{T}) where T
 
     # clear previously defined objetive function cache
-    model.affine_objective_cache = Vector{MOI.ScalarAffineTerm{T}}()
-    model.quadratic_objective_cache_pv = Vector{MOI.ScalarQuadraticTerm{T}}()
-    model.quadratic_objective_cache_pp = Vector{MOI.ScalarQuadraticTerm{T}}()
-    model.quadratic_objective_cache_pc = Vector{MOI.ScalarQuadraticTerm{T}}()
-
-
+    empty_objective_function_caches!(model)
+    
     if !function_has_parameters(model, f)
         MOI.set(model.optimizer, attr, f) 
         return
@@ -630,13 +634,8 @@ end
 
 function MOI.set(model::ParametricOptimizer, attr::MOI.ObjectiveFunction, f::MOI.ScalarQuadraticFunction{T}) where T
 
-
     # clear previously defined objetive function cache
-    model.affine_objective_cache = Array{MOI.ScalarAffineTerm{T},1}()
-    model.quadratic_objective_cache_pv = Array{MOI.ScalarQuadraticTerm{T},1}()
-    model.quadratic_objective_cache_pp = Array{MOI.ScalarQuadraticTerm{T},1}()
-    model.quadratic_objective_cache_pc = Array{MOI.ScalarQuadraticTerm{T},1}()
-
+    empty_objective_function_caches!(model)
 
     if !function_has_parameters(model, f)
         MOI.set(model.optimizer, attr, f) 
