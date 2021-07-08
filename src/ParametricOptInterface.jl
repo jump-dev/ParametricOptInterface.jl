@@ -4,6 +4,7 @@ using MathOptInterface
 const MOI = MathOptInterface
 const MOIU = MathOptInterface.Utilities
 const POI = ParametricOptInterface
+const PARAMETER_INDEX_THRESHOLD = 1_000_000_000_000_000_000
 
 """
     Parameter(Float64)
@@ -35,7 +36,8 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
     parameters_name::Dict{MOI.VariableIndex, String}
     updated_parameters::Dict{MOI.VariableIndex, T}
     variables::Dict{MOI.VariableIndex, MOI.VariableIndex}
-    last_index_added::Int
+    last_variable_index_added::Int
+    last_parameter_index_added::Int
     affine_constraint_cache::Dict{MOI.ConstraintIndex, Array{MOI.ScalarAffineTerm{Float64},1}}
     quadratic_constraint_cache_pv::Dict{MOI.ConstraintIndex, Array{MOI.ScalarQuadraticTerm{Float64},1}}
     quadratic_constraint_cache_pp::Dict{MOI.ConstraintIndex, Array{MOI.ScalarQuadraticTerm{Float64},1}}
@@ -56,6 +58,7 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
             Dict{MOI.VariableIndex, Float64}(),
             Dict{MOI.VariableIndex, MOI.VariableIndex}(),
             0,
+            PARAMETER_INDEX_THRESHOLD,
             Dict{MOI.ConstraintIndex, Array{MOI.ScalarAffineTerm{Float64},1}}(),
             Dict{MOI.ConstraintIndex, Array{MOI.ScalarQuadraticTerm{Float64},1}}(),
             Dict{MOI.ConstraintIndex, Array{MOI.ScalarQuadraticTerm{Float64},1}}(),
@@ -72,6 +75,8 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
     end
 end
 
+include("utils.jl")
+
 function MOI.is_empty(model::ParametricOptimizer)
     return MOI.is_empty(model.optimizer) &&
     isempty(model.parameters) &&
@@ -79,7 +84,8 @@ function MOI.is_empty(model::ParametricOptimizer)
     isempty(model.variables) &&
     isempty(model.updated_parameters) &&
     isempty(model.variables) &&
-    model.last_index_added == 0 &&
+    model.last_variable_index_added == 0 &&
+    model.last_parameter_index_added == PARAMETER_INDEX_THRESHOLD &&
     isempty(model.affine_constraint_cache) &&
     isempty(model.quadratic_constraint_cache_pv) &&
     isempty(model.quadratic_constraint_cache_pp) &&
@@ -128,7 +134,8 @@ function MOI.empty!(model::ParametricOptimizer{T}) where T
     empty!(model.parameters_name)
     empty!(model.updated_parameters)
     empty!(model.variables)
-    model.last_index_added = 0
+    model.last_variable_index_added = 0
+    model.last_parameter_index_added = PARAMETER_INDEX_THRESHOLD
     empty!(model.affine_constraint_cache)
     empty!(model.quadratic_constraint_cache_pv)
     empty!(model.quadratic_constraint_cache_pp)
@@ -249,7 +256,7 @@ end
 # end
 
 function MOI.supports_add_constrained_variable(
-    model::ParametricOptimizer, ::Type{Parameter})
+    ::ParametricOptimizer, ::Type{Parameter})
     return true
 end
 
@@ -259,8 +266,8 @@ function MOI.supports_add_constrained_variables(
 end
 
 function MOI.add_variable(model::ParametricOptimizer)
-    model.last_index_added += 1
-    v_p = MOI.VariableIndex(model.last_index_added)
+    next_variable_index!(model)
+    v_p = MOI.VariableIndex(model.last_variable_index_added)
     v = MOI.add_variable(model.optimizer)
     model.variables[v_p] = v
     return v_p
@@ -280,85 +287,26 @@ julia> w, cw = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
 ```
 """
 function MOI.add_constrained_variable(model::ParametricOptimizer, set::Parameter)
-    model.last_index_added += 1
-    p = MOI.VariableIndex(model.last_index_added)
+    next_parameter_index!(model)
+    p = MOI.VariableIndex(model.last_parameter_index_added)
     model.parameters[p] = set.val
-    cp = MOI.ConstraintIndex{MOI.SingleVariable, Parameter}(model.last_index_added)
+    cp = MOI.ConstraintIndex{MOI.SingleVariable, Parameter}(model.last_parameter_index_added)
     return p, cp
 end
 
 function MOI.add_constraint(model::ParametricOptimizer, f::MOI.SingleVariable, set::MOI.AbstractScalarSet)
-    if haskey(model.parameters, f.variable)
+    if is_parameter_in_model(model, f.variable)
         error("Cannot constrain a parameter")
-    elseif haskey(model.variables, f.variable)
+    elseif is_variable_in_model(model, f.variable)
         return MOI.add_constraint(model.optimizer, f, set)
     else
         error("Variable not in the model")
     end
 end
 
-function function_has_parameters(model::ParametricOptimizer, f::MOI.ScalarAffineFunction{T}) where T
-    for term in f.terms
-        if haskey(model.parameters, term.variable_index)
-            return true
-        end
-    end
-    return false
-end
-function function_has_parameters(model::ParametricOptimizer, f::MOI.VectorOfVariables)
-    for variable in f.variables
-        if haskey(model.parameters, variable)
-            return true
-        end
-    end
-    return false
-end
-function function_has_parameters(model::ParametricOptimizer, f::MOI.VectorAffineFunction{T}) where T
-    for term in f.terms
-        if haskey(model.parameters, term.variable_index)
-            return true
-        end
-    end
-    return false
-end
-function function_has_parameters(model::ParametricOptimizer, f::MOI.ScalarQuadraticFunction{T}) where T
-    return function_affine_terms_has_parameters(model, f.affine_terms) ||
-           function_quadratic_terms_has_parameters(model, f.quadratic_terms)
-end
-function function_affine_terms_has_parameters(model::ParametricOptimizer, affine_terms)
-    for term in affine_terms
-        if haskey(model.parameters, term.variable_index)
-            return true
-        end
-    end
-    return false
-end
-function function_quadratic_terms_has_parameters(model::ParametricOptimizer, quadratic_terms)
-    for term in quadratic_terms
-        if haskey(model.parameters, term.variable_index_1) || haskey(model.parameters, term.variable_index_2)
-            return true
-        end
-    end
-    return false
-end
-
 function add_constraint_with_parameters_on_function(model::ParametricOptimizer, f::MOI.ScalarAffineFunction{T}, set::MOI.AbstractScalarSet) where T  
-    vars = MOI.ScalarAffineTerm{T}[]
-    params = MOI.ScalarAffineTerm{T}[]
-
-    for term in f.terms
-        if haskey(model.variables, term.variable_index)
-            push!(vars, term)
-        elseif haskey(model.parameters, term.variable_index)
-            push!(params, term)
-        else
-            error("Constraint uses a variable that is not in the model")
-        end
-    end
-    param_constant = 0
-    for param in params
-        param_constant += param.coefficient * model.parameters[param.variable_index]
-    end
+    vars, params = separate_variables_from_parameters(model, f.terms)
+    param_constant = calculate_param_constant(model, params)
     ci = MOIU.normalize_and_add_constraint(model.optimizer, MOI.ScalarAffineFunction(vars, f.constant + param_constant), set)     
     model.affine_constraint_cache[ci] = params
     return ci
@@ -385,9 +333,9 @@ function update_constant!(s::MOI.EqualTo{T}, val) where T
 end
 
 function MOI.get(model::ParametricOptimizer, attr::MOI.VariablePrimal, v::MOI.VariableIndex)
-    if haskey(model.parameters, v)
+    if is_parameter_in_model(model, v)
          return model.parameters[v]
-    elseif haskey(model.variables, v)
+    elseif is_variable_in_model(model, v)
         return MOI.get(model.optimizer, attr, model.variables[v])
     else
         error("Variable not in the model")
@@ -427,23 +375,9 @@ function MOI.set(model::ParametricOptimizer, attr::MOI.ObjectiveFunction, f::MOI
         MOI.set(model.optimizer, attr, f) 
         return
     else
-        vars = MOI.ScalarAffineTerm{T}[]
-        params = MOI.ScalarAffineTerm{T}[]
-        for term in f.terms
-            if haskey(model.variables, term.variable_index)
-                push!(vars, term)
-            elseif haskey(model.parameters, term.variable_index)
-                push!(params, term)
-            else
-                error("Objective function uses a variable that is not in the model")
-            end
-        end
-        param_constant = 0
-        for param in params
-            param_constant += param.coefficient * model.parameters[param.variable_index]
-        end
-        fvar = MOI.ScalarAffineFunction(vars, f.constant + param_constant)
-        co = MOI.set(model.optimizer, attr, fvar)
+        vars, params = separate_variables_from_parameters(model, f.terms)
+        param_constant = calculate_param_constant(model, params)
+        MOI.set(model.optimizer, attr, MOI.ScalarAffineFunction(vars, f.constant + param_constant))
         model.affine_objective_cache = params
         return
     end
@@ -499,133 +433,137 @@ function MOI.add_constraint(model::ParametricOptimizer, f::MOI.VectorAffineFunct
     end
 end
 
-function MOI.add_constraint(model::ParametricOptimizer, f::MOI.ScalarQuadraticFunction{T}, set::MOI.AbstractScalarSet) where T   
+function add_constraint_with_parameters_on_function(model::ParametricOptimizer, f::MOI.ScalarQuadraticFunction{T}, set::MOI.AbstractScalarSet) where T
+
+    quad_params = MOI.ScalarQuadraticTerm{T}[] #outside declaration so it has default value
+    quad_aff_vars = MOI.ScalarQuadraticTerm{T}[] #outside declaration so it has default value; parameter as variable_index_1
+    aux_variables_associated_to_parameters =  MOI.VariableIndex[] #outside declaration so it has default value
+
+    if function_quadratic_terms_has_parameters(model, f.quadratic_terms)
+        
+        quad_terms = MOI.ScalarQuadraticTerm{T}[]
+        
+        for term in f.quadratic_terms
+            if is_variable_in_model(model, term.variable_index_1) && is_variable_in_model(model, term.variable_index_2)
+                push!(quad_terms, term) # if there are only variables, it remains a quadratic term
+
+            elseif is_parameter_in_model(model, term.variable_index_1) && is_variable_in_model(model, term.variable_index_2)
+                # This is the case when term.variable_index_1 is a parameter and term.variable_index_2 is a variable.
+                # Thus, it creates an affine term. Convention: param as 1, var as 2
+                aux = MOI.ScalarQuadraticTerm(term.coefficient, term.variable_index_1, term.variable_index_2)
+                push!(quad_aff_vars, aux)
+                push!(aux_variables_associated_to_parameters, term.variable_index_2)  
+
+            elseif is_variable_in_model(model, term.variable_index_1) && is_parameter_in_model(model, term.variable_index_2)
+                # Check convention defined above
+                aux = MOI.ScalarQuadraticTerm(term.coefficient, term.variable_index_2, term.variable_index_1)
+                push!(quad_aff_vars, aux)
+                push!(aux_variables_associated_to_parameters, term.variable_index_1)          
+
+            elseif is_parameter_in_model(model, term.variable_index_1) && is_parameter_in_model(model, term.variable_index_2)
+                # This is the case where both variable_index_1,2 are actually parameters
+                aux = MOI.ScalarQuadraticTerm(term.coefficient, term.variable_index_1, term.variable_index_2)
+                push!(quad_params, aux)
+
+            else
+                error("Constraint uses a variable that is not in the model")
+            end
+        end
+
+    else
+        quad_terms = f.quadratic_terms
+    end
+
+
+    aff_params = MOI.ScalarAffineTerm{T}[] #outside declaration so it has default value
+    variables_associated_to_parameters =  MOI.ScalarAffineTerm{T}[] #outside declaration so it has default value
+
+    if function_affine_terms_has_parameters(model, f.affine_terms)
+
+        aff_vars = MOI.ScalarAffineTerm{T}[]
+
+        for term in f.affine_terms
+            if is_variable_in_model(model, term.variable_index)
+                push!(aff_vars, term)
+                if term.variable_index in aux_variables_associated_to_parameters
+                    push!(variables_associated_to_parameters, term)
+                end
+            elseif is_parameter_in_model(model, term.variable_index)
+                push!(aff_params, term)
+            else
+                error("Constraint uses a variable that is not in the model")
+            end
+        end
+
+    else
+        aff_vars = f.affine_terms
+    end
     
+    aff_terms = MOI.ScalarAffineTerm{T}[]
+
+    for term in quad_aff_vars
+        push!(
+            aff_terms, 
+            MOI.ScalarAffineTerm(term.coefficient * model.parameters[term.variable_index_1], term.variable_index_2)
+        )
+    end
+
+    aff_terms = vcat(aff_terms, aff_vars)
+
+    const_term = f.constant
+
+    for j in aff_params
+        const_term += j.coefficient * model.parameters[j.variable_index]
+    end
+
+    for j in quad_params
+        const_term += j.coefficient * model.parameters[j.variable_index_1] * model.parameters[j.variable_index_2]
+    end
+
+    f_quad = if !isempty(quad_terms)
+        MOI.ScalarQuadraticFunction(
+                    aff_terms,
+                    quad_terms,
+                    const_term 
+                )
+    else
+        MOI.ScalarAffineFunction(
+                    aff_terms,
+                    const_term
+                )
+    end
+    
+    
+    model.last_quad_add_added += 1
+    ci = MOIU.normalize_and_add_constraint(model.optimizer, f_quad, set)
+    new_ci = MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{Float64}, typeof(set)}(model.last_quad_add_added)
+    model.quadratic_added_cache[new_ci] = ci
+
+    if !isempty(quad_aff_vars)
+        model.quadratic_constraint_cache_pv[new_ci] = quad_aff_vars
+    end
+
+    if !isempty(quad_params)
+        model.quadratic_constraint_cache_pp[new_ci] = quad_params
+    end
+
+    if !isempty(aff_params)
+        model.quadratic_constraint_cache_pc[new_ci] = aff_params
+    end
+
+    if !isempty(variables_associated_to_parameters)
+        model.quadratic_constraint_variables_associated_to_parameters_cache[new_ci] = variables_associated_to_parameters
+    end
+
+    return ci
+end
+
+function MOI.add_constraint(model::ParametricOptimizer, f::MOI.ScalarQuadraticFunction{T}, set::MOI.AbstractScalarSet) where T
     if !function_has_parameters(model, f)
         return MOI.add_constraint(model.optimizer, f, set) 
     else
-     
-        quad_params = MOI.ScalarQuadraticTerm{T}[] #outside declaration so it has default value
-        quad_aff_vars = MOI.ScalarQuadraticTerm{T}[] #outside declaration so it has default value; parameter as variable_index_1
-        aux_variables_associated_to_parameters =  MOI.VariableIndex[] #outside declaration so it has default value
-
-        if function_quadratic_terms_has_parameters(model, f.quadratic_terms)
-            
-            quad_terms = MOI.ScalarQuadraticTerm{T}[]
-            
-            for i in f.quadratic_terms
-                if haskey(model.variables, i.variable_index_1) && haskey(model.variables, i.variable_index_2)
-                    push!(quad_terms, i) # if there are only variables, it remains a quadratic term
-
-                elseif haskey(model.parameters, i.variable_index_1) && haskey(model.variables, i.variable_index_2)
-                    # This is the case when i.variable_index_1 is a parameter and i.variable_index_2 is a variable.
-                    # Thus, it creates an affine term. Convention: param as 1, var as 2
-                    aux = MOI.ScalarQuadraticTerm(i.coefficient, i.variable_index_1, i.variable_index_2)
-                    push!(quad_aff_vars, aux)
-                    push!(aux_variables_associated_to_parameters, i.variable_index_2)  
-
-                elseif haskey(model.variables, i.variable_index_1) && haskey(model.parameters, i.variable_index_2)
-                    # Check convention defined above
-                    aux = MOI.ScalarQuadraticTerm(i.coefficient, i.variable_index_2, i.variable_index_1)
-                    push!(quad_aff_vars, aux)
-                    push!(aux_variables_associated_to_parameters, i.variable_index_1)          
-
-                elseif haskey(model.parameters, i.variable_index_1) && haskey(model.parameters, i.variable_index_2)
-                    # This is the case where both variable_index_1,2 are actually parameters
-                    aux = MOI.ScalarQuadraticTerm(i.coefficient, i.variable_index_1, i.variable_index_2)
-                    push!(quad_params, aux)
-
-                else
-                    error("Constraint uses a variable that is not in the model")
-                end
-            end
-
-        else
-            quad_terms = f.quadratic_terms
-        end
-
-
-        aff_params = MOI.ScalarAffineTerm{T}[] #outside declaration so it has default value
-        variables_associated_to_parameters =  MOI.ScalarAffineTerm{T}[] #outside declaration so it has default value
-
-        if function_affine_terms_has_parameters(model, f.affine_terms)
-
-            aff_vars = MOI.ScalarAffineTerm{T}[]
-
-            for i in f.affine_terms
-                if haskey(model.variables, i.variable_index)
-                    push!(aff_vars, i)
-                    if i.variable_index in aux_variables_associated_to_parameters
-                        push!(variables_associated_to_parameters, i)
-                    end
-                elseif haskey(model.parameters, i.variable_index)
-                    push!(aff_params, i)
-                else
-                    error("Constraint uses a variable that is not in the model")
-                end
-            end
-
-        else
-            aff_vars = f.affine_terms
-        end
-        
-        aff_terms = MOI.ScalarAffineTerm{T}[]
-
-        for i in quad_aff_vars
-            aux = MOI.ScalarAffineTerm(i.coefficient * model.parameters[i.variable_index_1], i.variable_index_2)
-            push!(aff_terms, aux)
-        end
-
-        aff_terms = vcat(aff_terms, aff_vars)
-
-        const_term = f.constant
-
-        for j in aff_params
-            const_term += j.coefficient * model.parameters[j.variable_index]
-        end
-
-        for j in quad_params
-            const_term += j.coefficient * model.parameters[j.variable_index_1] * model.parameters[j.variable_index_2]
-        end
-
-        f_quad = if !isempty(quad_terms)
-            MOI.ScalarQuadraticFunction(
-                        aff_terms,
-                        quad_terms,
-                        const_term 
-                    )
-        else
-            MOI.ScalarAffineFunction(
-                        aff_terms,
-                        const_term
-                    )
-        end
-        
-        
-        model.last_quad_add_added += 1
-        ci = MOIU.normalize_and_add_constraint(model.optimizer, f_quad, set)
-        new_ci = MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{Float64}, typeof(set)}(model.last_quad_add_added)
-        model.quadratic_added_cache[new_ci] = ci
-
-        if !isempty(quad_aff_vars)
-            model.quadratic_constraint_cache_pv[new_ci] = quad_aff_vars
-        end
-
-        if !isempty(quad_params)
-            model.quadratic_constraint_cache_pp[new_ci] = quad_params
-        end
-
-        if !isempty(aff_params)
-            model.quadratic_constraint_cache_pc[new_ci] = aff_params
-        end
-
-        if !isempty(variables_associated_to_parameters)
-            model.quadratic_constraint_variables_associated_to_parameters_cache[new_ci] = variables_associated_to_parameters
-        end
-
-        return ci
+        return add_constraint_with_parameters_on_function(model, f, set)
     end
-
 end
 
 function MOI.set(model::ParametricOptimizer, attr::MOI.ObjectiveFunction, f::MOI.ScalarQuadraticFunction{T}) where T
