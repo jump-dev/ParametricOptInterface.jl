@@ -617,7 +617,6 @@ function MOI.set(model::ParametricOptimizer, attr::MOI.ObjectiveFunction, f::MOI
 
                     push!(model.multiplicative_parameters, term.variable_index_1.value)
                     push!(model.multiplicative_parameters, term.variable_index_2.value)
-
                 else
                     error("Constraint uses a variable that is not in the model")
                 end
