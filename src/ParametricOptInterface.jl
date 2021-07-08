@@ -152,7 +152,7 @@ function MOI.empty!(model::ParametricOptimizer{T}) where T
 end
 
 function MOI.set(model::ParametricOptimizer, attr::MOI.VariableName, v::MOI.VariableIndex, name::String)
-    if haskey(model.parameters, v)
+    if is_parameter_in_model(model, v)
         model.parameters_name[v] = name
     else
         return MOI.set(model.optimizer, attr, v, name)
@@ -160,7 +160,7 @@ function MOI.set(model::ParametricOptimizer, attr::MOI.VariableName, v::MOI.Vari
 end
 
 function MOI.get(model::ParametricOptimizer, attr::MOI.VariableName, v::MOI.VariableIndex)
-    if haskey(model.parameters, v)
+    if is_parameter_in_model(model, v)
         return model.parameters_name[v]
     else
         return MOI.get(model.optimizer, attr, v)
