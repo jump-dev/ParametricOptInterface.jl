@@ -305,8 +305,7 @@ function MOI.add_constraint(model::ParametricOptimizer, f::MOI.SingleVariable, s
 end
 
 function add_constraint_with_parameters_on_function(model::ParametricOptimizer, f::MOI.ScalarAffineFunction{T}, set::MOI.AbstractScalarSet) where T  
-    vars, params = separate_variables_from_parameters(model, f.terms)
-    param_constant = calculate_param_constant(model, params)
+    vars, params, param_constant = separate_variables_from_parameters_and_calculate_param_constant(model, f.terms)
     ci = MOIU.normalize_and_add_constraint(model.optimizer, MOI.ScalarAffineFunction(vars, f.constant + param_constant), set)     
     model.affine_constraint_cache[ci] = params
     return ci
@@ -355,7 +354,7 @@ julia> MOI.set(optimizer, MOI.ConstraintSet(), cw, POI.Parameter(2.0))
 """
 function MOI.set(model::ParametricOptimizer, ::MOI.ConstraintSet, cp::MOI.ConstraintIndex{MOI.SingleVariable, Parameter}, set::Parameter)
     p = MOI.VariableIndex(cp.value)
-    if haskey(model.parameters, p)
+    if is_parameter_in_model(model,p)
         return model.updated_parameters[p] = set.val
     else
         error("Parameter not in the model")
@@ -375,8 +374,7 @@ function MOI.set(model::ParametricOptimizer, attr::MOI.ObjectiveFunction, f::MOI
         MOI.set(model.optimizer, attr, f) 
         return
     else
-        vars, params = separate_variables_from_parameters(model, f.terms)
-        param_constant = calculate_param_constant(model, params)
+        vars, params, param_constant = separate_variables_from_parameters_and_calculate_param_constant(model, f.terms)
         MOI.set(model.optimizer, attr, MOI.ScalarAffineFunction(vars, f.constant + param_constant))
         model.affine_objective_cache = params
         return
@@ -512,12 +510,12 @@ function add_constraint_with_parameters_on_function(model::ParametricOptimizer, 
 
     const_term = f.constant
 
-    for j in aff_params
-        const_term += j.coefficient * model.parameters[j.variable_index]
+    for term in aff_params
+        const_term += term.coefficient * model.parameters[term.variable_index]
     end
 
-    for j in quad_params
-        const_term += j.coefficient * model.parameters[j.variable_index_1] * model.parameters[j.variable_index_2]
+    for term in quad_params
+        const_term += term.coefficient * model.parameters[term.variable_index_1] * model.parameters[term.variable_index_2]
     end
 
     f_quad = if !isempty(quad_terms)
