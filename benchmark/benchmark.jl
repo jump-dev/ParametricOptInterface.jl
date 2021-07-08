@@ -25,9 +25,9 @@ MOI.Benchmarks.@add_benchmark function add_constraint_saf_1(new_model)
     model = new_model()
     x = MOI.add_variables(model, 10_000)
     y, _ = MOI.add_constrained_variable(model, POI.Parameter(0))
-    for _ in 1:10_000
+    for i in 1:10_000
         MOI.add_constraint(model, 
-            MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(ones(102), [x[1:100]; y; y]), 0.0), 
+            MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(ones(103), [x[i]; x[1:100]; y; y]), 0.0), 
             MOI.GreaterThan(1.0)
         )
     end
