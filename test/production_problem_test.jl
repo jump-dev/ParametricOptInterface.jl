@@ -121,7 +121,7 @@ end
     ci2 = MOI.add_constraint(optimizer, cons2, MOI.LessThan(b2))
 
     @test cons1.terms[1].coefficient == 2
-    @test cons2.terms[3].variable_index == MOI.VariableIndex(5)
+    @test POI.is_parameter_in_model(optimizer, cons2.terms[3].variable_index)
 
     obj_func = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([c[1], c[2], 2.0], [x[1], x[2], w]), 0.0)
     MOI.set(optimizer, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(), obj_func)
