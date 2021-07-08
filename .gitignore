@@ -5,3 +5,8 @@ docs/build/
 deps/deps.jl
 Manifest.toml
 .DS_Store
+test/draft.jl
+test/MOItests.jl
+test/quadratic_tests.jl
+*.json
+*.txt

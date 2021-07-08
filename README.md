@@ -18,3 +18,21 @@ GSOC 2020 project
 
 Repository with implementation allowing parameters in MathOptInterface.jl problems.
 
+
+## Benchmarking
+
+In the development of ParametricOptInterface.jl it is useful to benchmark the MOI wrapper code performance.
+To perform benchmark we recommend you compare the performance of the master branch aggaints your 
+implementation. Here we leave an example on how to perform the benchmarks the correct way.
+
+1. before starting your implementation run a baseline benchmark aggainst the branch `master`.
+```
+git checkout master
+julia --project=benchmark benchmark/benchmark.jl --new bench
+```
+ 2. While testing your implementation benchmark your approach against the baseline benchmark.
+```
+git checkout approach_1
+julia --project=benchmark benchmark/benchmark.jl --compare bench
+```
+When you are ready to make a PR please report the `report.txt` file content in the PR.
