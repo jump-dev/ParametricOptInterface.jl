@@ -50,6 +50,7 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
     quadratic_objective_cache_pp::Array{MOI.ScalarQuadraticTerm{T},1}
     quadratic_objective_cache_pc::Array{MOI.ScalarAffineTerm{T},1}
     quadratic_objective_variables_associated_to_parameters_cache::Array{MOI.ScalarAffineTerm{T},1}
+    multiplicative_parameters::BitSet
     function ParametricOptimizer(optimizer::OT) where OT
         new{Float64, OT}(
             optimizer,
@@ -70,7 +71,8 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
             Array{MOI.ScalarQuadraticTerm{Float64},1}(),
             Array{MOI.ScalarQuadraticTerm{Float64},1}(),
             Array{MOI.ScalarAffineTerm{Float64},1}(),
-            Array{MOI.ScalarAffineTerm{Float64},1}()
+            Array{MOI.ScalarAffineTerm{Float64},1}(),
+            BitSet()
         )
     end
 end
@@ -455,17 +457,21 @@ function add_constraint_with_parameters_on_function(model::ParametricOptimizer, 
                 aux = MOI.ScalarQuadraticTerm(term.coefficient, term.variable_index_1, term.variable_index_2)
                 push!(quad_aff_vars, aux)
                 push!(aux_variables_associated_to_parameters, term.variable_index_2)  
+                push!(model.multiplicative_parameters, term.variable_index_1.value)
 
             elseif is_variable_in_model(model, term.variable_index_1) && is_parameter_in_model(model, term.variable_index_2)
                 # Check convention defined above
                 aux = MOI.ScalarQuadraticTerm(term.coefficient, term.variable_index_2, term.variable_index_1)
                 push!(quad_aff_vars, aux)
-                push!(aux_variables_associated_to_parameters, term.variable_index_1)          
+                push!(aux_variables_associated_to_parameters, term.variable_index_1)    
+                push!(model.multiplicative_parameters, term.variable_index_2.value)      
 
             elseif is_parameter_in_model(model, term.variable_index_1) && is_parameter_in_model(model, term.variable_index_2)
                 # This is the case where both variable_index_1,2 are actually parameters
                 aux = MOI.ScalarQuadraticTerm(term.coefficient, term.variable_index_1, term.variable_index_2)
                 push!(quad_params, aux)
+                push!(model.multiplicative_parameters, term.variable_index_1.value)
+                push!(model.multiplicative_parameters, term.variable_index_2.value)
 
             else
                 error("Constraint uses a variable that is not in the model")
@@ -597,16 +603,20 @@ function MOI.set(model::ParametricOptimizer, attr::MOI.ObjectiveFunction, f::MOI
                     # Thus, it creates an affine term. Convention: param as 1, var as 2
                     push!(quad_aff_vars, MOI.ScalarQuadraticTerm(term.coefficient, term.variable_index_1, term.variable_index_2))
                     push!(aux_variables_associated_to_parameters, term.variable_index_2)
+                    push!(model.multiplicative_parameters, term.variable_index_1.value)
 
                 elseif haskey(model.variables, term.variable_index_1) && haskey(model.parameters, term.variable_index_2)
                     # Check convention defined above
                     push!(quad_aff_vars, MOI.ScalarQuadraticTerm(term.coefficient, term.variable_index_2, term.variable_index_1))
                     push!(aux_variables_associated_to_parameters, term.variable_index_1)
+                    push!(model.multiplicative_parameters, term.variable_index_2.value)
 
                 elseif haskey(model.parameters, term.variable_index_1) && haskey(model.parameters, term.variable_index_2)
                     # This is the case where both variable_index_1,2 are actually parameters
                     push!(quad_params, MOI.ScalarQuadraticTerm(term.coefficient, term.variable_index_1, term.variable_index_2))
 
+                    push!(model.multiplicative_parameters, term.variable_index_1.value)
+                    push!(model.multiplicative_parameters, term.variable_index_2.value)
                 else
                     error("Constraint uses a variable that is not in the model")
                 end
@@ -719,7 +729,7 @@ function MOI.optimize!(model::ParametricOptimizer)
                 F = MOI.get(model.optimizer, MOI.ObjectiveFunctionType())
                 f = MOI.get(model.optimizer, MOI.ObjectiveFunction{F}())
                 fvar = MOI.ScalarAffineFunction(f.terms, f.constant + objective_constant)
-                MOI.set(model.optimizer,MOI.ObjectiveFunction{F}(), fvar)       
+                MOI.set(model.optimizer,MOI.ObjectiveFunction{F}(), fvar)
             end
         end
 
@@ -902,5 +912,78 @@ function MOI.optimize!(model::ParametricOptimizer)
     MOI.optimize!(model.optimizer)
 end
 
+### Duals
+
+function MOI.get(model::ParametricOptimizer, attr::T, ci::MOI.ConstraintIndex) where {T <: MOI.ConstraintDual}
+    return MOI.get(model.optimizer, attr, ci)
+end
+
+function MOI.get(model::ParametricOptimizer, attr::T, cp::MOI.ConstraintIndex{MOI.SingleVariable,POI.Parameter}) where {T <: MOI.ConstraintDual}
+    if !is_additive(model, cp)
+        error("Cannot calculate the dual of a multiplicative parameter")
+    end
+    param_dual = 0
+    param_dual += parameter_dual_in_affine_constraint(model, cp)
+    param_dual += parameter_dual_in_affine_objective(model, cp)
+    param_dual += parameter_dual_in_quadratic_constraint_affine_part(model, cp)
+    param_dual += parameter_dual_in_quadratic_objective_affine_part(model, cp)    
+    return param_dual
+end
+
+function is_additive(model::ParametricOptimizer, cp::MOI.ConstraintIndex)
+    if cp.value in model.multiplicative_parameters
+        return false
+    end
+    return true
+end
+
+function parameter_dual_in_affine_constraint(model::POI.ParametricOptimizer, cp::MOI.ConstraintIndex)
+    param_dual_affine_constraint = 0
+    for (ci, param_array) in model.affine_constraint_cache
+        for param in param_array
+            if cp.value == param.variable_index.value
+                cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
+                param_dual_affine_constraint += cons_dual*param.coefficient
+            end
+        end
+    end
+    return param_dual_affine_constraint
+end
+
+function parameter_dual_in_affine_objective(model::POI.ParametricOptimizer, cp::MOI.ConstraintIndex)
+    param_dual_affine_objective = 0
+        for param in model.affine_objective_cache
+            if cp.value == param.variable_index.value
+                param_dual_affine_objective += param.coefficient
+            end
+        end
+    return param_dual_affine_objective
+end
+
+function parameter_dual_in_quadratic_constraint_affine_part(model::POI.ParametricOptimizer, cp::MOI.ConstraintIndex)
+    param_dual_quadratic_constraint_affine_part = 0
+    for (poi_ci, param_array) in model.quadratic_constraint_cache_pc
+        moi_ci = model.quadratic_added_cache[poi_ci]
+        for param in param_array
+            if cp.value == param.variable_index.value
+                cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), moi_ci)
+                param_dual_quadratic_constraint_affine_part += cons_dual*param.coefficient
+            end
+        end
+    end
+    return param_dual_quadratic_constraint_affine_part
+end
+
+function parameter_dual_in_quadratic_objective_affine_part(model::POI.ParametricOptimizer, cp::MOI.ConstraintIndex)
+    param_dual_quadratic_objective_affine_part = 0
+        for param in model.quadratic_objective_cache_pc
+            if cp.value == param.variable_index.value
+                param_dual_quadratic_objective_affine_part += param.coefficient
+            end
+        end
+    return param_dual_quadratic_objective_affine_part
+end
+    
 end # module
+
 
