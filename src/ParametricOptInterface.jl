@@ -414,15 +414,19 @@ function MOI.set(model::ParametricOptimizer, ::MOI.ConstraintSet, cp::MOI.Constr
     end
 end
 
+function empty_objective_function_caches!(model:: ParametricOptimizer)
+    empty!(model.affine_objective_cache)
+    empty!(model.quadratic_objective_cache_pv)
+    empty!(model.quadratic_objective_cache_pp)
+    empty!(model.quadratic_objective_cache_pc)
+    return nothing
+end
+
 function MOI.set(model::ParametricOptimizer, attr::MOI.ObjectiveFunction, f::MOI.ScalarAffineFunction{T}) where T
 
     # clear previously defined objetive function cache
-    model.affine_objective_cache = Vector{MOI.ScalarAffineTerm{T}}()
-    model.quadratic_objective_cache_pv = Vector{MOI.ScalarQuadraticTerm{T}}()
-    model.quadratic_objective_cache_pp = Vector{MOI.ScalarQuadraticTerm{T}}()
-    model.quadratic_objective_cache_pc = Vector{MOI.ScalarQuadraticTerm{T}}()
-
-
+    empty_objective_function_caches!(model)
+    
     if !function_has_parameters(model, f)
         MOI.set(model.optimizer, attr, f) 
         return
@@ -604,6 +608,8 @@ function MOI.add_constraint(model::ParametricOptimizer, f::MOI.ScalarQuadraticFu
         
         model.last_quad_add_added += 1
         ci = MOIU.normalize_and_add_constraint(model.optimizer, f_quad, set)
+        # TODO
+        # Aren't we changing the type when using Float64 instead of T?
         new_ci = MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{Float64}, typeof(set)}(model.last_quad_add_added)
         model.quadratic_added_cache[new_ci] = ci
 
@@ -630,13 +636,8 @@ end
 
 function MOI.set(model::ParametricOptimizer, attr::MOI.ObjectiveFunction, f::MOI.ScalarQuadraticFunction{T}) where T
 
-
     # clear previously defined objetive function cache
-    model.affine_objective_cache = Array{MOI.ScalarAffineTerm{T},1}()
-    model.quadratic_objective_cache_pv = Array{MOI.ScalarQuadraticTerm{T},1}()
-    model.quadratic_objective_cache_pp = Array{MOI.ScalarQuadraticTerm{T},1}()
-    model.quadratic_objective_cache_pc = Array{MOI.ScalarQuadraticTerm{T},1}()
-
+    empty_objective_function_caches!(model)
 
     if !function_has_parameters(model, f)
         MOI.set(model.optimizer, attr, f) 
@@ -736,7 +737,7 @@ function MOI.set(model::ParametricOptimizer, attr::MOI.ObjectiveFunction, f::MOI
                         const_term
                     )
 
-            MOI.set(model.optimizer, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(), f_quad)
+            MOI.set(model.optimizer, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{T}}(), f_quad)
         end
 
         model.quadratic_objective_cache_pv = quad_aff_vars
@@ -750,7 +751,7 @@ end
 
 function MOI.optimize!(model::ParametricOptimizer)
     if !isempty(model.updated_parameters)
-
+        
         for (ci, fparam) in model.affine_constraint_cache
             param_constant = 0
             for j in fparam
@@ -816,6 +817,10 @@ function MOI.optimize!(model::ParametricOptimizer)
             if objective_constant != 0
                 F = MOI.get(model.optimizer, MOI.ObjectiveFunctionType())
                 f = MOI.get(model.optimizer, MOI.ObjectiveFunction{F}())
+
+                # TODO
+                # Is there another way to verify the Type of F without expliciting {Float64}?
+                # Something like isa(F, MOI.ScalarAffineFunction)
                 fvar = if F == MathOptInterface.ScalarAffineFunction{Float64}
                     MOI.ScalarAffineFunction(f.terms, f.constant + objective_constant)
                 else
@@ -877,6 +882,10 @@ function MOI.optimize!(model::ParametricOptimizer)
             if objective_constant != 0
                 F = MOI.get(model.optimizer, MOI.ObjectiveFunctionType())
                 f = MOI.get(model.optimizer, MOI.ObjectiveFunction{F}())
+
+                # TODO
+                # Is there another way to verify the Type of F without expliciting {Float64}?
+                # Something like isa(F, MOI.ScalarAffineFunction)
                 fvar = if F == MathOptInterface.ScalarAffineFunction{Float64}
                     MOI.ScalarAffineFunction(f.terms, f.constant + objective_constant)
                 else
