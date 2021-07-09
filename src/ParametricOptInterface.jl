@@ -823,11 +823,11 @@ end
 
 ### Duals
 
-function MOI.get(model::ParametricOptimizer, attr::T, ci::MOI.ConstraintIndex) where {T <: MOI.ConstraintDual}
+function MOI.get(model::ParametricOptimizer, attr::MOI.ConstraintDual, ci::MOI.ConstraintIndex)
     return MOI.get(model.optimizer, attr, ci)
 end
 
-function MOI.get(model::ParametricOptimizer, attr::T, cp::MOI.ConstraintIndex{MOI.SingleVariable,POI.Parameter}) where {T <: MOI.ConstraintDual}
+function MOI.get(model::ParametricOptimizer, ::MOI.ConstraintDual, cp::MOI.ConstraintIndex{MOI.SingleVariable,POI.Parameter})
     if !is_additive(model, cp)
         error("Cannot calculate the dual of a multiplicative parameter")
     end
@@ -835,7 +835,7 @@ function MOI.get(model::ParametricOptimizer, attr::T, cp::MOI.ConstraintIndex{MO
     param_dual += parameter_dual_in_affine_constraint(model, cp)
     param_dual += parameter_dual_in_affine_objective(model, cp)
     param_dual += parameter_dual_in_quadratic_constraint_affine_part(model, cp)
-    param_dual += parameter_dual_in_quadratic_objective_affine_part(model, cp)    
+    param_dual += parameter_dual_in_quadratic_objective_affine_part(model, cp)
     return param_dual
 end
 
