@@ -99,8 +99,8 @@ end
     MOI.optimize!(optimizer)
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 6.0, atol = ATOL)
 
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(5.0))
-    MOI.set(optimizer, MOI.ConstraintSet(), cz, POI.Parameter(5.0))
+    MOI.set(optimizer, POI.ParameterValue(), y, 5)
+    MOI.set(optimizer, POI.ParameterValue(), z, 5.0)
     MOI.optimize!(optimizer)
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 25.0, atol = ATOL)
 
