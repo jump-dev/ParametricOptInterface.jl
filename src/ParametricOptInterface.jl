@@ -185,13 +185,6 @@ function MOI.supports(model::ParametricOptimizer, attr::MOI.ConstraintName, tp::
     return MOI.supports(model.optimizer, attr, tp)
 end
 
-struct ParameterValue <: MOI.AbstractVariableAttribute end
-
-function MOI.set(model::ParametricOptimizer, ::ParameterValue, vi::MOI.VariableIndex, val)
-    cv = MOI.ConstraintIndex{MOI.SingleVariable, POI.Parameter}(vi.value)
-    return MOI.set(model, MOI.ConstraintSet(), cv, POI.Parameter(val))
-end 
-
 # TODO
 # This is not correct, you need to put the parameters back into the function
 # function MOI.get(model::ParametricOptimizer, attr::MOI.ConstraintFunction, ci::MOI.ConstraintIndex{F, S}) where {F, S}
@@ -361,6 +354,30 @@ function MOI.set(model::ParametricOptimizer, ::MOI.ConstraintSet, cp::MOI.Constr
     else
         error("Parameter not in the model")
     end
+end
+
+struct ParameterValue <: MOI.AbstractVariableAttribute end
+
+"""
+    MOI.set(model::ParametricOptimizer, ::MOI.ConstraintSet, cp::MOI.ConstraintIndex{MOI.SingleVariable, Parameter}, set::Parameter)
+
+Sets the parameter to a given value, using its `MOI.ConstraintIndex` as reference.
+
+#Example:
+```julia-repl
+julia> MOI.set(model, ParameterValue(), w, 2.0)
+2.0
+```
+"""
+function MOI.set(model::ParametricOptimizer, ::ParameterValue, vi::MOI.VariableIndex, val::Float64)
+    if is_parameter_in_model(model, vi)
+        return model.updated_parameters[vi] = val
+    else
+        error("Parameter not in the model")
+    end
+end 
+function MOI.set(model::ParametricOptimizer, ::ParameterValue, vi::MOI.VariableIndex, val::Real)
+    return MOI.set(model, ParameterValue(), vi, convert(Float64, val))
 end
 
 function empty_objective_function_caches!(model:: ParametricOptimizer)
