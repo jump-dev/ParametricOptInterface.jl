@@ -367,9 +367,9 @@ end
 struct ParameterValue <: MOI.AbstractVariableAttribute end
 
 """
-    MOI.set(model::ParametricOptimizer, ::MOI.ConstraintSet, cp::MOI.ConstraintIndex{MOI.SingleVariable, Parameter}, set::Parameter)
+    MOI.set(model::ParametricOptimizer, ::ParameterValue, vi::MOI.VariableIndex, val::Float64)
 
-Sets the parameter to a given value, using its `MOI.ConstraintIndex` as reference.
+Sets the parameter to a given value, using its `MOI.VariableIndex` as reference.
 
 #Example:
 ```julia-repl
