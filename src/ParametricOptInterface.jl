@@ -6,7 +6,6 @@ const MOIU = MathOptInterface.Utilities
 const DD = MOIU.DoubleDicts
 const POI = ParametricOptInterface
 const PARAMETER_INDEX_THRESHOLD = 1_000_000_000_000_000_000
-const ScalarLinearSetList = [MOI.EqualTo, MOI.GreaterThan, MOI.LessThan]
 
 """
     Parameter(Float64)
@@ -226,15 +225,15 @@ end
 
 # TODO
 # You might have transformed quadratic functions into affine functions so this is incorrect
-# function MOI.get(model::ParametricOptimizer, ::MOI.ListOfConstraints)
-#     constraints = Set{Tuple{DataType, DataType}}()
-#     inner_ctrs = MOI.get(model.optimizer, MOI.ListOfConstraints())
-#     for (F, S) in inner_ctrs
-#         push!(constraints, (F,S))
-#     end
+function MOI.get(model::ParametricOptimizer, ::MOI.ListOfConstraints)
+    constraints = Set{Tuple{DataType, DataType}}()
+    inner_ctrs = MOI.get(model.optimizer, MOI.ListOfConstraints())
+    for (F, S) in inner_ctrs
+        push!(constraints, (F,S))
+    end
 
-#     collect(constraints)
-# end
+    collect(constraints)
+end
 
 function MOI.get(
     model::ParametricOptimizer,
@@ -336,7 +335,7 @@ end
 
 function MOI.get(model::ParametricOptimizer, attr::MOI.VariablePrimal, v::MOI.VariableIndex)
     if is_parameter_in_model(model, v)
-         return model.parameters[v]
+        return model.parameters[v]
     elseif is_variable_in_model(model, v)
         return MOI.get(model.optimizer, attr, model.variables[v])
     else
@@ -853,44 +852,71 @@ end
 
 ### Duals
 
-function create_param_dual_cum_sum(keys_model_parameters::Base.KeySet{MOI.VariableIndex, Dict{MOI.VariableIndex, T}}) where T
+function create_param_dual_cum_sum(model::ParametricOptimizer)
     param_dual_cum_sum = Dict{Int, Float64}()
-
-    for vi in keys_model_parameters
+    for vi in keys(model.parameters)
         param_dual_cum_sum[vi.value] = 0.0
     end
-    
     return param_dual_cum_sum
 end
 
 function calculate_dual_of_parameters(model::ParametricOptimizer)
     
-    param_dual_cum_sum = create_param_dual_cum_sum(keys(model.parameters))
+    param_dual_cum_sum = create_param_dual_cum_sum(model)
     
-    for S in ScalarLinearSetList
-        affine_constraint_cache_inner = model.affine_constraint_cache[MOI.ScalarAffineFunction{Float64}, S{Float64}]
-
-        # TODO
-        # Verify if !is_empty(model.affine_objective_cache) to pursue ?
-        if length(affine_constraint_cache_inner) > 0
-            # param_dual_cum_sum = iterate_over_constraint_cache_affine(model, model.affine_constraint_cache[MOI.ScalarAffineFunction{Float64}, S{Float64}] ,param_dual_cum_sum)
-            param_dual_cum_sum = iterate_over_constraint_cache_affine(model, affine_constraint_cache_inner ,param_dual_cum_sum)
-        end
-
-        quadratic_constraint_cache_pc_inner = model.quadratic_constraint_cache_pc[MOI.ScalarQuadraticFunction{Float64}, S{Float64}]
-
-        if length(quadratic_constraint_cache_pc_inner) > 0
-            param_dual_cum_sum = iterate_over_constraint_cache_quadratic(model, quadratic_constraint_cache_pc_inner, param_dual_cum_sum)
-        end
-    end
-    
-    # TODO
-    # Verify if !is_empty(model.affine_objective_cache) to pursue ?
-    param_dual_cum_sum = update_duals_in_affine_objective(model.affine_objective_cache, param_dual_cum_sum)
-
-    param_dual_cum_sum = update_duals_in_quadratic_objective(model.quadratic_objective_cache_pc, param_dual_cum_sum)
+    con_types = MOI.get(model, MOI.ListOfConstraints())
+    update_duals_with_affine_constraint_cache!(param_dual_cum_sum, model, con_types)
+    update_duals_with_quadratic_constraint_cache!(param_dual_cum_sum, model, con_types)
+    update_duals_in_affine_objective!(param_dual_cum_sum, model.affine_objective_cache)
+    update_duals_in_quadratic_objective!(param_dual_cum_sum, model.quadratic_objective_cache_pc)
 
     empty_and_feed_duals_to_model(model, param_dual_cum_sum)
+end
+
+function update_duals_with_affine_constraint_cache!(param_dual_cum_sum::Dict{Int, Float64}, model::POI.ParametricOptimizer, con_types)
+    for (F,S) in con_types
+        affine_constraint_cache_inner = model.affine_constraint_cache[F, S]
+
+        for (ci, param_array) in affine_constraint_cache_inner
+            calculate_parameters_in_ci!(param_dual_cum_sum, model.optimizer, param_array, ci)
+        end
+    end
+    return
+end
+
+function update_duals_with_quadratic_constraint_cache!(param_dual_cum_sum::Dict{Int, Float64}, model::POI.ParametricOptimizer, con_types)
+    for (F,S) in con_types
+        quadratic_constraint_cache_pc_inner = model.quadratic_constraint_cache_pc[F, S]
+
+        for (poi_ci, param_array) in quadratic_constraint_cache_pc_inner
+            moi_ci = model.quadratic_added_cache[poi_ci]
+            calculate_parameters_in_ci!(param_dual_cum_sum, model.optimizer, param_array, moi_ci)
+        end
+    end
+    return
+end
+
+function calculate_parameters_in_ci!(param_dual_cum_sum::Dict{Int, Float64}, optimizer::OP, param_array::Vector{MOI.ScalarAffineTerm{T}}, ci::CI) where {OP, CI, T}
+    cons_dual = MOI.get(optimizer, MOI.ConstraintDual(), ci)
+
+    for param in param_array
+        param_dual_cum_sum[param.variable_index.value] += cons_dual*param.coefficient
+    end
+    return
+end
+
+function update_duals_in_affine_objective!(param_dual_cum_sum::Dict{Int, Float64}, affine_objective_cache::Vector{MOI.ScalarAffineTerm{T}}) where T
+    for param in affine_objective_cache
+        param_dual_cum_sum[param.variable_index.value] += param.coefficient
+    end
+    return
+end
+
+function update_duals_in_quadratic_objective!(param_dual_cum_sum::Dict{Int, Float64}, quadratic_objective_cache_pc::Vector{MOI.ScalarAffineTerm{T}}) where T
+    for param in quadratic_objective_cache_pc
+        param_dual_cum_sum[param.variable_index.value] += param.coefficient
+    end
+    return
 end
 
 function empty_and_feed_duals_to_model(model::ParametricOptimizer, param_dual_cum_sum::Dict{Int, Float64})
@@ -898,47 +924,7 @@ function empty_and_feed_duals_to_model(model::ParametricOptimizer, param_dual_cu
     for (vi_val, param_dual) in param_dual_cum_sum
         model.dual_value_of_parameters[MOI.VariableIndex(vi_val)] = param_dual
     end
-end
-
-function update_duals_in_affine_objective(affine_objective_cache::Vector{MOI.ScalarAffineTerm{T}}, param_dual_cum_sum::Dict{Int, Float64}) where T
-    for param in affine_objective_cache
-        param_dual_cum_sum[param.variable_index.value] += param.coefficient
-    end
-    return param_dual_cum_sum
-end
-
-function update_duals_in_quadratic_objective(quadratic_objective_cache_pc::Vector{MOI.ScalarAffineTerm{T}}, param_dual_cum_sum::Dict{Int, Float64}) where T
-    for param in quadratic_objective_cache_pc
-        param_dual_cum_sum[param.variable_index.value] += param.coefficient
-    end
-    return param_dual_cum_sum
-end
-
-function iterate_over_constraint_cache_affine(model::POI.ParametricOptimizer, constraint_cache_inner::DD.WithType{F, S}, param_dual_cum_sum::Dict{Int, Float64}) where {F,S}
-    for (ci, param_array) in constraint_cache_inner
-        param_dual_cum_sum = calculate_parameters_in_ci(model.optimizer, param_array, ci, param_dual_cum_sum)
-    end
-
-    return param_dual_cum_sum
-end
-
-function iterate_over_constraint_cache_quadratic(model::POI.ParametricOptimizer, constraint_cache_inner::DD.WithType{F, S}, param_dual_cum_sum::Dict{Int, Float64}) where {F,S}
-    for (poi_ci, param_array) in constraint_cache_inner
-        moi_ci = model.quadratic_added_cache[poi_ci]
-        param_dual_cum_sum = calculate_parameters_in_ci(model.optimizer, param_array, moi_ci, param_dual_cum_sum)
-    end
-
-    return param_dual_cum_sum
-end
-
-function calculate_parameters_in_ci(optimizer::OP, param_array::Vector{MOI.ScalarAffineTerm{T}}, ci::CI, param_dual_cum_sum::Dict{Int, Float64}) where {OP, CI, T}
-    cons_dual = MOI.get(optimizer, MOI.ConstraintDual(), ci)
-
-    for param in param_array
-        param_dual_cum_sum[param.variable_index.value] += cons_dual*param.coefficient
-    end
-
-    return param_dual_cum_sum
+    return
 end
 
 function MOI.get(model::ParametricOptimizer, ::MOI.ConstraintDual, cp::MOI.ConstraintIndex{MOI.SingleVariable,POI.Parameter})
