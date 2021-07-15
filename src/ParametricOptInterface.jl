@@ -43,7 +43,7 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
     affine_constraint_cache::DD.DoubleDict{Vector{MOI.ScalarAffineTerm{Float64}}}
     quadratic_constraint_cache_pv::Dict{MOI.ConstraintIndex, Vector{MOI.ScalarQuadraticTerm{Float64}}}
     quadratic_constraint_cache_pp::Dict{MOI.ConstraintIndex, Vector{MOI.ScalarQuadraticTerm{Float64}}}
-    quadratic_constraint_cache_pc::Dict{MOI.ConstraintIndex, Vector{MOI.ScalarAffineTerm{Float64}}}
+    quadratic_constraint_cache_pc::DD.DoubleDict{Vector{MOI.ScalarAffineTerm{Float64}}}
     quadratic_constraint_variables_associated_to_parameters_cache::Dict{MOI.ConstraintIndex, Vector{MOI.ScalarAffineTerm{T}}} 
     quadratic_added_cache::Dict{MOI.ConstraintIndex, MOI.ConstraintIndex} 
     last_quad_add_added::Int
@@ -67,7 +67,7 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
             DD.DoubleDict{Vector{MOI.ScalarAffineTerm{Float64}}}(),
             Dict{MOI.ConstraintIndex, Vector{MOI.ScalarQuadraticTerm{Float64}}}(),
             Dict{MOI.ConstraintIndex, Vector{MOI.ScalarQuadraticTerm{Float64}}}(),
-            Dict{MOI.ConstraintIndex, Vector{MOI.ScalarAffineTerm{Float64}}}(),
+            DD.DoubleDict{Vector{MOI.ScalarAffineTerm{Float64}}}(),
             Dict{MOI.ConstraintIndex, Vector{MOI.ScalarAffineTerm{Float64}}}(),
             Dict{MOI.ConstraintIndex, MOI.ConstraintIndex}(),
             0,
@@ -853,40 +853,65 @@ end
 
 ### Duals
 
-function calculate_dual_of_parameters(model::ParametricOptimizer) 
+function create_param_dual_cum_sum(keys_model_parameters::Base.KeySet{MOI.VariableIndex, Dict{MOI.VariableIndex, T}}) where T
     param_dual_cum_sum = Dict{Int, Float64}()
 
-    for vi in keys(model.parameters)
+    for vi in keys_model_parameters
         param_dual_cum_sum[vi.value] = 0.0
     end
     
-    # TODO
-    # Quadratic constraints
+    return param_dual_cum_sum
+end
+
+function calculate_dual_of_parameters(model::ParametricOptimizer)
+    
+    param_dual_cum_sum = create_param_dual_cum_sum(keys(model.parameters))
+    
     for S in ScalarLinearSetList
         affine_constraint_cache_inner = model.affine_constraint_cache[MOI.ScalarAffineFunction{Float64}, S{Float64}]
 
+        # TODO
+        # Verify if !is_empty(model.affine_objective_cache) to pursue ?
         if length(affine_constraint_cache_inner) > 0
+            # param_dual_cum_sum = iterate_over_constraint_cache_affine(model, model.affine_constraint_cache[MOI.ScalarAffineFunction{Float64}, S{Float64}] ,param_dual_cum_sum)
             param_dual_cum_sum = iterate_over_constraint_cache_affine(model, affine_constraint_cache_inner ,param_dual_cum_sum)
         end
 
-        # for F in [MOI.ScalarQuadraticFunction]
-        #     affine_constraint_cache_inner = model.affine_constraint_cache[F{Float64}, S{Float64}]
+        quadratic_constraint_cache_pc_inner = model.quadratic_constraint_cache_pc[MOI.ScalarQuadraticFunction{Float64}, S{Float64}]
 
-        #     if length(affine_constraint_cache_inner) > 0
-        #         param_dual_cum_sum = iterate_over_constraint_cache_quadratic(model, affine_constraint_cache_inner ,param_dual_cum_sum)
-        #     end
-        # end
+        if length(quadratic_constraint_cache_pc_inner) > 0
+            param_dual_cum_sum = iterate_over_constraint_cache_quadratic(model, quadratic_constraint_cache_pc_inner, param_dual_cum_sum)
+        end
     end
+    
+    # TODO
+    # Verify if !is_empty(model.affine_objective_cache) to pursue ?
+    param_dual_cum_sum = update_duals_in_affine_objective(model.affine_objective_cache, param_dual_cum_sum)
 
-    for param in model.affine_objective_cache
-        vi = param.variable_index.value
-        param_dual_cum_sum[vi] += param.coefficient
-    end
+    param_dual_cum_sum = update_duals_in_quadratic_objective(model.quadratic_objective_cache_pc, param_dual_cum_sum)
 
+    empty_and_feed_duals_to_model(model, param_dual_cum_sum)
+end
+
+function empty_and_feed_duals_to_model(model::ParametricOptimizer, param_dual_cum_sum::Dict{Int, Float64})
     empty!(model.dual_value_of_parameters)
     for (vi_val, param_dual) in param_dual_cum_sum
         model.dual_value_of_parameters[MOI.VariableIndex(vi_val)] = param_dual
     end
+end
+
+function update_duals_in_affine_objective(affine_objective_cache::Vector{MOI.ScalarAffineTerm{T}}, param_dual_cum_sum::Dict{Int, Float64}) where T
+    for param in affine_objective_cache
+        param_dual_cum_sum[param.variable_index.value] += param.coefficient
+    end
+    return param_dual_cum_sum
+end
+
+function update_duals_in_quadratic_objective(quadratic_objective_cache_pc::Vector{MOI.ScalarAffineTerm{T}}, param_dual_cum_sum::Dict{Int, Float64}) where T
+    for param in quadratic_objective_cache_pc
+        param_dual_cum_sum[param.variable_index.value] += param.coefficient
+    end
+    return param_dual_cum_sum
 end
 
 function iterate_over_constraint_cache_affine(model::POI.ParametricOptimizer, constraint_cache_inner::DD.WithType{F, S}, param_dual_cum_sum::Dict{Int, Float64}) where {F,S}
@@ -897,21 +922,10 @@ function iterate_over_constraint_cache_affine(model::POI.ParametricOptimizer, co
     return param_dual_cum_sum
 end
 
-# TODO
-# Quadratic constraints
 function iterate_over_constraint_cache_quadratic(model::POI.ParametricOptimizer, constraint_cache_inner::DD.WithType{F, S}, param_dual_cum_sum::Dict{Int, Float64}) where {F,S}
-    for (poi_ci, param_array) in model.quadratic_constraint_cache_pc
+    for (poi_ci, param_array) in constraint_cache_inner
         moi_ci = model.quadratic_added_cache[poi_ci]
-        for param in param_array
-            if cp.value == param.variable_index.value
-                cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), moi_ci)
-                param_dual_quadratic_constraint_affine_part += cons_dual*param.coefficient
-            end
-        end
-    end
-    
-    for (ci, param_array) in constraint_cache_inner
-        param_dual_cum_sum = calculate_parameters_in_ci(model.optimizer, param_array, ci, param_dual_cum_sum)
+        param_dual_cum_sum = calculate_parameters_in_ci(model.optimizer, param_array, moi_ci, param_dual_cum_sum)
     end
 
     return param_dual_cum_sum
@@ -921,8 +935,7 @@ function calculate_parameters_in_ci(optimizer::OP, param_array::Vector{MOI.Scala
     cons_dual = MOI.get(optimizer, MOI.ConstraintDual(), ci)
 
     for param in param_array
-        vi = param.variable_index.value
-        param_dual_cum_sum[vi] += cons_dual*param.coefficient
+        param_dual_cum_sum[param.variable_index.value] += cons_dual*param.coefficient
     end
 
     return param_dual_cum_sum
@@ -946,11 +959,11 @@ function is_additive(model::ParametricOptimizer, cp::MOI.ConstraintIndex)
     return true
 end
 
-function parameter_dual_in_affine_constraint(model::POI.ParametricOptimizer, cp::MOI.ConstraintIndex)::Float64
+function parameter_dual_in_affine_constraint(model::POI.ParametricOptimizer, value::Int)::Float64
     param_dual_affine_constraint = update_parameter_dual(
                                     model.optimizer, 
                                     model.affine_constraint_cache[MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}], 
-                                    cp.value
+                                    value
                                 )
     return param_dual_affine_constraint
 end
