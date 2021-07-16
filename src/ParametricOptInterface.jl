@@ -435,9 +435,17 @@ function MOI.set(model::ParametricOptimizer, ::MOI.Silent, bool::Bool)
     MOI.set(model.optimizer, MOI.Silent(), bool)
 end
 
-function MOI.get(optimizer::ParametricOptimizer, ::MOI.SolverName)
+function MOI.set(model::ParametricOptimizer, attr::MOI.RawParameter, val::Any)
+    MOI.set(model.optimizer, attr, val)
+end
+
+function MOI.set(model::ParametricOptimizer, attr::String, val::Any)
+    MOI.set(model.optimizer, MOI.RawParameter(attr), val)
+end
+
+function MOI.get(model::ParametricOptimizer, ::MOI.SolverName)
     return "ParametricOptimizer with " *
-           MOI.get(optimizer.optimizer, MOI.SolverName()) *
+           MOI.get(model.optimizer, MOI.SolverName()) *
            " attached"
 end
 

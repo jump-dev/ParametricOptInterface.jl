@@ -15,7 +15,7 @@ end
 function update_duals_with_affine_constraint_cache!(param_dual_cum_sum::Vector{Float64}, model::POI.ParametricOptimizer)
     for S in SUPPORTED_SETS
         affine_constraint_cache_inner = model.affine_constraint_cache[MOI.ScalarAffineFunction{Float64}, S]
-        if length(affine_constraint_cache_inner) > 0
+        if isempty(affine_constraint_cache_inner) > 0
             update_duals_with_affine_constraint_cache!(param_dual_cum_sum, model.optimizer, affine_constraint_cache_inner)
         end
     end
@@ -32,7 +32,7 @@ end
 function update_duals_with_quadratic_constraint_cache!(param_dual_cum_sum::Vector{Float64}, model::POI.ParametricOptimizer)
     for S in SUPPORTED_SETS
         quadratic_constraint_cache_pc_inner = model.quadratic_constraint_cache_pc[MOI.ScalarQuadraticFunction{Float64}, S]
-        if length(quadratic_constraint_cache_pc_inner) > 0
+        if isempty(quadratic_constraint_cache_pc_inner) > 0
             update_duals_with_quadratic_constraint_cache!(param_dual_cum_sum, model, quadratic_constraint_cache_pc_inner)
         end
     end
