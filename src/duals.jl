@@ -99,22 +99,3 @@ function is_additive(model::ParametricOptimizer, cp::MOI.ConstraintIndex)
     end
     return true
 end
-
-function update_parameter_dual(optimizer::OP, affine_constraint_cache_inner::DD.WithType{F, S}, value::Int) where {OP, F, S}
-    param_dual_affine_constraint = zero(Float64)
-    for (ci::MOI.ConstraintIndex{F, S}, param_array) in affine_constraint_cache_inner
-        param_dual_affine_constraint += calculate_parameter_in_ci(optimizer, param_array, ci, value)::Float64
-    end
-    return param_dual_affine_constraint
-end
-
-function calculate_parameter_in_ci(optimizer::OP, param_array::Vector{MOI.ScalarAffineTerm{T}}, ci::CI, value::Int) where {OP, CI, T}
-    param_dual_affine_constraint = zero(T)
-    for param in param_array
-        if value == param.variable_index.value
-            cons_dual = MOI.get(optimizer, MOI.ConstraintDual(), ci)
-            param_dual_affine_constraint += cons_dual*param.coefficient
-        end
-    end
-    return param_dual_affine_constraint
-end
