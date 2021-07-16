@@ -13,7 +13,7 @@ end
 function update_parameter_in_affine_constraints!(model::ParametricOptimizer)
     for S in SUPPORTED_SETS
         affine_constraint_cache_inner = model.affine_constraint_cache[MOI.ScalarAffineFunction{Float64}, S]
-        if isempty(affine_constraint_cache_inner) > 0
+        if !isempty(affine_constraint_cache_inner)
             update_parameter_in_affine_constraints!(model.optimizer, model.parameters, model.updated_parameters, affine_constraint_cache_inner)
         end
     end
