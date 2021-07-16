@@ -1,5 +1,6 @@
 next_variable_index!(model::ParametricOptimizer) = model.last_variable_index_added += 1
 next_parameter_index!(model::ParametricOptimizer) = model.last_parameter_index_added += 1
+update_number_of_parameters!(model::ParametricOptimizer) = model.number_of_parameters_in_model += 1
 
 function is_parameter_in_model(model::ParametricOptimizer, v::MOI.VariableIndex)
     return PARAMETER_INDEX_THRESHOLD < v.value <= model.last_parameter_index_added 

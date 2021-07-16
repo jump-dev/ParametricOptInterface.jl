@@ -53,8 +53,9 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
     quadratic_objective_cache_pc::Vector{MOI.ScalarAffineTerm{T}}
     quadratic_objective_variables_associated_to_parameters_cache::Vector{MOI.ScalarAffineTerm{T}}
     multiplicative_parameters::BitSet
-    dual_value_of_parameters::Dict{MOI.VariableIndex, Float64}
+    dual_value_of_parameters::Vector{Float64}
     evaluate_duals::Bool
+    number_of_parameters_in_model::Int
     function ParametricOptimizer(optimizer::OT; evaluate_duals::Bool=true) where OT
         new{Float64, OT}(
             optimizer,
@@ -77,8 +78,9 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
             Vector{MOI.ScalarAffineTerm{Float64}}(),
             Vector{MOI.ScalarAffineTerm{Float64}}(),
             BitSet(),
-            Dict{MOI.VariableIndex, Float64}(),
-            evaluate_duals
+            Vector{Float64}(),
+            evaluate_duals,
+            0
         )
     end
 end
@@ -108,7 +110,8 @@ function MOI.is_empty(model::ParametricOptimizer)
     isempty(model.quadratic_objective_cache_pp) &&
     isempty(model.quadratic_objective_cache_pc) &&
     isempty(model.quadratic_objective_variables_associated_to_parameters_cache) &&
-    isempty(model.dual_value_of_parameters)
+    isempty(model.dual_value_of_parameters) &&
+    model.number_of_parameters_in_model == 0
 end
 
 function MOI.supports_constraint(
@@ -160,6 +163,7 @@ function MOI.empty!(model::ParametricOptimizer{T}) where T
     empty!(model.quadratic_objective_cache_pc)
     empty!(model.quadratic_objective_variables_associated_to_parameters_cache)
     empty!(model.dual_value_of_parameters)
+    model.number_of_parameters_in_model = 0
     return
 end
 
@@ -296,6 +300,7 @@ function MOI.add_constrained_variable(model::ParametricOptimizer, set::Parameter
     p = MOI.VariableIndex(model.last_parameter_index_added)
     model.parameters[p] = set.val
     cp = MOI.ConstraintIndex{MOI.SingleVariable, Parameter}(model.last_parameter_index_added)
+    update_number_of_parameters!(model)
     return p, cp
 end
 
@@ -430,9 +435,17 @@ function MOI.set(model::ParametricOptimizer, ::MOI.Silent, bool::Bool)
     MOI.set(model.optimizer, MOI.Silent(), bool)
 end
 
-function MOI.get(optimizer::ParametricOptimizer, ::MOI.SolverName)
+function MOI.set(model::ParametricOptimizer, attr::MOI.RawParameter, val::Any)
+    MOI.set(model.optimizer, attr, val)
+end
+
+function MOI.set(model::ParametricOptimizer, attr::String, val::Any)
+    MOI.set(model.optimizer, MOI.RawParameter(attr), val)
+end
+
+function MOI.get(model::ParametricOptimizer, ::MOI.SolverName)
     return "ParametricOptimizer with " *
-           MOI.get(optimizer.optimizer, MOI.SolverName()) *
+           MOI.get(model.optimizer, MOI.SolverName()) *
            " attached"
 end
 
