@@ -18,7 +18,7 @@
 
     cons1 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 1.0], [x[1], y]), 0.0)
     
-    MOI.add_constraint(optimizer, cons1, MOI.EqualTo(2.0))
+    c1 = MOI.add_constraint(optimizer, cons1, MOI.EqualTo(2.0))
 
     obj_func = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 1.0], [x[1], y]), 0.0)
     MOI.set(optimizer, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(), obj_func)
@@ -50,6 +50,15 @@
     MOI.optimize!(optimizer)
 
     @test MOI.get(optimizer, MOI.ObjectiveValue()) == 1
+
+    @test MOI.get(optimizer, MOI.SolverName()) == "ParametricOptimizer with GLPK attached"
+
+    
+    @test MOI.supports(optimizer, MOI.VariableName(), MOI.VariableIndex)
+    @test MOI.supports(optimizer, MOI.ConstraintName(), MOI.ConstraintIndex)
+    @test MOI.get(optimizer, MOI.ObjectiveSense()) == MOI.MIN_SENSE
+    @test MOI.get(optimizer, MOI.VariableName(), x[1]) == ""
+    @test MOI.get(optimizer, MOI.ConstraintName(), c1) == ""
 
 end
 
@@ -101,6 +110,7 @@ end
 
     MOI.set(optimizer, POI.ParameterValue(), y, 5)
     MOI.set(optimizer, POI.ParameterValue(), z, 5.0)
+    @test_throws ErrorException MOI.set(optimizer, POI.ParameterValue(), MOI.VariableIndex(10872368175), 5.0)
     MOI.optimize!(optimizer)
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 25.0, atol = ATOL)
 

@@ -177,7 +177,7 @@ end
 
 function MOI.get(model::ParametricOptimizer, attr::MOI.VariableName, v::MOI.VariableIndex)
     if is_parameter_in_model(model, v)
-        return model.parameters_name[v]
+        return get(model.parameters_name, v, "")
     else
         return MOI.get(model.optimizer, attr, v)
     end
