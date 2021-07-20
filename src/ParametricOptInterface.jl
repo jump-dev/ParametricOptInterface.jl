@@ -195,6 +195,10 @@ function MOI.get(model::ParametricOptimizer, attr::MOI.ConstraintName, c::MOI.Co
     return MOI.get(model.optimizer, attr, c)
 end
 
+function MOI.get(model::ParametricOptimizer, ::MOI.NumberOfVariables)
+    return length(model.parameters) + length(model.variables)
+end
+
 function MOI.supports(model::ParametricOptimizer, attr::MOI.ConstraintName, tp::Type{<:MOI.ConstraintIndex})
     return MOI.supports(model.optimizer, attr, tp)
 end
@@ -214,7 +218,7 @@ function MOI.get(model::ParametricOptimizer, attr::MOI.ObjectiveSense)
     return MOI.get(model.optimizer, attr)
 end
 
-function MOI.get(model::POI.ParametricOptimizer, attr::MOI.ObjectiveFunctionType)
+function MOI.get(model::ParametricOptimizer, attr::MOI.ObjectiveFunctionType)
     if !isempty(model.quadratic_constraint_cache_pv) || !isempty(model.quadratic_constraint_cache_pc)
         return MOI.ScalarQuadraticFunction{Float64}
     end

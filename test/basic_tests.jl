@@ -515,5 +515,6 @@ end
     MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
 
     @test MOI.get(optimizer, MOI.ObjectiveFunctionType()) == MOI.ScalarQuadraticFunction{Float64}
+    @test MOI.get(optimizer, MOI.NumberOfVariables()) == 3
 
 end
