@@ -214,12 +214,12 @@ function MOI.get(model::ParametricOptimizer, attr::MOI.ObjectiveSense)
     return MOI.get(model.optimizer, attr)
 end
 
-# TODO
-# This is not correct, you might have transformed a quadratic function into an affine function,
-# you need to give the type that was given by the user, not the type of the inner model.
-# function MOI.get(model::ParametricOptimizer, attr::MOI.ObjectiveFunctionType)
-#     MOI.get(model.optimizer, attr)
-# end
+function MOI.get(model::POI.ParametricOptimizer, attr::MOI.ObjectiveFunctionType)
+    if !isempty(model.quadratic_constraint_cache_pv) || !isempty(model.quadratic_constraint_cache_pc)
+        return MOI.ScalarQuadraticFunction{Float64}
+    end
+    return MOI.get(model.optimizer, attr)
+end
 
 # TODO
 # Same as ConstraintFunction getter. And you also need to convert to F
