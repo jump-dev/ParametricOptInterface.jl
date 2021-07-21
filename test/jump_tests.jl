@@ -117,3 +117,59 @@ end
     @test_broken isapprox.(value(x[2]), 2.0, atol = ATOL)
     @test_broken isapprox.(value(y), 2.0, atol = ATOL)
 end
+
+@testset "JuMP direct model - Variable in POI.Parameters" begin
+    optimizer = POI.ParametricOptimizer(GLPK.Optimizer())
+
+    model = direct_model(optimizer)
+
+    @variable(model, x[i=1:2] >= 0)
+
+    @variable(model, y[i=1:3] in POI.Parameters(zeros(3)))
+
+    @constraint(model, 2*x[1] + x[2] + y[1] <= 4)
+    @constraint(model, 1*x[1] + 2*x[2] + y[3] <= 4)
+
+    @objective(model, Max, 4*x[1] + 3*x[2] + y[2])
+
+    optimize!(model)
+
+    @test isapprox.(value(x[1]), 4.0/3.0, atol = ATOL)
+    @test isapprox.(value(x[2]), 4.0/3.0, atol = ATOL)
+    @test isapprox.(value(y[1]), 0, atol = ATOL)
+
+    # ===== Set parameter value =====
+    MOI.set(model, POI.ParameterValue(), y[1], 2.0)
+    optimize!(model)
+
+    @test isapprox.(value(x[1]), 0.0, atol = ATOL)
+    @test isapprox.(value(x[2]), 2.0, atol = ATOL)
+    @test isapprox.(value(y[1]), 2.0, atol = ATOL)
+end
+
+@testset "JuMP model - Variable in POI.Parameters" begin
+    model = Model(() -> POI.ParametricOptimizer(GLPK.Optimizer()))
+
+    @variable(model, x[i=1:2] >= 0)
+
+    @variable(model, y[i=1:3] in POI.Parameters(zeros(3)))
+
+    @constraint(model, 2*x[1] + x[2] + y[1] <= 4)
+    @constraint(model, 1*x[1] + 2*x[2] + y[3] <= 4)
+
+    @objective(model, Max, 4*x[1] + 3*x[2] + y[2])
+
+    @test_broken optimize!(model)
+
+    @test_broken isapprox.(value(x[1]), 4.0/3.0, atol = ATOL)
+    @test_broken isapprox.(value(x[2]), 4.0/3.0, atol = ATOL)
+    @test_broken isapprox.(value(y[1]), 0, atol = ATOL)
+
+    # ===== Set parameter value =====
+    @test_broken MOI.set(model, POI.ParameterValue(), y[1], 2.0)
+    @test_broken optimize!(model)
+
+    @test_broken isapprox.(value(x[1]), 0.0, atol = ATOL)
+    @test_broken isapprox.(value(x[2]), 2.0, atol = ATOL)
+    @test_broken isapprox.(value(y[1]), 2.0, atol = ATOL)
+end

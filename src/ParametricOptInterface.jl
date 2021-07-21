@@ -1,6 +1,8 @@
 module ParametricOptInterface
 
 using MathOptInterface
+import Base.copy
+
 const MOI = MathOptInterface
 const MOIU = MathOptInterface.Utilities
 const DD = MOIU.DoubleDicts
@@ -9,7 +11,7 @@ const PARAMETER_INDEX_THRESHOLD = 1_000_000_000_000_000_000
 const SUPPORTED_SETS = [MOI.LessThan{Float64}, MOI.EqualTo{Float64}, MOI.GreaterThan{Float64}]
 
 """
-    Parameter(Float64)
+    Parameter <: MOI.AbstractScalarSet
 
 The `Parameter` structure stores the numerical value associated to a given parameter.
 # Example:
@@ -21,6 +23,25 @@ ParametricOptInterface.Parameter(5)
 struct Parameter <: MOI.AbstractScalarSet
     val::Float64
 end
+
+"""
+    Parameters <: MOI.AbstractVectorSet
+
+The `Parameters` structure stores the numerical values associated to parameters.
+# Example:
+```julia-repl
+julia> ParametricOptInterface.Parameters(ones(2))
+ParametricOptInterface.Parameters([1.0, 1.0], 2)
+```
+"""
+struct Parameters <: MOI.AbstractVectorSet
+    vals::Vector{Float64}
+    dimension::Int
+    function Parameters(vals::Vector{Float64})
+        return new(vals, length(vals))
+    end
+end
+Base.copy(set::Parameters) = Parameters(copy(set.vals))
 
 """
     ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimizer
@@ -308,6 +329,26 @@ function MOI.add_constrained_variable(model::ParametricOptimizer, set::Parameter
     return p, cp
 end
 
+"""
+    MOI.add_constrained_variables(model::ParametricOptimizer, set::Parameters)
+
+Adds multiple parameters, that is, variables parameterized to the value provided in `set`, to the `model` specified.
+The `model` must be a `ParametricOptInterface.ParametricOptimizer` model.
+Returns vector of MOI.VariableIndex of the parameterized variables and the vector of MOI.ConstraintIndex associated.
+"""
+function MOI.add_constrained_variables(model::ParametricOptimizer, set::Parameters)
+    variables = Vector{MOI.VariableIndex}(undef, set.dimension)
+    constraints = Vector{MOI.ConstraintIndex{MOI.SingleVariable, Parameter}}(undef, set.dimension)
+    for (i, val) in enumerate(set.vals)
+        next_parameter_index!(model)
+        variables[i] = MOI.VariableIndex(model.last_parameter_index_added)
+        model.parameters[variables[i]] = val
+        constraints[i] = MOI.ConstraintIndex{MOI.SingleVariable, Parameter}(model.last_parameter_index_added)
+        update_number_of_parameters!(model)
+    end
+    return variables, constraints
+end
+
 function MOI.add_constraint(model::ParametricOptimizer, f::MOI.SingleVariable, set::MOI.AbstractScalarSet)
     if is_parameter_in_model(model, f.variable)
         error("Cannot constrain a parameter")
@@ -372,7 +413,7 @@ Sets the parameter to a given value, using its `MOI.VariableIndex` as reference.
 
 #Example:
 ```julia-repl
-julia> MOI.set(model, ParameterValue(), w, 2.0)
+julia> MOI.set(model, POI.ParameterValue(), w, 2.0)
 2.0
 ```
 """
