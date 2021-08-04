@@ -144,6 +144,13 @@ end
 
 MOI.supports(model::ParametricOptimizer, attr::MOI.NLPBlock) = MOI.supports(model.optimizer, attr)
 
+function MOI.supports(model::ParametricOptimizer,
+    attr::MOI.VariablePrimalStart,
+    ::Type{T},
+) where T
+    return MOI.supports(model.optimizer, attr, T)
+end
+
 function MOI.empty!(model::ParametricOptimizer{T}) where T
     MOI.empty!(model.optimizer)
     empty!(model.parameters)
