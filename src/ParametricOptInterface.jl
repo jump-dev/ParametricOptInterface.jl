@@ -142,7 +142,44 @@ function MOI.supports(
     return MOI.supports(model.optimizer, attr)
 end
 
+
 MOI.supports(model::ParametricOptimizer, attr::MOI.NLPBlock) = MOI.supports(model.optimizer, attr)
+MOI.supports(model::ParametricOptimizer, attr::MOI.NLPBlockDualStart) = MOI.supports(model.optimizer, attr)
+
+function MOI.set(model::ParametricOptimizer, attr::MOI.NLPBlock, args::MOI.NLPBlockData)
+    return MOI.set(model.optimizer, attr, args)
+end
+
+function MOI.set(
+    model::ParametricOptimizer,
+    attr::MOI.NLPBlockDualStart,
+    values::Union{Nothing,Vector},
+)
+    MOI.set(model.optimizer, attr, values)
+    return
+end
+
+function MOI.get(model::ParametricOptimizer, attr::MOI.NLPBlockDualStart)
+    return MOI.get(model.optimizer, attr)
+end
+
+function MOI.get(model::ParametricOptimizer, attr::MOI.NLPBlockDual)
+    return MOI.get(model.optimizer, attr)
+end
+
+function MOI.set(
+    model::ParametricOptimizer,
+    ::MOI.ObjectiveFunction,
+    func::Union{
+        MOI.SingleVariable,
+        MOI.ScalarAffineFunction,
+        MOI.ScalarQuadraticFunction,
+    },
+)
+    check_inbounds(model, func)
+    model.objective = func
+    return
+end
 
 function MOI.supports(model::ParametricOptimizer,
     attr::MOI.VariablePrimalStart,
@@ -649,8 +686,15 @@ function MOI.set(model::ParametricOptimizer, attr::MOI.ObjectiveFunction, f::MOI
     end
 end
 
-function MOI.copy_to(model::ParametricOptimizer, src::MathOptInterface.ModelLike; kws...)
-    return MOI.copy_to(model.optimizer, src; kws...)
+function MOI.Utilities.supports_default_copy_to(
+    model::ParametricOptimizer,
+    copy_names::Bool,
+)
+    return !copy_names
+end
+
+function MOI.copy_to(dest::ParametricOptimizer, src::MOI.ModelLike; kwargs...)
+    return MOI.Utilities.automatic_copy_to(dest, src; kwargs...)
 end
 
 function MOI.optimize!(model::ParametricOptimizer)
