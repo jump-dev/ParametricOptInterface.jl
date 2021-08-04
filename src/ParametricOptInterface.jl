@@ -201,6 +201,10 @@ function MOI.get(model::ParametricOptimizer, ::MOI.NumberOfVariables)
     return length(model.parameters) + length(model.variables)
 end
 
+function MOI.get(model::ParametricOptimizer, attr::MOI.ListOfConstraints)
+    return MOI.get(model.optimizer, attr)
+end
+
 function MOI.supports(model::ParametricOptimizer, attr::MOI.ConstraintName, tp::Type{<:MOI.ConstraintIndex})
     return MOI.supports(model.optimizer, attr, tp)
 end
