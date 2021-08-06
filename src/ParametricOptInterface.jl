@@ -47,6 +47,7 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
     quadratic_constraint_variables_associated_to_parameters_cache::Dict{MOI.ConstraintIndex, Vector{MOI.ScalarAffineTerm{T}}} 
     quadratic_added_cache::Dict{MOI.ConstraintIndex, MOI.ConstraintIndex} 
     last_quad_add_added::Int
+    conic_constraint_cache_nn::DD.DoubleDict{Vector{MOI.VectorAffineTerm{Float64}}}
     affine_objective_cache::Vector{MOI.ScalarAffineTerm{T}}
     quadratic_objective_cache_pv::Vector{MOI.ScalarQuadraticTerm{T}}
     quadratic_objective_cache_pp::Vector{MOI.ScalarQuadraticTerm{T}}
@@ -72,6 +73,7 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
             Dict{MOI.ConstraintIndex, Vector{MOI.ScalarAffineTerm{Float64}}}(),
             Dict{MOI.ConstraintIndex, MOI.ConstraintIndex}(),
             0,
+            DD.DoubleDict{Vector{MOI.VectorAffineTerm{Float64}}}(),
             Vector{MOI.ScalarAffineTerm{Float64}}(),
             Vector{MOI.ScalarQuadraticTerm{Float64}}(),
             Vector{MOI.ScalarQuadraticTerm{Float64}}(),
@@ -105,6 +107,7 @@ function MOI.is_empty(model::ParametricOptimizer)
     isempty(model.quadratic_constraint_variables_associated_to_parameters_cache) &&
     isempty(model.quadratic_added_cache) &&
     model.last_quad_add_added == 0 &&
+    isempty(model.conic_constraint_cache_nn) &&
     isempty(model.affine_objective_cache) &&
     isempty(model.quadratic_objective_cache_pv) &&
     isempty(model.quadratic_objective_cache_pp) &&
@@ -157,6 +160,7 @@ function MOI.empty!(model::ParametricOptimizer{T}) where T
     empty!(model.quadratic_constraint_variables_associated_to_parameters_cache)
     empty!(model.quadratic_added_cache)
     model.last_quad_add_added = 0
+    empty!(model.conic_constraint_cache_nn)
     empty!(model.affine_objective_cache)
     empty!(model.quadratic_objective_cache_pv)
     empty!(model.quadratic_objective_cache_pp)
@@ -425,11 +429,22 @@ function MOI.set(model::ParametricOptimizer, attr::MOI.ObjectiveSense, sense::MO
     return MOI.set(model.optimizer, attr, sense)
 end
 
+function MOI.get(model::ParametricOptimizer, attr::T, c::MOI.ConstraintIndex) where {
+                                                                                        T <: Union{
+                                                                                                MOI.ConstraintPrimal,
+                                                                                                MOI.ConstraintDual,
+                                                                                                }
+                                                                                    }
+    return MOI.get(model.optimizer, attr, c)
+end
+
 function MOI.get(model::ParametricOptimizer, attr::T) where {
                                                                 T <: Union{
                                                                     MOI.TerminationStatus,
                                                                     MOI.ObjectiveValue,
-                                                                    MOI.PrimalStatus
+                                                                    MOI.DualObjectiveValue,
+                                                                    MOI.PrimalStatus,
+                                                                    MOI.DualStatus,
                                                                     }
                                                             }
     return MOI.get(model.optimizer, attr)
@@ -462,11 +477,18 @@ function MOI.add_constraint(model::ParametricOptimizer, f::MOI.VectorOfVariables
 end
 
 function MOI.add_constraint(model::ParametricOptimizer, f::MOI.VectorAffineFunction{T}, set::MOI.AbstractVectorSet) where T   
-    if function_has_parameters(model, f)
-        error("VectorAffineFunction does not allow parameters")
-    else
+    if !function_has_parameters(model, f)
         return MOI.add_constraint(model.optimizer, f, set)
+    else
+        return add_constraint_with_parameters_on_function(model, f, set)
     end
+end
+
+function add_constraint_with_parameters_on_function(model::ParametricOptimizer, f::MOI.VectorAffineFunction{T}, set::MOI.Nonnegatives) where T  
+    vars, params, param_constants = separate_possible_terms_and_calculate_parameter_constant(model, f)
+    ci = MOI.add_constraint(model.optimizer, MOI.VectorAffineFunction(vars, f.constants + param_constants), set) 
+    model.conic_constraint_cache_nn[ci] = params
+    return ci
 end
 
 function add_constraint_with_parameters_on_function(
