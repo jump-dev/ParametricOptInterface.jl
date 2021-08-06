@@ -527,7 +527,7 @@ function add_constraint_with_parameters_on_function(
     model.last_quad_add_added += 1
     ci = MOIU.normalize_and_add_constraint(model.optimizer, f_quad, set)
     # This part is used to remember that ci came from a quadratic function
-    # It is particularly useful because sometimes
+    # It is particularly useful because sometimes the constraint mutates
     new_ci = MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T}, S}(model.last_quad_add_added)
     model.quadratic_added_cache[new_ci] = ci
 
@@ -540,7 +540,7 @@ function add_constraint_with_parameters_on_function(
         terms_with_variables_associated_to_parameters
     )
 
-    return ci
+    return new_ci
 end
 
 function MOI.add_constraint(model::ParametricOptimizer, f::MOI.ScalarQuadraticFunction{T}, set::MOI.AbstractScalarSet) where T
