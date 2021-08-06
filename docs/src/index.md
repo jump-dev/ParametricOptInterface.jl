@@ -7,11 +7,11 @@ ParametricOptInterface.jl (POI for short) is a package written on top of MathOpt
 
 ## Installation
 
-To install the package you can use `Pkg.add` it as follows:
+To install the package you can use `Pkg.add` as follows:
 ```julia
 pkg> add ParametricOptInterface
 ```
 
 ## Contributing
 
-When contributing please note that the package follows the [JuMP style guide](https://jump.dev/JuMP.jl/stable/style/)
+When contributing please note that the package follows the [JuMP style guide](https://jump.dev/JuMP.jl/stable/developers/style/).
