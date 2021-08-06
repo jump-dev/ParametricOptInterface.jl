@@ -103,17 +103,17 @@ end
 
     @objective(model, Max, 4*x[1] + 3*x[2] + w)
 
-    @test_broken optimize!(model)
+    optimize!(model)
 
-    @test_broken isapprox.(value(x[1]), 4.0/3.0, atol = ATOL)
-    @test_broken isapprox.(value(x[2]), 4.0/3.0, atol = ATOL)
-    @test_broken isapprox.(value(y), 0, atol = ATOL)
+    @test isapprox.(value(x[1]), 4.0/3.0, atol = ATOL)
+    @test isapprox.(value(x[2]), 4.0/3.0, atol = ATOL)
+    @test isapprox.(value(y), 0, atol = ATOL)
 
     # ===== Set parameter value =====
     MOI.set(model, POI.ParameterValue(), y, 2.0)
-    @test_broken optimize!(model)
+    optimize!(model)
 
-    @test_broken isapprox.(value(x[1]), 0.0, atol = ATOL)
-    @test_broken isapprox.(value(x[2]), 2.0, atol = ATOL)
-    @test_broken isapprox.(value(y), 2.0, atol = ATOL)
+    @test isapprox.(value(x[1]), 0.0, atol = ATOL)
+    @test isapprox.(value(x[2]), 2.0, atol = ATOL)
+    @test isapprox.(value(y), 2.0, atol = ATOL)
 end
