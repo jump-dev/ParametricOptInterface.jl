@@ -52,7 +52,7 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
     quadratic_objective_cache_pp::Vector{MOI.ScalarQuadraticTerm{T}}
     quadratic_objective_cache_pc::Vector{MOI.ScalarAffineTerm{T}}
     quadratic_objective_variables_associated_to_parameters_cache::Vector{MOI.ScalarAffineTerm{T}}
-    multiplicative_parameters::BitSet
+    multiplicative_parameters::Set{Int64}
     dual_value_of_parameters::Vector{Float64}
     evaluate_duals::Bool
     number_of_parameters_in_model::Int64
@@ -77,7 +77,7 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
             Vector{MOI.ScalarQuadraticTerm{Float64}}(),
             Vector{MOI.ScalarAffineTerm{Float64}}(),
             Vector{MOI.ScalarAffineTerm{Float64}}(),
-            BitSet(),
+            Set{Int64}(),
             Vector{Float64}(),
             evaluate_duals,
             0
