@@ -38,15 +38,15 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
     parameters_name::Dict{MOI.VariableIndex, String}
     updated_parameters::Dict{MOI.VariableIndex, T}
     variables::Dict{MOI.VariableIndex, MOI.VariableIndex}
-    last_variable_index_added::Int
-    last_parameter_index_added::Int
+    last_variable_index_added::Int64
+    last_parameter_index_added::Int64
     affine_constraint_cache::DD.DoubleDict{Vector{MOI.ScalarAffineTerm{Float64}}}
     quadratic_constraint_cache_pv::Dict{MOI.ConstraintIndex, Vector{MOI.ScalarQuadraticTerm{Float64}}}
     quadratic_constraint_cache_pp::Dict{MOI.ConstraintIndex, Vector{MOI.ScalarQuadraticTerm{Float64}}}
     quadratic_constraint_cache_pc::DD.DoubleDict{Vector{MOI.ScalarAffineTerm{Float64}}}
     quadratic_constraint_variables_associated_to_parameters_cache::Dict{MOI.ConstraintIndex, Vector{MOI.ScalarAffineTerm{T}}} 
     quadratic_added_cache::Dict{MOI.ConstraintIndex, MOI.ConstraintIndex} 
-    last_quad_add_added::Int
+    last_quad_add_added::Int64
     affine_objective_cache::Vector{MOI.ScalarAffineTerm{T}}
     quadratic_objective_cache_pv::Vector{MOI.ScalarQuadraticTerm{T}}
     quadratic_objective_cache_pp::Vector{MOI.ScalarQuadraticTerm{T}}
@@ -55,7 +55,7 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
     multiplicative_parameters::BitSet
     dual_value_of_parameters::Vector{Float64}
     evaluate_duals::Bool
-    number_of_parameters_in_model::Int
+    number_of_parameters_in_model::Int64
     function ParametricOptimizer(optimizer::OT; evaluate_duals::Bool=true) where OT
         new{Float64, OT}(
             optimizer,
