@@ -202,8 +202,7 @@ end
     @variable(model, y)
     @variable(model, t)
     @variable(model, p in POI.Parameter(0))
-    # TODO
-    # How to add a constraint like t - 1 in Zeros(1)
+
     @constraint(model, [y - 1 / √2] in MOI.Nonnegatives(1))
     @constraint(model, [t - 1] in MOI.Zeros(1))
     @constraint(model, [t, (x - p), y...] in SecondOrderCone())
