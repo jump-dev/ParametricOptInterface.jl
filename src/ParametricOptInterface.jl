@@ -7,6 +7,7 @@ const DD = MOIU.DoubleDicts
 const POI = ParametricOptInterface
 const PARAMETER_INDEX_THRESHOLD = 1_000_000_000_000_000_000
 const SUPPORTED_SETS = [MOI.LessThan{Float64}, MOI.EqualTo{Float64}, MOI.GreaterThan{Float64}]
+const SUPPORTED_VECTOR_SETS = [MOI.Nonnegatives, MOI.SecondOrderCone]
 
 """
     Parameter(Float64)
@@ -47,8 +48,7 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
     quadratic_constraint_variables_associated_to_parameters_cache::Dict{MOI.ConstraintIndex, Vector{MOI.ScalarAffineTerm{T}}} 
     quadratic_added_cache::Dict{MOI.ConstraintIndex, MOI.ConstraintIndex} 
     last_quad_add_added::Int
-    conic_constraint_cache_nn::DD.DoubleDict{Vector{MOI.VectorAffineTerm{Float64}}}
-    conic_constraint_cache_soc::DD.DoubleDict{Vector{MOI.VectorAffineTerm{Float64}}}
+    vector_constraint_cache::DD.DoubleDict{Vector{MOI.VectorAffineTerm{Float64}}}
     affine_objective_cache::Vector{MOI.ScalarAffineTerm{T}}
     quadratic_objective_cache_pv::Vector{MOI.ScalarQuadraticTerm{T}}
     quadratic_objective_cache_pp::Vector{MOI.ScalarQuadraticTerm{T}}
@@ -74,7 +74,6 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
             Dict{MOI.ConstraintIndex, Vector{MOI.ScalarAffineTerm{Float64}}}(),
             Dict{MOI.ConstraintIndex, MOI.ConstraintIndex}(),
             0,
-            DD.DoubleDict{Vector{MOI.VectorAffineTerm{Float64}}}(),
             DD.DoubleDict{Vector{MOI.VectorAffineTerm{Float64}}}(),
             Vector{MOI.ScalarAffineTerm{Float64}}(),
             Vector{MOI.ScalarQuadraticTerm{Float64}}(),
@@ -109,8 +108,7 @@ function MOI.is_empty(model::ParametricOptimizer)
     isempty(model.quadratic_constraint_variables_associated_to_parameters_cache) &&
     isempty(model.quadratic_added_cache) &&
     model.last_quad_add_added == 0 &&
-    isempty(model.conic_constraint_cache_nn) &&
-    isempty(model.conic_constraint_cache_soc) &&
+    isempty(model.vector_constraint_cache) &&
     isempty(model.affine_objective_cache) &&
     isempty(model.quadratic_objective_cache_pv) &&
     isempty(model.quadratic_objective_cache_pp) &&
@@ -163,8 +161,7 @@ function MOI.empty!(model::ParametricOptimizer{T}) where T
     empty!(model.quadratic_constraint_variables_associated_to_parameters_cache)
     empty!(model.quadratic_added_cache)
     model.last_quad_add_added = 0
-    empty!(model.conic_constraint_cache_nn)
-    empty!(model.conic_constraint_cache_soc)
+    empty!(model.vector_constraint_cache)
     empty!(model.affine_objective_cache)
     empty!(model.quadratic_objective_cache_pv)
     empty!(model.quadratic_objective_cache_pp)
@@ -488,17 +485,10 @@ function MOI.add_constraint(model::ParametricOptimizer, f::MOI.VectorAffineFunct
     end
 end
 
-function add_constraint_with_parameters_on_function(model::ParametricOptimizer, f::MOI.VectorAffineFunction{T}, set::MOI.Nonnegatives) where T  
+function add_constraint_with_parameters_on_function(model::ParametricOptimizer, f::MOI.VectorAffineFunction{T}, set::MOI.AbstractVectorSet) where T  
     vars, params, param_constants = separate_possible_terms_and_calculate_parameter_constant(model, f, set)
     ci = MOI.add_constraint(model.optimizer, MOI.VectorAffineFunction(vars, f.constants + param_constants), set) 
-    model.conic_constraint_cache_nn[ci] = params
-    return ci
-end
-
-function add_constraint_with_parameters_on_function(model::ParametricOptimizer, f::MOI.VectorAffineFunction{T}, set::MOI.SecondOrderCone) where T  
-    vars, params, param_constants = separate_possible_terms_and_calculate_parameter_constant(model, f, set)
-    ci = MOI.add_constraint(model.optimizer, MOI.VectorAffineFunction(vars, f.constants + param_constants), set) 
-    model.conic_constraint_cache_soc[ci] = params
+    model.vector_constraint_cache[ci] = params
     return ci
 end
 

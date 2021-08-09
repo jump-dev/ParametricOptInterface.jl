@@ -171,7 +171,7 @@ function fill_quadratic_constraint_caches!(
     return nothing
 end
 
-# Conic
+# Vector Affine
 function separate_possible_terms_and_calculate_parameter_constant(model::ParametricOptimizer, f::MOI.VectorAffineFunction{T}, ::MOI.Nonnegatives) where T
     vars = MOI.VectorAffineTerm{T}[]
     params = MOI.VectorAffineTerm{T}[]

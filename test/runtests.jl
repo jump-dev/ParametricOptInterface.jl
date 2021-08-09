@@ -15,6 +15,6 @@ const ATOL = 1e-4
 include("production_problem_test.jl")
 include("basic_tests.jl")
 include("quad_tests.jl")
-include("conic_tests.jl")
+include("vector_affine_tests.jl")
 include("jump_tests.jl")
 

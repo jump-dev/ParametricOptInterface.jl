@@ -1,4 +1,4 @@
-@testset "CONIC - Nonnegatives - Parameter in affine part" begin
+@testset "Vector Constraints - Nonnegatives - Parameter in affine part" begin
     """
         min x + y
             x - t + 1 >= 0
@@ -55,7 +55,7 @@
     @test MOI.get(model, MOI.ObjectiveValue()) ≈ 9 atol = ATOL
 end
 
-@testset "JuMP direct model - CONIC - Nonnegatives - Parameter in affine part" begin
+@testset "JuMP direct model - Vector Constraints - Nonnegatives - Parameter in affine part" begin
     """
         min x + y
             x - t + 1 >= 0
@@ -88,7 +88,7 @@ end
     @test isapprox.(value(y), 4.0, atol = ATOL)
 end
 
-@testset "CONIC - SOC - Parameter in affine part" begin
+@testset "Vector Constraints - SOC - Parameter in affine part" begin
     """
         Problem SOC2 from MOI
 
@@ -165,7 +165,7 @@ end
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1 - 1/√2 atol = ATOL
 end
 
-# @testset "JuMP direct model - CONIC - SOC - Parameter in affine part" begin
+# @testset "JuMP direct model - Vector Constraints - SOC - Parameter in affine part" begin
 #     """
 #         Problem SOC2 from MOI
 
