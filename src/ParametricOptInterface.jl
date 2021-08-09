@@ -55,6 +55,7 @@ mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimi
     quadratic_constraint_variables_associated_to_parameters_cache::Dict{MOI.ConstraintIndex, Vector{MOI.ScalarAffineTerm{T}}} 
     quadratic_added_cache::Dict{MOI.ConstraintIndex, MOI.ConstraintIndex} 
     last_quad_add_added::Int64
+    vector_constraint_cache::DD.DoubleDict{Vector{MOI.VectorAffineTerm{Float64}}}
     affine_objective_cache::Vector{MOI.ScalarAffineTerm{T}}
     quadratic_objective_cache_pv::Vector{MOI.ScalarQuadraticTerm{T}}
     quadratic_objective_cache_pp::Vector{MOI.ScalarQuadraticTerm{T}}

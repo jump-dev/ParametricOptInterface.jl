@@ -116,3 +116,4 @@ end
     @test isapprox.(value(x[1]), 0.0, atol = ATOL)
     @test isapprox.(value(x[2]), 2.0, atol = ATOL)
     @test isapprox.(value(y), 2.0, atol = ATOL)
+end
