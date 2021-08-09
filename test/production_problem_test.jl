@@ -1,6 +1,6 @@
 @testset "Production Problem" begin
     optimizer = POI.ParametricOptimizer(GLPK.Optimizer())
-    
+
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 1.0]
     A2 = [1.0, 2.0, 1.0]
@@ -30,7 +30,10 @@
     @test cons1.terms[1].coefficient == 2
     @test POI.is_parameter_in_model(optimizer, cons2.terms[3].variable_index)
 
-    obj_func = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([c[1], c[2], 3.0], [x[1], x[2], w]), 0.0)
+    obj_func = MOI.ScalarAffineFunction(
+        MOI.ScalarAffineTerm.([c[1], c[2], 3.0], [x[1], x[2], w]),
+        0.0,
+    )
     MOI.set(optimizer, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(), obj_func)
     MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
 
@@ -40,12 +43,12 @@
 
     MOI.get(optimizer, MOI.PrimalStatus())
 
-    @test isapprox.(MOI.get(optimizer, MOI.ObjectiveValue()), 28/3, atol = ATOL)
-    @test isapprox.(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 4/3, atol = ATOL)
-    @test isapprox.(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 4/3, atol = ATOL)
+    @test isapprox.(MOI.get(optimizer, MOI.ObjectiveValue()), 28 / 3, atol = ATOL)
+    @test isapprox.(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 4 / 3, atol = ATOL)
+    @test isapprox.(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 4 / 3, atol = ATOL)
 
-    @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cy), -5/3, atol = ATOL)
-    @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cz), -2/3, atol = ATOL)
+    @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cy), -5 / 3, atol = ATOL)
+    @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cz), -2 / 3, atol = ATOL)
     @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cw), 3.0, atol = ATOL)
 
     MOI.get(optimizer, MOI.VariablePrimal(), w)
@@ -61,16 +64,16 @@
     @test MOI.get(optimizer, MOI.VariablePrimal(), w) == 2.0
     @test MOI.get(optimizer, MOI.VariablePrimal(), y) == 1.0
     @test MOI.get(optimizer, MOI.VariablePrimal(), z) == 1.0
-    
+
     @test isapprox.(MOI.get(optimizer, MOI.ObjectiveValue()), 13.0, atol = ATOL)
     @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [1.0, 1.0]
 
-    @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cy), -5/3, atol = ATOL)
-    @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cz), -2/3, atol = ATOL)
+    @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cy), -5 / 3, atol = ATOL)
+    @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cz), -2 / 3, atol = ATOL)
     @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cw), 3.0, atol = ATOL)
 
     MOI.set(optimizer, MOI.ConstraintSet(), cw, POI.Parameter(0.0))
-    
+
     MOI.optimize!(optimizer)
 
     @test MOI.get(optimizer, MOI.VariablePrimal(), w) == 0.0
@@ -87,13 +90,13 @@
 
     @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cy), 0, atol = ATOL)
     @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cz), -4, atol = ATOL)
-   
+
 end
 
 
 @testset "Production Problem variation on parameters for duals" begin
     optimizer = POI.ParametricOptimizer(GLPK.Optimizer())
-    
+
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 3.0]
     A2 = [1.0, 2.0, 0.5]
@@ -123,7 +126,10 @@ end
     @test cons1.terms[1].coefficient == 2
     @test POI.is_parameter_in_model(optimizer, cons2.terms[3].variable_index)
 
-    obj_func = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([c[1], c[2], 2.0], [x[1], x[2], w]), 0.0)
+    obj_func = MOI.ScalarAffineFunction(
+        MOI.ScalarAffineTerm.([c[1], c[2], 2.0], [x[1], x[2], w]),
+        0.0,
+    )
     MOI.set(optimizer, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(), obj_func)
     MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
 
@@ -133,16 +139,24 @@ end
 
     MOI.get(optimizer, MOI.PrimalStatus())
 
-    @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 28/3, atol = ATOL)
-    @test isapprox(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 4/3, atol = ATOL)
-    @test isapprox(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 4/3, atol = ATOL)
+    @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 28 / 3, atol = ATOL)
+    @test isapprox(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 4 / 3, atol = ATOL)
+    @test isapprox(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 4 / 3, atol = ATOL)
 
     @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cy), -5, atol = ATOL)
-    @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cz), -2/6, atol = ATOL)
+    @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cz), -2 / 6, atol = ATOL)
     @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cw), 2.0, atol = ATOL)
 
-    @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cy), 3*MOI.get(optimizer, MOI.ConstraintDual(), ci1), atol = 1e-4)
-    @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cz), 0.5*MOI.get(optimizer, MOI.ConstraintDual(), ci2), atol = 1e-4)
+    @test isapprox(
+        MOI.get(optimizer, MOI.ConstraintDual(), cy),
+        3 * MOI.get(optimizer, MOI.ConstraintDual(), ci1),
+        atol = 1e-4,
+    )
+    @test isapprox(
+        MOI.get(optimizer, MOI.ConstraintDual(), cz),
+        0.5 * MOI.get(optimizer, MOI.ConstraintDual(), ci2),
+        atol = 1e-4,
+    )
 
     MOI.set(optimizer, MOI.ConstraintSet(), cw, POI.Parameter(2.0))
     MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(1.0))
@@ -158,7 +172,7 @@ end
     @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cw), 2.0, atol = ATOL)
 
     MOI.set(optimizer, MOI.ConstraintSet(), cw, POI.Parameter(0.0))
-    
+
     MOI.optimize!(optimizer)
 
     @test isapprox.(MOI.get(optimizer, MOI.ObjectiveValue()), 3.0, atol = ATOL)
@@ -172,9 +186,9 @@ end
     MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(-5.0))
     MOI.optimize!(optimizer)
     @test isapprox.(MOI.get(optimizer, MOI.ObjectiveValue()), 14.0, atol = ATOL)
-    @test isapprox(MOI.get.(optimizer, MOI.VariablePrimal(), x),[3.5, 0.0], atol = ATOL)
+    @test isapprox(MOI.get.(optimizer, MOI.VariablePrimal(), x), [3.5, 0.0], atol = ATOL)
 
     @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cy), 0, atol = ATOL)
     @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cz), -2, atol = ATOL)
-   
+
 end

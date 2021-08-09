@@ -1,4 +1,4 @@
-using Test 
+using Test
 using ParametricOptInterface
 using MathOptInterface
 using GLPK
