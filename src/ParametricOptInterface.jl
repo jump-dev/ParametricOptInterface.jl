@@ -34,14 +34,14 @@ julia> ParametricOptInterface.ParametricOptimizer(GLPK.Optimizer())
 ParametricOptInterface.ParametricOptimizer{Float64,GLPK.Optimizer}
 ```
 """
-mutable struct ParametricOptimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
-    optimizer::OT
-    parameters::Dict{MOI.VariableIndex,T}
-    parameters_name::Dict{MOI.VariableIndex,String}
-    updated_parameters::Dict{MOI.VariableIndex,T}
-    variables::Dict{MOI.VariableIndex,MOI.VariableIndex}
-    last_variable_index_added::Int
-    last_parameter_index_added::Int
+mutable struct ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimizer
+    optimizer::OT 
+    parameters::Dict{MOI.VariableIndex, T}
+    parameters_name::Dict{MOI.VariableIndex, String}
+    updated_parameters::Dict{MOI.VariableIndex, T}
+    variables::Dict{MOI.VariableIndex, MOI.VariableIndex}
+    last_variable_index_added::Int64
+    last_parameter_index_added::Int64
     affine_constraint_cache::DD.DoubleDict{Vector{MOI.ScalarAffineTerm{Float64}}}
     quadratic_constraint_cache_pv::Dict{
         MOI.ConstraintIndex,
@@ -52,26 +52,20 @@ mutable struct ParametricOptimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
         Vector{MOI.ScalarQuadraticTerm{Float64}},
     }
     quadratic_constraint_cache_pc::DD.DoubleDict{Vector{MOI.ScalarAffineTerm{Float64}}}
-    quadratic_constraint_variables_associated_to_parameters_cache::Dict{
-        MOI.ConstraintIndex,
-        Vector{MOI.ScalarAffineTerm{T}},
-    }
-    quadratic_added_cache::Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}
-    last_quad_add_added::Int
-    vector_constraint_cache::DD.DoubleDict{Vector{MOI.VectorAffineTerm{Float64}}}
+    quadratic_constraint_variables_associated_to_parameters_cache::Dict{MOI.ConstraintIndex, Vector{MOI.ScalarAffineTerm{T}}} 
+    quadratic_added_cache::Dict{MOI.ConstraintIndex, MOI.ConstraintIndex} 
+    last_quad_add_added::Int64
     affine_objective_cache::Vector{MOI.ScalarAffineTerm{T}}
     quadratic_objective_cache_pv::Vector{MOI.ScalarQuadraticTerm{T}}
     quadratic_objective_cache_pp::Vector{MOI.ScalarQuadraticTerm{T}}
     quadratic_objective_cache_pc::Vector{MOI.ScalarAffineTerm{T}}
-    quadratic_objective_variables_associated_to_parameters_cache::Vector{
-        MOI.ScalarAffineTerm{T},
-    }
-    multiplicative_parameters::BitSet
+    quadratic_objective_variables_associated_to_parameters_cache::Vector{MOI.ScalarAffineTerm{T}}
+    multiplicative_parameters::Set{Int64}
     dual_value_of_parameters::Vector{Float64}
     evaluate_duals::Bool
-    number_of_parameters_in_model::Int
-    function ParametricOptimizer(optimizer::OT; evaluate_duals::Bool = true) where {OT}
-        new{Float64,OT}(
+    number_of_parameters_in_model::Int64
+    function ParametricOptimizer(optimizer::OT; evaluate_duals::Bool=true) where OT
+        new{Float64, OT}(
             optimizer,
             Dict{MOI.VariableIndex,Float64}(),
             Dict{MOI.VariableIndex,String}(),
@@ -92,7 +86,7 @@ mutable struct ParametricOptimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             Vector{MOI.ScalarQuadraticTerm{Float64}}(),
             Vector{MOI.ScalarAffineTerm{Float64}}(),
             Vector{MOI.ScalarAffineTerm{Float64}}(),
-            BitSet(),
+            Set{Int64}(),
             Vector{Float64}(),
             evaluate_duals,
             0,
@@ -666,9 +660,8 @@ function add_constraint_with_parameters_on_function(
     model.last_quad_add_added += 1
     ci = MOIU.normalize_and_add_constraint(model.optimizer, f_quad, set)
     # This part is used to remember that ci came from a quadratic function
-    # It is particularly useful because sometimes
-    new_ci =
-        MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},S}(model.last_quad_add_added)
+    # It is particularly useful because sometimes the constraint mutates
+    new_ci = MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T}, S}(model.last_quad_add_added)
     model.quadratic_added_cache[new_ci] = ci
 
     fill_quadratic_constraint_caches!(
@@ -680,7 +673,7 @@ function add_constraint_with_parameters_on_function(
         terms_with_variables_associated_to_parameters,
     )
 
-    return ci
+    return new_ci
 end
 
 function MOI.add_constraint(

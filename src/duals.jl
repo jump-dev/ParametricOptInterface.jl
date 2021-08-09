@@ -130,8 +130,8 @@ end
 
 struct ParameterDual <: MOI.AbstractVariableAttribute end
 
-function MOI.get(model::ParametricOptimizer, ::ParameterDual, vi_val::Int)
-    if !is_additive(model, MOI.ConstraintIndex{MOI.SingleVariable,Parameter}(vi_val))
+function MOI.get(model::ParametricOptimizer, ::ParameterDual, vi_val::Int64)
+    if !is_additive(model, MOI.ConstraintIndex{MOI.SingleVariable, Parameter}(vi_val))
         error("Cannot calculate the dual of a multiplicative parameter")
     end
     return model.dual_value_of_parameters[vi_val-PARAMETER_INDEX_THRESHOLD]
