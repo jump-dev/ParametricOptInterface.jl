@@ -1,4 +1,4 @@
-using Test 
+using Test
 using ParametricOptInterface
 using MathOptInterface
 using GLPK
@@ -15,4 +15,3 @@ include("production_problem_test.jl")
 include("basic_tests.jl")
 include("quad_tests.jl")
 include("jump_tests.jl")
-
