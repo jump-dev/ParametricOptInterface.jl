@@ -17,4 +17,3 @@ include("basic_tests.jl")
 include("quad_tests.jl")
 include("vector_affine_tests.jl")
 include("jump_tests.jl")
-

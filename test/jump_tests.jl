@@ -105,8 +105,8 @@ end
 
     optimize!(model)
 
-    @test isapprox.(value(x[1]), 4.0/3.0, atol = ATOL)
-    @test isapprox.(value(x[2]), 4.0/3.0, atol = ATOL)
+    @test isapprox.(value(x[1]), 4.0 / 3.0, atol = ATOL)
+    @test isapprox.(value(x[2]), 4.0 / 3.0, atol = ATOL)
     @test isapprox.(value(y), 0, atol = ATOL)
 
     # ===== Set parameter value =====

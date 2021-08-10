@@ -56,8 +56,10 @@ function update_parameter_in_affine_constraints!(
     for term in param_array
         if haskey(updated_parameters, term.variable_index) # TODO This haskey can be slow
             param_constant +=
-                term.coefficient *
-                (updated_parameters[term.variable_index] - parameters[term.variable_index])
+                term.coefficient * (
+                    updated_parameters[term.variable_index] -
+                    parameters[term.variable_index]
+                )
         end
     end
     if param_constant != 0
@@ -82,15 +84,19 @@ function update_parameters_in_affine_objective!(model::ParametricOptimizer)
         if objective_constant != 0
             F = MOI.get(model.optimizer, MOI.ObjectiveFunctionType())
             f = MOI.get(model.optimizer, MOI.ObjectiveFunction{F}())
-            fvar = MOI.ScalarAffineFunction(f.terms, f.constant + objective_constant)
+            fvar = MOI.ScalarAffineFunction(
+                f.terms,
+                f.constant + objective_constant,
+            )
             MOI.set(model.optimizer, MOI.ObjectiveFunction{F}(), fvar)
         end
     end
     return model
 end
 
-# Quadratic
-function update_parameter_in_quadratic_constraints_pc!(model::ParametricOptimizer)
+function update_parameter_in_quadratic_constraints_pc!(
+    model::ParametricOptimizer,
+)
     for (ci, fparam) in model.quadratic_constraint_cache_pc
         param_constant = 0
         for j in fparam
@@ -151,7 +157,9 @@ function update_parameter_in_quadratic_objective_pc!(model::ParametricOptimizer)
     return model
 end
 
-function update_parameter_in_quadratic_constraints_pp!(model::ParametricOptimizer)
+function update_parameter_in_quadratic_constraints_pp!(
+    model::ParametricOptimizer,
+)
     for (ci, fparam) in model.quadratic_constraint_cache_pp
         param_constant = 0
         for j in fparam
@@ -168,12 +176,14 @@ function update_parameter_in_quadratic_constraints_pp!(model::ParametricOptimize
                 param_new_1 = model.updated_parameters[j.variable_index_1]
                 param_old_1 = model.parameters[j.variable_index_1]
                 param_old_2 = model.parameters[j.variable_index_2]
-                param_constant += j.coefficient * param_old_2 * (param_new_1 - param_old_1)
+                param_constant +=
+                    j.coefficient * param_old_2 * (param_new_1 - param_old_1)
             elseif haskey(model.updated_parameters, j.variable_index_2)
                 param_new_2 = model.updated_parameters[j.variable_index_2]
                 param_old_1 = model.parameters[j.variable_index_1]
                 param_old_2 = model.parameters[j.variable_index_2]
-                param_constant += j.coefficient * param_old_1 * (param_new_2 - param_old_2)
+                param_constant +=
+                    j.coefficient * param_old_1 * (param_new_2 - param_old_2)
             end
         end
         if param_constant != 0
@@ -325,15 +335,18 @@ function update_parameters!(model::ParametricOptimizer)
                 coef = j.coefficient
                 param_new = model.updated_parameters[j.variable_index_1]
                 if haskey(constraint_aux_dict, (ci, j.variable_index_2))
-                    constraint_aux_dict[(ci, j.variable_index_2)] += param_new * coef
+                    constraint_aux_dict[(ci, j.variable_index_2)] +=
+                        param_new * coef
                 else
-                    constraint_aux_dict[(ci, j.variable_index_2)] = param_new * coef
+                    constraint_aux_dict[(ci, j.variable_index_2)] =
+                        param_new * coef
                 end
             end
         end
     end
 
-    for (ci, fparam) in model.quadratic_constraint_variables_associated_to_parameters_cache
+    for (ci, fparam) in
+        model.quadratic_constraint_variables_associated_to_parameters_cache
         for j in fparam
             coef = j.coefficient
             if haskey(constraint_aux_dict, (ci, j.variable_index))#
@@ -346,7 +359,11 @@ function update_parameters!(model::ParametricOptimizer)
 
     for ((ci, vi), value) in constraint_aux_dict
         old_ci = model.quadratic_added_cache[ci]
-        MOI.modify(model.optimizer, old_ci, MOI.ScalarCoefficientChange(vi, value))
+        MOI.modify(
+            model.optimizer,
+            old_ci,
+            MOI.ScalarCoefficientChange(vi, value),
+        )
     end
 
     objective_aux_dict = Dict{Any,Any}()

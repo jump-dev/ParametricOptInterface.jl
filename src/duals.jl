@@ -6,7 +6,10 @@ function calculate_dual_of_parameters(model::ParametricOptimizer)
     param_dual_cum_sum = create_param_dual_cum_sum(model)
     update_duals_with_affine_constraint_cache!(param_dual_cum_sum, model)
     update_duals_with_quadratic_constraint_cache!(param_dual_cum_sum, model)
-    update_duals_in_affine_objective!(param_dual_cum_sum, model.affine_objective_cache)
+    update_duals_in_affine_objective!(
+        param_dual_cum_sum,
+        model.affine_objective_cache,
+    )
     update_duals_in_quadratic_objective!(
         param_dual_cum_sum,
         model.quadratic_objective_cache_pc,
@@ -39,7 +42,12 @@ function update_duals_with_affine_constraint_cache!(
     affine_constraint_cache_inner::DD.WithType{F,S},
 ) where {OT,F,S}
     for (ci, param_array) in affine_constraint_cache_inner
-        calculate_parameters_in_ci!(param_dual_cum_sum, optimizer, param_array, ci)
+        calculate_parameters_in_ci!(
+            param_dual_cum_sum,
+            optimizer,
+            param_array,
+            ci,
+        )
     end
     return
 end
@@ -50,7 +58,10 @@ function update_duals_with_quadratic_constraint_cache!(
 )
     for S in SUPPORTED_SETS
         quadratic_constraint_cache_pc_inner =
-            model.quadratic_constraint_cache_pc[MOI.ScalarQuadraticFunction{Float64}, S]
+            model.quadratic_constraint_cache_pc[
+                MOI.ScalarQuadraticFunction{Float64},
+                S,
+            ]
         if !isempty(quadratic_constraint_cache_pc_inner)
             update_duals_with_quadratic_constraint_cache!(
                 param_dual_cum_sum,
@@ -131,7 +142,10 @@ end
 struct ParameterDual <: MOI.AbstractVariableAttribute end
 
 function MOI.get(model::ParametricOptimizer, ::ParameterDual, vi_val::Int64)
-    if !is_additive(model, MOI.ConstraintIndex{MOI.SingleVariable, Parameter}(vi_val))
+    if !is_additive(
+        model,
+        MOI.ConstraintIndex{MOI.SingleVariable,Parameter}(vi_val),
+    )
         error("Cannot calculate the dual of a multiplicative parameter")
     end
     return model.dual_value_of_parameters[vi_val-PARAMETER_INDEX_THRESHOLD]

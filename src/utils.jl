@@ -1,10 +1,17 @@
-next_variable_index!(model::ParametricOptimizer) = model.last_variable_index_added += 1
-next_parameter_index!(model::ParametricOptimizer) = model.last_parameter_index_added += 1
-update_number_of_parameters!(model::ParametricOptimizer) =
-    model.number_of_parameters_in_model += 1
+function next_variable_index!(model::ParametricOptimizer)
+    return model.last_variable_index_added += 1
+end
+function next_parameter_index!(model::ParametricOptimizer)
+    return model.last_parameter_index_added += 1
+end
+function update_number_of_parameters!(model::ParametricOptimizer)
+    return model.number_of_parameters_in_model += 1
+end
 
 function is_parameter_in_model(model::ParametricOptimizer, v::MOI.VariableIndex)
-    return PARAMETER_INDEX_THRESHOLD < v.value <= model.last_parameter_index_added
+    return PARAMETER_INDEX_THRESHOLD <
+           v.value <=
+           model.last_parameter_index_added
 end
 
 function is_variable_in_model(model::ParametricOptimizer, v::MOI.VariableIndex)
@@ -22,7 +29,10 @@ function function_has_parameters(
     end
     return false
 end
-function function_has_parameters(model::ParametricOptimizer, f::MOI.VectorOfVariables)
+function function_has_parameters(
+    model::ParametricOptimizer,
+    f::MOI.VectorOfVariables,
+)
     for variable in f.variables
         if is_parameter_in_model(model, variable)
             return true
@@ -85,7 +95,8 @@ function separate_possible_terms_and_calculate_parameter_constant(
             push!(vars, term)
         elseif is_parameter_in_model(model, term.variable_index)
             push!(params, term)
-            param_constant += term.coefficient * model.parameters[term.variable_index]
+            param_constant +=
+                term.coefficient * model.parameters[term.variable_index]
         else
             error("Constraint uses a variable that is not in the model")
         end
@@ -111,12 +122,16 @@ function separate_possible_terms_and_calculate_parameter_constant(
             end
         elseif is_parameter_in_model(model, term.variable_index)
             push!(params, term)
-            param_constant += term.coefficient * model.parameters[term.variable_index]
+            param_constant +=
+                term.coefficient * model.parameters[term.variable_index]
         else
             error("Constraint uses a variable that is not in the model")
         end
     end
-    return vars, params, terms_with_variables_associated_to_parameters, param_constant
+    return vars,
+    params,
+    terms_with_variables_associated_to_parameters,
+    param_constant
 end
 function separate_possible_terms_and_calculate_parameter_constant(
     model::ParametricOptimizer,
@@ -210,7 +225,9 @@ function fill_quadratic_constraint_caches!(
     quad_aff_vars::Vector{MOI.ScalarQuadraticTerm{T}},
     quad_params::Vector{MOI.ScalarQuadraticTerm{T}},
     aff_params::Vector{MOI.ScalarAffineTerm{T}},
-    terms_with_variables_associated_to_parameters::Vector{MOI.ScalarAffineTerm{T}},
+    terms_with_variables_associated_to_parameters::Vector{
+        MOI.ScalarAffineTerm{T},
+    },
 ) where {T}
     if !isempty(quad_aff_vars)
         model.quadratic_constraint_cache_pv[new_ci] = quad_aff_vars
