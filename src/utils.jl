@@ -18,6 +18,10 @@ function is_variable_in_model(model::ParametricOptimizer, v::MOI.VariableIndex)
     return 0 < v.value <= model.last_variable_index_added
 end
 
+function has_quadratic_constraint_caches(model::ParametricOptimizer)
+    return !isempty(model.quadratic_added_cache)
+end
+
 function function_has_parameters(
     model::ParametricOptimizer,
     f::MOI.ScalarAffineFunction{T},
@@ -29,6 +33,7 @@ function function_has_parameters(
     end
     return false
 end
+
 function function_has_parameters(
     model::ParametricOptimizer,
     f::MOI.VectorOfVariables,
@@ -40,6 +45,7 @@ function function_has_parameters(
     end
     return false
 end
+
 function function_has_parameters(
     model::ParametricOptimizer,
     f::MOI.VectorAffineFunction{T},
@@ -51,6 +57,7 @@ function function_has_parameters(
     end
     return false
 end
+
 function function_has_parameters(
     model::ParametricOptimizer,
     f::MOI.ScalarQuadraticFunction{T},
@@ -58,6 +65,7 @@ function function_has_parameters(
     return function_affine_terms_has_parameters(model, f.affine_terms) ||
            function_quadratic_terms_has_parameters(model, f.quadratic_terms)
 end
+
 function function_affine_terms_has_parameters(
     model::ParametricOptimizer,
     affine_terms::Vector{MOI.ScalarAffineTerm{T}},
@@ -69,6 +77,7 @@ function function_affine_terms_has_parameters(
     end
     return false
 end
+
 function function_quadratic_terms_has_parameters(
     model::ParametricOptimizer,
     quadratic_terms::Vector{MOI.ScalarQuadraticTerm{T}},
@@ -103,6 +112,7 @@ function separate_possible_terms_and_calculate_parameter_constant(
     end
     return vars, params, param_constant
 end
+
 # This version is used on SQFs
 function separate_possible_terms_and_calculate_parameter_constant(
     model::ParametricOptimizer,
@@ -133,12 +143,13 @@ function separate_possible_terms_and_calculate_parameter_constant(
     terms_with_variables_associated_to_parameters,
     param_constant
 end
+
 function separate_possible_terms_and_calculate_parameter_constant(
     model::ParametricOptimizer,
     terms::Vector{MOI.ScalarQuadraticTerm{T}},
 ) where {T}
     quad_params = MOI.ScalarQuadraticTerm{T}[] # parameter x parameter
-    quad_aff_vars = MOI.ScalarQuadraticTerm{T}[] # parameter x variable 
+    quad_aff_vars = MOI.ScalarQuadraticTerm{T}[] # parameter x variable
     quad_vars = MOI.ScalarQuadraticTerm{T}[] # variable x variable
     aff_terms = MOI.ScalarAffineTerm{T}[]
     variables_associated_to_parameters = MOI.VariableIndex[]
@@ -232,15 +243,28 @@ function fill_quadratic_constraint_caches!(
     if !isempty(quad_aff_vars)
         model.quadratic_constraint_cache_pv[new_ci] = quad_aff_vars
     end
+
     if !isempty(quad_params)
         model.quadratic_constraint_cache_pp[new_ci] = quad_params
     end
+
     if !isempty(aff_params)
         model.quadratic_constraint_cache_pc[new_ci] = aff_params
     end
+
     if !isempty(terms_with_variables_associated_to_parameters)
         model.quadratic_constraint_variables_associated_to_parameters_cache[new_ci] =
             terms_with_variables_associated_to_parameters
     end
     return nothing
+end
+
+function quadratic_constraint_cache_map_check(
+    model::ParametricOptimizer,
+    idxs::MOI.ConstraintIndex{F,S},
+) where {F,S}
+    cached_constraints = values(model.quadratic_added_cache)
+    # Using this becuase some custom brodcast method throws errors if
+    # inner_idex .∈ cached_constraints is used
+    return [i ∈ cached_constraints for i in idxs]
 end
