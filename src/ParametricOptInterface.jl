@@ -1,6 +1,8 @@
 module ParametricOptInterface
 
 using MathOptInterface
+using DataStructures: OrderedDict
+
 const MOI = MathOptInterface
 const MOIU = MathOptInterface.Utilities
 const DD = MOIU.DoubleDicts
@@ -41,26 +43,34 @@ mutable struct ParametricOptimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     variables::Dict{MOI.VariableIndex,MOI.VariableIndex}
     last_variable_index_added::Int64
     last_parameter_index_added::Int64
+    # Store reference to affine constraints with parameters: v + p >= 0
     affine_constraint_cache::DD.DoubleDict{
         Vector{MOI.ScalarAffineTerm{Float64}},
     }
+    # Store reference to parameter * variable constraints: p*v >= 0.0
     quadratic_constraint_cache_pv::Dict{
         MOI.ConstraintIndex,
         Vector{MOI.ScalarQuadraticTerm{Float64}},
     }
+    # Store reference to parameter * parameter constraints: p*p >= var
     quadratic_constraint_cache_pp::Dict{
         MOI.ConstraintIndex,
         Vector{MOI.ScalarQuadraticTerm{Float64}},
     }
+    # Store reference to constraints quad_variable_term + affine_with_parameters: v*v + p >= 0
     quadratic_constraint_cache_pc::DD.DoubleDict{
         Vector{MOI.ScalarAffineTerm{Float64}},
     }
+    # Probably for QPs p*v*v (?)
     quadratic_constraint_variables_associated_to_parameters_cache::Dict{
         MOI.ConstraintIndex,
         Vector{MOI.ScalarAffineTerm{T}},
     }
-    quadratic_added_cache::Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}
+    # Store the map between quadratic terms add as var * parameter to the resulting shape when implemented in the solver
+    # for instance p*p + var -> ScalarAffine(var)
+    quadratic_added_cache::OrderedDict{MOI.ConstraintIndex,MOI.ConstraintIndex}
     last_quad_add_added::Int64
+    # Ditto from the constraint caches but for the objective function
     affine_objective_cache::Vector{MOI.ScalarAffineTerm{T}}
     quadratic_objective_cache_pv::Vector{MOI.ScalarQuadraticTerm{T}}
     quadratic_objective_cache_pp::Vector{MOI.ScalarQuadraticTerm{T}}
@@ -267,6 +277,14 @@ end
 #     MOI.get(model.optimizer, attr, ci)
 # end
 
+# TODO: This requires that MOI.ListOfConstraintIndices is implemented correctly for all cases
+function MOI.get(
+    model::ParametricOptimizer,
+    ::MOI.NumberOfConstraints{F,S},
+) where {F,S}
+    return length(MOI.get(model, MOI.ListOfConstraintIndices{F,S}()))
+end
+
 function MOI.get(
     model::ParametricOptimizer,
     attr::MOI.ConstraintSet,
@@ -297,17 +315,25 @@ end
 #     MOI.get(model.optimizer, attr)
 # end
 
-# TODO
-# You might have transformed quadratic functions into affine functions so this is incorrect
-# function MOI.get(model::ParametricOptimizer, ::MOI.ListOfConstraints)
-#     constraints = Set{Tuple{DataType, DataType}}()
-#     inner_ctrs = MOI.get(model.optimizer, MOI.ListOfConstraints())
-#     for (F, S) in inner_ctrs
-#         push!(constraints, (F,S))
-#     end
+function MOI.get(model::ParametricOptimizer, ::MOI.ListOfConstraints)
+    inner_ctrs = MOI.get(model.optimizer, MOI.ListOfConstraints())
+    !has_quadratic_constraint_caches(model) && return inner_ctrs
 
-#     collect(constraints)
-# end
+    cache_keys = collect(keys(model.quadratic_added_cache))
+    constraints = Set{Tuple{DataType,DataType}}()
+
+    for (F, S) in inner_ctrs
+        inner_index =
+            MOI.get(model.optimizer, MOI.ListOfConstraintIndices{F,S}())
+        cache_map_check =
+            quadratic_constraint_cache_map_check(mode, inner_index)
+        push!(constraints, typeof.(cache_keys[cache_map])...)
+        # If not all the constraints are chached then also push the original type
+        !all(cache_map_check) && push!(constraints, (F, S))
+    end
+
+    return collect(constraints)
+end
 
 function MOI.get(
     model::ParametricOptimizer,
@@ -316,17 +342,49 @@ function MOI.get(
     return MOI.get(model.optimizer, attr)
 end
 
-# TODO
-# You might have transformed quadratic functions into affine functions so this is incorrect
-# function MOI.get(
-#     model::ParametricOptimizer,
-#     ::MOI.ListOfConstraintIndices{F, S}
-# ) where {S<:MOI.AbstractSet, F<:Union{
-#     MOI.ScalarAffineFunction{T},
-#     MOI.VectorAffineFunction{T},
-# }} where T
-#     MOI.get(model.optimizer, MOI.ListOfConstraintIndices{F, S}())
-# end
+function MOI.get(
+    model::ParametricOptimizer,
+    ::MOI.ListOfConstraintIndices{F,S},
+) where {
+    S<:MOI.AbstractSet,
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.VectorAffineFunction{T}},
+} where {T}
+    inner_index = MOI.get(model.optimizer, MOI.ListOfConstraintIndices{F,S}())
+    if !has_quadratic_constraint_caches(model)
+        return inner_index
+    end
+
+    cache_map_check = quadratic_constraint_cache_map_check(mode, inner_index)
+    return inner_index[cache_map_check]
+end
+
+function MOI.get(
+    model::ParametricOptimizer,
+    ::MOI.ListOfConstraintIndices{F,S},
+) where {S<:MOI.AbstractSet,F<:MOI.ScalarQuadraticFunction{T}} where {T}
+    inner_index = MOI.ConstraintIndex{F,S}[]
+    if MOI.supports_constraint(model.optimizer, F, S)
+        inner_index =
+            MOI.get(model.optimizer, MOI.ListOfConstraintIndices{F,S}())
+        if !has_quadratic_constraint_caches(model)
+            return inner_index
+        end
+    end
+
+    quadratic_caches = [
+        :quadratic_constraint_cache_pc,
+        :quadratic_constraint_cache_pp,
+        :quadratic_constraint_cache_pv,
+        # JD: Check if this applies here
+        # :quadratic_constraint_variables_associated_to_parameters_cache
+    ]
+
+    for field in quadratic_caches
+        cache = getfield(model, field)
+        push!(inner_index, keys(cache)...)
+    end
+    return inner_index
+end
 
 function MOI.supports_add_constrained_variable(
     ::ParametricOptimizer,
