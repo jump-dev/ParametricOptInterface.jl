@@ -816,6 +816,20 @@ function MOI.is_valid(
     return MOI.is_valid(model.optimizer, c)
 end
 
+function MOI.is_valid(
+    model::ParametricOptimizer,
+    c::MOI.ConstraintIndex{F,S},
+) where {F<:MOI.ScalarAffineFunction,S<:MOI.AbstractSet}
+    if haskey(model.affine_constraint_cache, c)
+        # TODO: how to check the cached constraint is valid (?)
+        return function_has_parameters(
+            model,
+            model.affine_constraint_cache[c],
+        ) && MOI.is_valid(model.optimizer, c)
+    end
+    return MOI.is_valid(model.optimizer, c)
+end
+
 function MOI.set(
     model::ParametricOptimizer,
     attr::MOI.ObjectiveFunction,
