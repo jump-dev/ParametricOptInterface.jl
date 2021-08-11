@@ -62,7 +62,9 @@ mutable struct ParametricOptimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     }
     quadratic_added_cache::Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}
     last_quad_add_added::Int64
-    vector_constraint_cache::DD.DoubleDict{Vector{MOI.VectorAffineTerm{Float64}}}
+    vector_constraint_cache::DD.DoubleDict{
+        Vector{MOI.VectorAffineTerm{Float64}},
+    }
     affine_objective_cache::Vector{MOI.ScalarAffineTerm{T}}
     quadratic_objective_cache_pv::Vector{MOI.ScalarQuadraticTerm{T}}
     quadratic_objective_cache_pp::Vector{MOI.ScalarQuadraticTerm{T}}
@@ -561,7 +563,15 @@ end
 function MOI.get(
     model::ParametricOptimizer,
     attr::T,
-) where {T<:Union{MOI.TerminationStatus,MOI.ObjectiveValue,MOI.DualObjectiveValue,MOI.PrimalStatus,MOI.DualStatus}}
+) where {
+    T<:Union{
+        MOI.TerminationStatus,
+        MOI.ObjectiveValue,
+        MOI.DualObjectiveValue,
+        MOI.PrimalStatus,
+        MOI.DualStatus,
+    },
+}
     return MOI.get(model.optimizer, attr)
 end
 
@@ -636,7 +646,6 @@ function add_constraint_with_parameters_on_function(
     f::MOI.ScalarQuadraticFunction{T},
     set::S,
 ) where {T,S<:MOI.AbstractScalarSet}
-
     if function_quadratic_terms_has_parameters(model, f.quadratic_terms)
         (
             quad_vars,

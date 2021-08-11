@@ -21,7 +21,11 @@
 
     A = [1.0 0 -1; 0 1 -1]
     b = [1.0; 2]
-    terms = MOI.VectorAffineTerm.(1:2, MOI.ScalarAffineTerm.(A, reshape([x, y, t], 1, 3)))
+    terms =
+        MOI.VectorAffineTerm.(
+            1:2,
+            MOI.ScalarAffineTerm.(A, reshape([x, y, t], 1, 3)),
+        )
     f = MOI.VectorAffineFunction(vec(terms), b)
     set = MOI.Nonnegatives(2)
 
@@ -30,7 +34,10 @@
     MOI.set(
         model,
         MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
-        MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 1.0], [y, x]), 0.0),
+        MOI.ScalarAffineFunction(
+            MOI.ScalarAffineTerm.([1.0, 1.0], [y, x]),
+            0.0,
+        ),
     )
     MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
     MOI.optimize!(model)

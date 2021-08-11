@@ -249,8 +249,8 @@ end
 function separate_possible_terms_and_calculate_parameter_constant(
     model::ParametricOptimizer,
     f::MOI.VectorAffineFunction{T},
-    set:: S,
-) where {T, S <: MOI.AbstractVectorSet}
+    set::S,
+) where {T,S<:MOI.AbstractVectorSet}
     vars = MOI.VectorAffineTerm{T}[]
     params = MOI.VectorAffineTerm{T}[]
 
