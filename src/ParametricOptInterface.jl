@@ -286,13 +286,11 @@ function MOI.get(
     ci::MOI.ConstraintIndex{F,S},
 ) where {F,S}
     # Check if the index was cached as Affine expression
-    if !isempty(model.affine_constraint_cache)
-        haskey(model.affine_constraint_cache, ci) &&
-            return model.affine_constraint_cache[ci]
-        # Check if the index was cached as a Quadratic
-    elseif !isempty(model.quadratic_added_cache)
-        haskey(model.quadratic_added_cache, ci) &&
-            return model.quadratic_added_cache[ci]
+    if haskey(model.affine_constraint_cache, ci)
+        return model.affine_constraint_cache[ci]
+    # Check if the index was cached as a Quadratic
+    elseif haskey(model.quadratic_added_cache, ci)
+        return model.quadratic_added_cache[ci]
     else
         return MOI.get(model.optimizer, attr, ci)
     end
