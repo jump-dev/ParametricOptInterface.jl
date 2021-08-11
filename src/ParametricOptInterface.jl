@@ -167,9 +167,18 @@ function MOI.supports_constraint(
 ) where {T}
     return MOI.supports_constraint(
         model.optimizer,
+        # JD: This looks odd. It is asking for ScalarQuadraticFunction and returning Affine
         MOI.ScalarAffineFunction{T},
         S,
     )
+end
+
+function MOI.supports_constraint(
+    model::ParametricOptimizer,
+    F::Type{MOI.VectorQuadraticFunction{T}},
+    S::Type{<:MOI.AbstractSet},
+) where {T}
+    return MOI.supports_constraint(model.optimizer, F, S)
 end
 
 function MOI.supports(
@@ -271,11 +280,23 @@ function MOI.supports(
     return MOI.supports(model.optimizer, attr, tp)
 end
 
-# TODO
-# This is not correct, you need to put the parameters back into the function
-# function MOI.get(model::ParametricOptimizer, attr::MOI.ConstraintFunction, ci::MOI.ConstraintIndex{F, S}) where {F, S}
-#     MOI.get(model.optimizer, attr, ci)
-# end
+function MOI.get(
+    model::ParametricOptimizer,
+    attr::MOI.ConstraintFunction,
+    ci::MOI.ConstraintIndex{F,S},
+) where {F,S}
+    # Check if the index was cached as Affine expression
+    if !isempty(model.affine_constraint_cache)
+        haskey(model.affine_constraint_cache, ci) &&
+            return model.affine_constraint_cache[ci]
+        # Check if the index was cached as a Quadratic
+    elseif !isempty(model.quadratic_added_cache)
+        haskey(model.quadratic_added_cache, ci) &&
+            return model.quadratic_added_cache[ci]
+    else
+        return MOI.get(model.optimizer, attr, ci)
+    end
+end
 
 # TODO: This requires that MOI.ListOfConstraintIndices is implemented correctly for all cases
 function MOI.get(
