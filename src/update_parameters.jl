@@ -10,6 +10,7 @@ function update_constant!(s::MOI.EqualTo{T}, val) where {T}
     return MOI.EqualTo{T}(s.value - val)
 end
 
+# Affine
 function update_parameter_in_affine_constraints!(model::ParametricOptimizer)
     for S in SUPPORTED_SETS
         affine_constraint_cache_inner =
@@ -250,6 +251,77 @@ function update_parameter_in_quadratic_objective_pp!(model::ParametricOptimizer)
     end
 end
 
+# Vector Affine
+function update_parameter_in_vector_affine_constraints!(
+    model::ParametricOptimizer,
+)
+    for S in SUPPORTED_VECTOR_SETS
+        vector_constraint_cache_inner =
+            model.vector_constraint_cache[MOI.VectorAffineFunction{Float64}, S]
+        if !isempty(vector_constraint_cache_inner)
+            update_parameter_in_vector_affine_constraints!(
+                model.optimizer,
+                model.parameters,
+                model.updated_parameters,
+                vector_constraint_cache_inner,
+            )
+        end
+    end
+    return model
+end
+
+function update_parameter_in_vector_affine_constraints!(
+    optimizer::OT,
+    parameters::Dict{MOI.VariableIndex,T},
+    updated_parameters::Dict{MOI.VariableIndex,T},
+    vector_constraint_cache_inner::DD.WithType{F,S},
+) where {OT,T,F,S}
+    for (ci, param_array) in vector_constraint_cache_inner
+        update_parameter_in_vector_affine_constraints!(
+            optimizer,
+            ci,
+            param_array,
+            parameters,
+            updated_parameters,
+        )
+    end
+
+    return optimizer
+end
+
+function update_parameter_in_vector_affine_constraints!(
+    optimizer::OT,
+    ci::CI,
+    param_array::Vector{MOI.VectorAffineTerm{T}},
+    parameters::Dict{MOI.VariableIndex,T},
+    updated_parameters::Dict{MOI.VariableIndex,T},
+) where {OT,T,CI}
+    cf = MOI.get(optimizer, MOI.ConstraintFunction(), ci)
+
+    n_dims = length(cf.constants)
+    param_constants = zeros(T, n_dims)
+
+    for term in param_array
+        vi = term.scalar_term.variable_index
+
+        if haskey(updated_parameters, vi) # TODO This haskey can be slow
+            param_constants[term.output_index] =
+                term.scalar_term.coefficient *
+                (updated_parameters[vi] - parameters[vi])
+        end
+    end
+
+    if param_constants != zeros(T, n_dims)
+        MOI.modify(
+            optimizer,
+            ci,
+            MOI.VectorConstantChange(cf.constants + param_constants),
+        )
+    end
+
+    return ci
+end
+
 function update_parameters!(model::ParametricOptimizer)
     update_parameter_in_affine_constraints!(model)
     update_parameters_in_affine_objective!(model)
@@ -257,6 +329,7 @@ function update_parameters!(model::ParametricOptimizer)
     update_parameter_in_quadratic_objective_pc!(model)
     update_parameter_in_quadratic_constraints_pp!(model)
     update_parameter_in_quadratic_objective_pp!(model)
+    update_parameter_in_vector_affine_constraints!(model)
 
     # TODO make this part better
     constraint_aux_dict = Dict{Any,Any}()

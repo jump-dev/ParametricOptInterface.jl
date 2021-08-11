@@ -45,7 +45,7 @@ function function_has_parameters(
     f::MOI.VectorAffineFunction{T},
 ) where {T}
     for term in f.terms
-        if is_parameter_in_model(model, term.variable_index)
+        if is_parameter_in_model(model, term.scalar_term.variable_index)
             return true
         end
     end
@@ -243,4 +243,34 @@ function fill_quadratic_constraint_caches!(
             terms_with_variables_associated_to_parameters
     end
     return nothing
+end
+
+# Vector Affine
+function separate_possible_terms_and_calculate_parameter_constant(
+    model::ParametricOptimizer,
+    f::MOI.VectorAffineFunction{T},
+    set::S,
+) where {T,S<:MOI.AbstractVectorSet}
+    vars = MOI.VectorAffineTerm{T}[]
+    params = MOI.VectorAffineTerm{T}[]
+
+    n_dims = length(f.constants)
+    param_constants = zeros(T, n_dims)
+
+    for term in f.terms
+        oi = term.output_index
+
+        if is_variable_in_model(model, term.scalar_term.variable_index)
+            push!(vars, term)
+        elseif is_parameter_in_model(model, term.scalar_term.variable_index)
+            push!(params, term)
+            param_constants[oi] +=
+                term.scalar_term.coefficient *
+                model.parameters[term.scalar_term.variable_index]
+        else
+            error("Constraint uses a variable that is not in the model")
+        end
+    end
+
+    return vars, params, param_constants
 end
