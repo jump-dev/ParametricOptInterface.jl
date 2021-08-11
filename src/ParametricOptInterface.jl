@@ -313,6 +313,17 @@ function MOI.get(
     return MOI.get(model.optimizer, attr, ci)
 end
 
+function MOI.get(
+    model::ParametricOptimizer,
+    attr::MOI.ConstraintSet,
+    ci::MOI.ConstraintIndex{F,S},
+) where {
+    F<:Union{MOI.SingleVariable,MOI.VectorOfVariables,MOI.VectorAffineFunction},
+    S<:MOI.AbstractSet,
+}
+    return MOI.get(model.optimizer, attr, ci)
+end
+
 function MOI.get(model::ParametricOptimizer, attr::MOI.ObjectiveSense)
     return MOI.get(model.optimizer, attr)
 end
