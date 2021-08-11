@@ -288,7 +288,7 @@ function MOI.get(
     # Check if the index was cached as Affine expression
     if haskey(model.affine_constraint_cache, ci)
         return model.affine_constraint_cache[ci]
-    # Check if the index was cached as a Quadratic
+        # Check if the index was cached as a Quadratic
     elseif haskey(model.quadratic_added_cache, ci)
         return model.quadratic_added_cache[ci]
     else
@@ -766,6 +766,43 @@ function MOI.add_constraint(
     else
         return add_constraint_with_parameters_on_function(model, f, set)
     end
+end
+
+function MOI.delete(model::ParametricOptimizer, v::MOI.VariableIndex)
+    pop!(model.variables, v)
+    MOI.delete(model.optimizer, v)
+    return
+end
+
+function MOI.delete(
+    model::ParametricOptimizer,
+    c::MOI.ConstraintIndex{F,S},
+) where {F<:MOI.ScalarAffineFunction,S<:MOI.AbstractSet}
+    haskey(model.affine_constraint_cache, c) &&
+        delete!(model.affine_constraint_cache, c)
+    MOI.delete(model.optimizer, c)
+    return
+end
+
+function MOI.delete(
+    model::ParametricOptimizer,
+    c::MOI.ConstraintIndex{F,S},
+) where {
+    F<:Union{MOI.SingleVariable,MOI.VectorOfVariables,MOI.VectorAffineFunction},
+    S<:MOI.AbstractSet,
+}
+    MOI.delete(model.optimizer, c)
+    return
+end
+
+function MOI.is_valid(
+    model::ParametricOptimizer,
+    c::MOI.ConstraintIndex{F,S},
+) where {
+    F<:Union{MOI.SingleVariable,MOI.VectorOfVariables,MOI.VectorAffineFunction},
+    S<:MOI.AbstractSet,
+}
+    return MOI.is_valid(model.optimizer, c)
 end
 
 function MOI.set(
