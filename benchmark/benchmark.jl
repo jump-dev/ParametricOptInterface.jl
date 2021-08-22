@@ -170,7 +170,7 @@ if length(ARGS) != 2
 else
     const Benchmarks = MOI.Benchmarks
     const suite = Benchmarks.suite(
-        () -> POI.ParametricOptimizer(Ipopt.Optimizer());
+        () -> POI.Optimizer(Ipopt.Optimizer());
         exclude = [r"delete", r"copy"],
     )
     if ARGS[1] == "--new"

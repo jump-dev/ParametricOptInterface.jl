@@ -11,7 +11,7 @@ function update_constant!(s::MOI.EqualTo{T}, val) where {T}
 end
 
 # Affine
-function update_parameter_in_affine_constraints!(model::ParametricOptimizer)
+function update_parameter_in_affine_constraints!(model::Optimizer)
     for S in SUPPORTED_SETS
         affine_constraint_cache_inner =
             model.affine_constraint_cache[MOI.ScalarAffineFunction{Float64}, S]
@@ -70,7 +70,7 @@ function update_parameter_in_affine_constraints!(
     return ci
 end
 
-function update_parameters_in_affine_objective!(model::ParametricOptimizer)
+function update_parameters_in_affine_objective!(model::Optimizer)
     if !isempty(model.affine_objective_cache)
         objective_constant = 0
         for j in model.affine_objective_cache
@@ -94,9 +94,7 @@ function update_parameters_in_affine_objective!(model::ParametricOptimizer)
     return model
 end
 
-function update_parameter_in_quadratic_constraints_pc!(
-    model::ParametricOptimizer,
-)
+function update_parameter_in_quadratic_constraints_pc!(model::Optimizer)
     for (ci, fparam) in model.quadratic_constraint_cache_pc
         param_constant = 0
         for j in fparam
@@ -124,7 +122,7 @@ function update_parameter_in_quadratic_constraints_pc!(
     end
 end
 
-function update_parameter_in_quadratic_objective_pc!(model::ParametricOptimizer)
+function update_parameter_in_quadratic_objective_pc!(model::Optimizer)
     if !isempty(model.quadratic_objective_cache_pc)
         objective_constant = 0
         for j in model.quadratic_objective_cache_pc
@@ -157,9 +155,7 @@ function update_parameter_in_quadratic_objective_pc!(model::ParametricOptimizer)
     return model
 end
 
-function update_parameter_in_quadratic_constraints_pp!(
-    model::ParametricOptimizer,
-)
+function update_parameter_in_quadratic_constraints_pp!(model::Optimizer)
     for (ci, fparam) in model.quadratic_constraint_cache_pp
         param_constant = 0
         for j in fparam
@@ -203,7 +199,7 @@ function update_parameter_in_quadratic_constraints_pp!(
     end
 end
 
-function update_parameter_in_quadratic_objective_pp!(model::ParametricOptimizer)
+function update_parameter_in_quadratic_objective_pp!(model::Optimizer)
     if !isempty(model.quadratic_objective_cache_pp)
         objective_constant = 0
         for j in model.quadratic_objective_cache_pp
@@ -252,9 +248,7 @@ function update_parameter_in_quadratic_objective_pp!(model::ParametricOptimizer)
 end
 
 # Vector Affine
-function update_parameter_in_vector_affine_constraints!(
-    model::ParametricOptimizer,
-)
+function update_parameter_in_vector_affine_constraints!(model::Optimizer)
     for S in SUPPORTED_VECTOR_SETS
         vector_constraint_cache_inner =
             model.vector_constraint_cache[MOI.VectorAffineFunction{Float64}, S]
@@ -322,7 +316,7 @@ function update_parameter_in_vector_affine_constraints!(
     return ci
 end
 
-function update_parameters!(model::ParametricOptimizer)
+function update_parameters!(model::Optimizer)
     update_parameter_in_affine_constraints!(model)
     update_parameters_in_affine_objective!(model)
     update_parameter_in_quadratic_constraints_pc!(model)

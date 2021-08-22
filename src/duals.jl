@@ -1,8 +1,8 @@
-function create_param_dual_cum_sum(model::ParametricOptimizer)
+function create_param_dual_cum_sum(model::Optimizer)
     return zeros(model.number_of_parameters_in_model)
 end
 
-function calculate_dual_of_parameters(model::ParametricOptimizer)
+function calculate_dual_of_parameters(model::Optimizer)
     param_dual_cum_sum = create_param_dual_cum_sum(model)
     update_duals_with_affine_constraint_cache!(param_dual_cum_sum, model)
     update_duals_with_quadratic_constraint_cache!(param_dual_cum_sum, model)
@@ -20,7 +20,7 @@ end
 
 function update_duals_with_affine_constraint_cache!(
     param_dual_cum_sum::Vector{Float64},
-    model::ParametricOptimizer,
+    model::Optimizer,
 )
     for S in SUPPORTED_SETS
         affine_constraint_cache_inner =
@@ -54,7 +54,7 @@ end
 
 function update_duals_with_quadratic_constraint_cache!(
     param_dual_cum_sum::Vector{Float64},
-    model::ParametricOptimizer,
+    model::Optimizer,
 )
     for S in SUPPORTED_SETS
         quadratic_constraint_cache_pc_inner =
@@ -75,7 +75,7 @@ end
 
 function update_duals_with_quadratic_constraint_cache!(
     param_dual_cum_sum::Vector{Float64},
-    model::ParametricOptimizer,
+    model::Optimizer,
     quadratic_constraint_cache_pc_inner::MOI.Utilities.DoubleDicts.WithType{
         F,
         S,
@@ -131,7 +131,7 @@ function update_duals_in_quadratic_objective!(
 end
 
 function empty_and_feed_duals_to_model(
-    model::ParametricOptimizer,
+    model::Optimizer,
     param_dual_cum_sum::Vector{Float64},
 )
     empty!(model.dual_value_of_parameters)
@@ -144,7 +144,7 @@ end
 
 struct ParameterDual <: MOI.AbstractVariableAttribute end
 
-function MOI.get(model::ParametricOptimizer, ::ParameterDual, vi_val::Int64)
+function MOI.get(model::Optimizer, ::ParameterDual, vi_val::Int64)
     if !is_additive(
         model,
         MOI.ConstraintIndex{MOI.SingleVariable,Parameter}(vi_val),
@@ -155,7 +155,7 @@ function MOI.get(model::ParametricOptimizer, ::ParameterDual, vi_val::Int64)
 end
 
 function MOI.get(
-    model::ParametricOptimizer,
+    model::Optimizer,
     ::MOI.ConstraintDual,
     cp::MOI.ConstraintIndex{MOI.SingleVariable,Parameter},
 )
@@ -166,14 +166,14 @@ function MOI.get(
 end
 
 function MOI.get(
-    model::ParametricOptimizer,
+    model::Optimizer,
     attr::MOI.ConstraintDual,
     ci::MOI.ConstraintIndex,
 )
     return MOI.get(model.optimizer, attr, ci)
 end
 
-function is_additive(model::ParametricOptimizer, cp::MOI.ConstraintIndex)
+function is_additive(model::Optimizer, cp::MOI.ConstraintIndex)
     if cp.value in model.multiplicative_parameters
         return false
     end

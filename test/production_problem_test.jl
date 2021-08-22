@@ -1,5 +1,5 @@
 @testset "Production Problem" begin
-    optimizer = POI.ParametricOptimizer(GLPK.Optimizer())
+    optimizer = POI.Optimizer(GLPK.Optimizer())
 
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 1.0]
@@ -146,7 +146,7 @@
 end
 
 @testset "Production Problem variation on parameters for duals" begin
-    optimizer = POI.ParametricOptimizer(GLPK.Optimizer())
+    optimizer = POI.Optimizer(GLPK.Optimizer())
 
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 3.0]

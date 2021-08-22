@@ -1,27 +1,27 @@
-function next_variable_index!(model::ParametricOptimizer)
+function next_variable_index!(model::Optimizer)
     return model.last_variable_index_added += 1
 end
 
-function next_parameter_index!(model::ParametricOptimizer)
+function next_parameter_index!(model::Optimizer)
     return model.last_parameter_index_added += 1
 end
 
-function update_number_of_parameters!(model::ParametricOptimizer)
+function update_number_of_parameters!(model::Optimizer)
     return model.number_of_parameters_in_model += 1
 end
 
-function is_parameter_in_model(model::ParametricOptimizer, v::MOI.VariableIndex)
+function is_parameter_in_model(model::Optimizer, v::MOI.VariableIndex)
     return PARAMETER_INDEX_THRESHOLD <
            v.value <=
            model.last_parameter_index_added
 end
 
-function is_variable_in_model(model::ParametricOptimizer, v::MOI.VariableIndex)
+function is_variable_in_model(model::Optimizer, v::MOI.VariableIndex)
     return 0 < v.value <= model.last_variable_index_added
 end
 
 function function_has_parameters(
-    model::ParametricOptimizer,
+    model::Optimizer,
     f::MOI.ScalarAffineFunction{T},
 ) where {T}
     for term in f.terms
@@ -32,10 +32,7 @@ function function_has_parameters(
     return false
 end
 
-function function_has_parameters(
-    model::ParametricOptimizer,
-    f::MOI.VectorOfVariables,
-)
+function function_has_parameters(model::Optimizer, f::MOI.VectorOfVariables)
     for variable in f.variables
         if is_parameter_in_model(model, variable)
             return true
@@ -45,7 +42,7 @@ function function_has_parameters(
 end
 
 function function_has_parameters(
-    model::ParametricOptimizer,
+    model::Optimizer,
     f::MOI.VectorAffineFunction{T},
 ) where {T}
     for term in f.terms
@@ -57,7 +54,7 @@ function function_has_parameters(
 end
 
 function function_has_parameters(
-    model::ParametricOptimizer,
+    model::Optimizer,
     f::MOI.ScalarQuadraticFunction{T},
 ) where {T}
     return function_affine_terms_has_parameters(model, f.affine_terms) ||
@@ -65,7 +62,7 @@ function function_has_parameters(
 end
 
 function function_affine_terms_has_parameters(
-    model::ParametricOptimizer,
+    model::Optimizer,
     affine_terms::Vector{MOI.ScalarAffineTerm{T}},
 ) where {T}
     for term in affine_terms
@@ -77,7 +74,7 @@ function function_affine_terms_has_parameters(
 end
 
 function function_quadratic_terms_has_parameters(
-    model::ParametricOptimizer,
+    model::Optimizer,
     quadratic_terms::Vector{MOI.ScalarQuadraticTerm{T}},
 ) where {T}
     for term in quadratic_terms
@@ -90,7 +87,7 @@ function function_quadratic_terms_has_parameters(
 end
 
 function separate_possible_terms_and_calculate_parameter_constant(
-    model::ParametricOptimizer,
+    model::Optimizer,
     terms::Vector{MOI.ScalarAffineTerm{T}},
 ) where {T}
     vars = MOI.ScalarAffineTerm{T}[]
@@ -113,7 +110,7 @@ end
 
 # This version is used on SQFs
 function separate_possible_terms_and_calculate_parameter_constant(
-    model::ParametricOptimizer,
+    model::Optimizer,
     terms::Vector{MOI.ScalarAffineTerm{T}},
     variables_associated_to_parameters::Vector{MOI.VariableIndex},
 ) where {T}
@@ -143,7 +140,7 @@ function separate_possible_terms_and_calculate_parameter_constant(
 end
 
 function separate_possible_terms_and_calculate_parameter_constant(
-    model::ParametricOptimizer,
+    model::Optimizer,
     terms::Vector{MOI.ScalarQuadraticTerm{T}},
 ) where {T}
     quad_params = MOI.ScalarQuadraticTerm{T}[] # parameter x parameter
@@ -229,7 +226,7 @@ function separate_possible_terms_and_calculate_parameter_constant(
 end
 
 function fill_quadratic_constraint_caches!(
-    model::ParametricOptimizer,
+    model::Optimizer,
     new_ci::MOI.ConstraintIndex,
     quad_aff_vars::Vector{MOI.ScalarQuadraticTerm{T}},
     quad_params::Vector{MOI.ScalarQuadraticTerm{T}},
@@ -256,7 +253,7 @@ end
 
 # Vector Affine
 function separate_possible_terms_and_calculate_parameter_constant(
-    model::ParametricOptimizer,
+    model::Optimizer,
     f::MOI.VectorAffineFunction{T},
     set::S,
 ) where {T,S<:MOI.AbstractVectorSet}
