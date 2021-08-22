@@ -25,16 +25,16 @@ struct Parameter <: MOI.AbstractScalarSet
 end
 
 """
-    ParametricOptimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimizer
+    Optimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimizer
 
-Declares a `ParametricOptimizer`, which allows the handling of parameters in a optimization model.
+Declares a `Optimizer`, which allows the handling of parameters in a optimization model.
 # Example:
 ```julia-repl
-julia> ParametricOptInterface.ParametricOptimizer(GLPK.Optimizer())
-ParametricOptInterface.ParametricOptimizer{Float64,GLPK.Optimizer}
+julia> ParametricOptInterface.Optimizer(GLPK.Optimizer())
+ParametricOptInterface.Optimizer{Float64,GLPK.Optimizer}
 ```
 """
-mutable struct ParametricOptimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
+mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     optimizer::OT
     parameters::Dict{MOI.VariableIndex,T}
     parameters_name::Dict{MOI.VariableIndex,String}
@@ -76,10 +76,7 @@ mutable struct ParametricOptimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     dual_value_of_parameters::Vector{Float64}
     evaluate_duals::Bool
     number_of_parameters_in_model::Int64
-    function ParametricOptimizer(
-        optimizer::OT;
-        evaluate_duals::Bool = true,
-    ) where {OT}
+    function Optimizer(optimizer::OT; evaluate_duals::Bool = true) where {OT}
         return new{Float64,OT}(
             optimizer,
             Dict{MOI.VariableIndex,Float64}(),
@@ -109,11 +106,16 @@ mutable struct ParametricOptimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     end
 end
 
+function ParametricOptimizer(args...; kwargs...)
+    @warn("ParametricOptimizer is deprecated. Use `POI.Optimizer` instead.")
+    return Optimizer(args...; kwargs...)
+end
+
 include("utils.jl")
 include("duals.jl")
 include("update_parameters.jl")
 
-function MOI.is_empty(model::ParametricOptimizer)
+function MOI.is_empty(model::Optimizer)
     return MOI.is_empty(model.optimizer) &&
            isempty(model.parameters) &&
            isempty(model.parameters_name) &&
@@ -143,7 +145,7 @@ function MOI.is_empty(model::ParametricOptimizer)
 end
 
 function MOI.supports_constraint(
-    model::ParametricOptimizer,
+    model::Optimizer,
     F::Union{
         Type{MOI.SingleVariable},
         Type{MOI.ScalarAffineFunction{T}},
@@ -156,7 +158,7 @@ function MOI.supports_constraint(
 end
 
 function MOI.supports_constraint(
-    model::ParametricOptimizer,
+    model::Optimizer,
     ::Type{MOI.ScalarQuadraticFunction{T}},
     S::Type{<:MOI.AbstractSet},
 ) where {T}
@@ -168,7 +170,7 @@ function MOI.supports_constraint(
 end
 
 function MOI.supports(
-    model::ParametricOptimizer,
+    model::Optimizer,
     attr::Union{
         MOI.ObjectiveSense,
         MOI.ObjectiveFunction{MOI.SingleVariable},
@@ -179,7 +181,7 @@ function MOI.supports(
     return MOI.supports(model.optimizer, attr)
 end
 
-function MOI.empty!(model::ParametricOptimizer{T}) where {T}
+function MOI.empty!(model::Optimizer{T}) where {T}
     MOI.empty!(model.optimizer)
     empty!(model.parameters)
     empty!(model.parameters_name)
@@ -206,7 +208,7 @@ function MOI.empty!(model::ParametricOptimizer{T}) where {T}
 end
 
 function MOI.set(
-    model::ParametricOptimizer,
+    model::Optimizer,
     attr::MOI.VariableName,
     v::MOI.VariableIndex,
     name::String,
@@ -218,11 +220,7 @@ function MOI.set(
     end
 end
 
-function MOI.get(
-    model::ParametricOptimizer,
-    attr::MOI.VariableName,
-    v::MOI.VariableIndex,
-)
+function MOI.get(model::Optimizer, attr::MOI.VariableName, v::MOI.VariableIndex)
     if is_parameter_in_model(model, v)
         return get(model.parameters_name, v, "")
     else
@@ -231,7 +229,7 @@ function MOI.get(
 end
 
 function MOI.supports(
-    model::ParametricOptimizer,
+    model::Optimizer,
     attr::MOI.VariableName,
     tp::Type{MOI.VariableIndex},
 )
@@ -239,7 +237,7 @@ function MOI.supports(
 end
 
 function MOI.set(
-    model::ParametricOptimizer,
+    model::Optimizer,
     attr::MOI.ConstraintName,
     c::MOI.ConstraintIndex,
     name::String,
@@ -248,19 +246,19 @@ function MOI.set(
 end
 
 function MOI.get(
-    model::ParametricOptimizer,
+    model::Optimizer,
     attr::MOI.ConstraintName,
     c::MOI.ConstraintIndex,
 )
     return MOI.get(model.optimizer, attr, c)
 end
 
-function MOI.get(model::ParametricOptimizer, ::MOI.NumberOfVariables)
+function MOI.get(model::Optimizer, ::MOI.NumberOfVariables)
     return length(model.parameters) + length(model.variables)
 end
 
 function MOI.supports(
-    model::ParametricOptimizer,
+    model::Optimizer,
     attr::MOI.ConstraintName,
     tp::Type{<:MOI.ConstraintIndex},
 )
@@ -269,12 +267,12 @@ end
 
 # TODO
 # This is not correct, you need to put the parameters back into the function
-# function MOI.get(model::ParametricOptimizer, attr::MOI.ConstraintFunction, ci::MOI.ConstraintIndex{F, S}) where {F, S}
+# function MOI.get(model::Optimizer, attr::MOI.ConstraintFunction, ci::MOI.ConstraintIndex{F, S}) where {F, S}
 #     MOI.get(model.optimizer, attr, ci)
 # end
 
 function MOI.get(
-    model::ParametricOptimizer,
+    model::Optimizer,
     attr::MOI.ConstraintSet,
     ci::MOI.ConstraintIndex{F,S},
 ) where {F,S}
@@ -282,11 +280,11 @@ function MOI.get(
     return MOI.get(model.optimizer, attr, ci)
 end
 
-function MOI.get(model::ParametricOptimizer, attr::MOI.ObjectiveSense)
+function MOI.get(model::Optimizer, attr::MOI.ObjectiveSense)
     return MOI.get(model.optimizer, attr)
 end
 
-function MOI.get(model::ParametricOptimizer, attr::MOI.ObjectiveFunctionType)
+function MOI.get(model::Optimizer, attr::MOI.ObjectiveFunctionType)
     if !isempty(model.quadratic_constraint_cache_pv) ||
        !isempty(model.quadratic_constraint_cache_pc)
         return MOI.ScalarQuadraticFunction{Float64}
@@ -297,7 +295,7 @@ end
 # TODO
 # Same as ConstraintFunction getter. And you also need to convert to F
 # function MOI.get(
-#     model::ParametricOptimizer,
+#     model::Optimizer,
 #     attr::MOI.ObjectiveFunction{F}) where F <: Union{MOI.SingleVariable,MOI.ScalarAffineFunction{T}} where T
 
 #     MOI.get(model.optimizer, attr)
@@ -305,7 +303,7 @@ end
 
 # TODO
 # You might have transformed quadratic functions into affine functions so this is incorrect
-# function MOI.get(model::ParametricOptimizer, ::MOI.ListOfConstraints)
+# function MOI.get(model::Optimizer, ::MOI.ListOfConstraints)
 #     constraints = Set{Tuple{DataType, DataType}}()
 #     inner_ctrs = MOI.get(model.optimizer, MOI.ListOfConstraints())
 #     for (F, S) in inner_ctrs
@@ -316,7 +314,7 @@ end
 # end
 
 function MOI.get(
-    model::ParametricOptimizer,
+    model::Optimizer,
     attr::MOI.ListOfConstraintIndices{F,S},
 ) where {S,F<:Union{MOI.VectorOfVariables,MOI.SingleVariable}}
     return MOI.get(model.optimizer, attr)
@@ -325,7 +323,7 @@ end
 # TODO
 # You might have transformed quadratic functions into affine functions so this is incorrect
 # function MOI.get(
-#     model::ParametricOptimizer,
+#     model::Optimizer,
 #     ::MOI.ListOfConstraintIndices{F, S}
 # ) where {S<:MOI.AbstractSet, F<:Union{
 #     MOI.ScalarAffineFunction{T},
@@ -334,21 +332,18 @@ end
 #     MOI.get(model.optimizer, MOI.ListOfConstraintIndices{F, S}())
 # end
 
-function MOI.supports_add_constrained_variable(
-    ::ParametricOptimizer,
-    ::Type{Parameter},
-)
+function MOI.supports_add_constrained_variable(::Optimizer, ::Type{Parameter})
     return true
 end
 
 function MOI.supports_add_constrained_variables(
-    model::ParametricOptimizer,
+    model::Optimizer,
     ::Type{MOI.Reals},
 )
     return MOI.supports_add_constrained_variables(model.optimizer, MOI.Reals)
 end
 
-function MOI.add_variable(model::ParametricOptimizer)
+function MOI.add_variable(model::Optimizer)
     next_variable_index!(model)
     v_p = MOI.VariableIndex(model.last_variable_index_added)
     v = MOI.add_variable(model.optimizer)
@@ -357,10 +352,10 @@ function MOI.add_variable(model::ParametricOptimizer)
 end
 
 """
-    MOI.add_constrained_variable(model::ParametricOptimizer, set::Parameter)
+    MOI.add_constrained_variable(model::Optimizer, set::Parameter)
 
 Adds a parameter, that is, a variable parameterized to the value provided in `set`, to the `model` specified.
-The `model` must be a `ParametricOptInterface.ParametricOptimizer` model.
+The `model` must be a `ParametricOptInterface.Optimizer` model.
 Returns the MOI.VariableIndex of the parameterized variable and the MOI.ConstraintIndex associated.
 
 #Example:
@@ -369,10 +364,7 @@ julia> w, cw = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
 (MathOptInterface.VariableIndex(1), MathOptInterface.ConstraintIndex{MathOptInterface.SingleVariable,ParametricOptInterface.Parameter}(1))
 ```
 """
-function MOI.add_constrained_variable(
-    model::ParametricOptimizer,
-    set::Parameter,
-)
+function MOI.add_constrained_variable(model::Optimizer, set::Parameter)
     next_parameter_index!(model)
     p = MOI.VariableIndex(model.last_parameter_index_added)
     model.parameters[p] = set.val
@@ -384,7 +376,7 @@ function MOI.add_constrained_variable(
 end
 
 function MOI.add_constraint(
-    model::ParametricOptimizer,
+    model::Optimizer,
     f::MOI.SingleVariable,
     set::MOI.AbstractScalarSet,
 )
@@ -398,7 +390,7 @@ function MOI.add_constraint(
 end
 
 function add_constraint_with_parameters_on_function(
-    model::ParametricOptimizer,
+    model::Optimizer,
     f::MOI.ScalarAffineFunction{T},
     set::MOI.AbstractScalarSet,
 ) where {T}
@@ -414,7 +406,7 @@ function add_constraint_with_parameters_on_function(
 end
 
 function MOI.add_constraint(
-    model::ParametricOptimizer,
+    model::Optimizer,
     f::MOI.ScalarAffineFunction{T},
     set::MOI.AbstractScalarSet,
 ) where {T}
@@ -426,7 +418,7 @@ function MOI.add_constraint(
 end
 
 function MOI.get(
-    model::ParametricOptimizer,
+    model::Optimizer,
     attr::MOI.VariablePrimal,
     v::MOI.VariableIndex,
 )
@@ -440,7 +432,7 @@ function MOI.get(
 end
 
 """
-    MOI.set(model::ParametricOptimizer, ::MOI.ConstraintSet, cp::MOI.ConstraintIndex{MOI.SingleVariable, Parameter}, set::Parameter)
+    MOI.set(model::Optimizer, ::MOI.ConstraintSet, cp::MOI.ConstraintIndex{MOI.SingleVariable, Parameter}, set::Parameter)
 
 Sets the parameter to a given value, using its `MOI.ConstraintIndex` as reference.
 
@@ -451,7 +443,7 @@ julia> MOI.set(optimizer, MOI.ConstraintSet(), cw, POI.Parameter(2.0))
 ```
 """
 function MOI.set(
-    model::ParametricOptimizer,
+    model::Optimizer,
     ::MOI.ConstraintSet,
     cp::MOI.ConstraintIndex{MOI.SingleVariable,Parameter},
     set::Parameter,
@@ -467,7 +459,7 @@ end
 struct ParameterValue <: MOI.AbstractVariableAttribute end
 
 """
-    MOI.set(model::ParametricOptimizer, ::ParameterValue, vi::MOI.VariableIndex, val::Float64)
+    MOI.set(model::Optimizer, ::ParameterValue, vi::MOI.VariableIndex, val::Float64)
 
 Sets the parameter to a given value, using its `MOI.VariableIndex` as reference.
 
@@ -478,7 +470,7 @@ julia> MOI.set(model, ParameterValue(), w, 2.0)
 ```
 """
 function MOI.set(
-    model::ParametricOptimizer,
+    model::Optimizer,
     ::ParameterValue,
     vi::MOI.VariableIndex,
     val::Float64,
@@ -490,7 +482,7 @@ function MOI.set(
     end
 end
 function MOI.set(
-    model::ParametricOptimizer,
+    model::Optimizer,
     ::ParameterValue,
     vi::MOI.VariableIndex,
     val::Real,
@@ -498,7 +490,7 @@ function MOI.set(
     return MOI.set(model, ParameterValue(), vi, convert(Float64, val))
 end
 
-function empty_objective_function_caches!(model::ParametricOptimizer)
+function empty_objective_function_caches!(model::Optimizer)
     empty!(model.affine_objective_cache)
     empty!(model.quadratic_objective_cache_pv)
     empty!(model.quadratic_objective_cache_pp)
@@ -507,7 +499,7 @@ function empty_objective_function_caches!(model::ParametricOptimizer)
 end
 
 function MOI.set(
-    model::ParametricOptimizer,
+    model::Optimizer,
     attr::MOI.ObjectiveFunction,
     f::MOI.ScalarAffineFunction{T},
 ) where {T}
@@ -535,7 +527,7 @@ function MOI.set(
 end
 
 function MOI.set(
-    model::ParametricOptimizer,
+    model::Optimizer,
     attr::MOI.ObjectiveFunction,
     v::MOI.SingleVariable,
 )
@@ -553,7 +545,7 @@ function MOI.set(
 end
 
 function MOI.set(
-    model::ParametricOptimizer,
+    model::Optimizer,
     attr::MOI.ObjectiveSense,
     sense::MOI.OptimizationSense,
 )
@@ -561,7 +553,7 @@ function MOI.set(
 end
 
 function MOI.get(
-    model::ParametricOptimizer,
+    model::Optimizer,
     attr::T,
 ) where {
     T<:Union{
@@ -576,33 +568,33 @@ function MOI.get(
 end
 
 function MOI.get(
-    model::ParametricOptimizer,
+    model::Optimizer,
     attr::T,
     c::MOI.ConstraintIndex,
 ) where {T<:Union{MOI.ConstraintPrimal,MOI.ConstraintDual}}
     return MOI.get(model.optimizer, attr, c)
 end
 
-function MOI.set(model::ParametricOptimizer, ::MOI.Silent, bool::Bool)
+function MOI.set(model::Optimizer, ::MOI.Silent, bool::Bool)
     return MOI.set(model.optimizer, MOI.Silent(), bool)
 end
 
-function MOI.set(model::ParametricOptimizer, attr::MOI.RawParameter, val::Any)
+function MOI.set(model::Optimizer, attr::MOI.RawParameter, val::Any)
     return MOI.set(model.optimizer, attr, val)
 end
 
-function MOI.set(model::ParametricOptimizer, attr::String, val::Any)
+function MOI.set(model::Optimizer, attr::String, val::Any)
     return MOI.set(model.optimizer, MOI.RawParameter(attr), val)
 end
 
-function MOI.get(model::ParametricOptimizer, ::MOI.SolverName)
-    return "ParametricOptimizer with " *
+function MOI.get(model::Optimizer, ::MOI.SolverName)
+    return "Optimizer with " *
            MOI.get(model.optimizer, MOI.SolverName()) *
            " attached"
 end
 
 function MOI.add_constraint(
-    model::ParametricOptimizer,
+    model::Optimizer,
     f::MOI.VectorOfVariables,
     set::MOI.AbstractVectorSet,
 ) where {T}
@@ -614,7 +606,7 @@ function MOI.add_constraint(
 end
 
 function MOI.add_constraint(
-    model::ParametricOptimizer,
+    model::Optimizer,
     f::MOI.VectorAffineFunction{T},
     set::MOI.AbstractVectorSet,
 ) where {T}
@@ -626,7 +618,7 @@ function MOI.add_constraint(
 end
 
 function add_constraint_with_parameters_on_function(
-    model::ParametricOptimizer,
+    model::Optimizer,
     f::MOI.VectorAffineFunction{T},
     set::MOI.AbstractVectorSet,
 ) where {T}
@@ -642,7 +634,7 @@ function add_constraint_with_parameters_on_function(
 end
 
 function add_constraint_with_parameters_on_function(
-    model::ParametricOptimizer,
+    model::Optimizer,
     f::MOI.ScalarQuadraticFunction{T},
     set::S,
 ) where {T,S<:MOI.AbstractScalarSet}
@@ -718,7 +710,7 @@ function add_constraint_with_parameters_on_function(
 end
 
 function MOI.add_constraint(
-    model::ParametricOptimizer,
+    model::Optimizer,
     f::MOI.ScalarQuadraticFunction{T},
     set::MOI.AbstractScalarSet,
 ) where {T}
@@ -730,7 +722,7 @@ function MOI.add_constraint(
 end
 
 function MOI.set(
-    model::ParametricOptimizer,
+    model::Optimizer,
     attr::MOI.ObjectiveFunction,
     f::MOI.ScalarQuadraticFunction{T},
 ) where {T}
@@ -825,7 +817,7 @@ function MOI.set(
     end
 end
 
-function MOI.optimize!(model::ParametricOptimizer)
+function MOI.optimize!(model::Optimizer)
     if !isempty(model.updated_parameters)
         update_parameters!(model)
     end

@@ -5,7 +5,7 @@
 A typical optimization model built using `MathOptInterface.jl` (`MOI`for short) has two main components:
 1. Variables
 2. Constants
-   
+
 Using these basic elements, one can create functions and sets that, together, form the desired optimization model. THE GOAL OF `POI` is the implementation of a third
 type, parameters, which
 * are declared similar to a variable, and inherits some functionalities (e.g. dual calculation)
@@ -24,10 +24,10 @@ As `POI` receives parameters, it must analyze and decide how they should be hand
 
 ### Supported constraints
 
-This is a list of supported `MOI` constraint functions that can handle parameters. If you try to add a parameter to 
+This is a list of supported `MOI` constraint functions that can handle parameters. If you try to add a parameter to
 a function that is not listed here, it will return an unsupported error.
 
-|  MOI Function | 
+|  MOI Function |
 |:-------|
 |    `ScalarAffineFunction`    |
 |    `ScalarQuadraticFunction`    |
@@ -35,22 +35,22 @@ a function that is not listed here, it will return an unsupported error.
 
 ### Supported objective functions
 
-|  MOI Function | 
+|  MOI Function |
 |:-------|
 |    `ScalarAffineFunction`    |
 |    `ScalarQuadraticFunction`    |
 
-### Declare a ParametricOptimizer
+### Declare a Optimizer
 
-In order to use parameters, the user needs to declare a `ParametricOptimizer` on top of a `MOI` optimizer, such as `GLPK.Optimizer()`.
+In order to use parameters, the user needs to declare a `Optimizer` on top of a `MOI` optimizer, such as `GLPK.Optimizer()`.
 
 ```julia
 using ParametricOptInterface, MathOptInterface, GLPK
 # Rename ParametricOptInterface and MathOptInterface to simplify the code
 const POI = ParametricOptInterface
 const MOI = MathOptInterface
-# Define a ParametricOptimizer on top of the MOI optimizer
-optimizer = POI.ParametricOptimizer(GLPK.Optimizer())
+# Define a Optimizer on top of the MOI optimizer
+optimizer = POI.Optimizer(GLPK.Optimizer())
 ```
 
 ### Parameters

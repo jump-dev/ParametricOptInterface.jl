@@ -13,7 +13,7 @@
         MOIU.UniversalFallback(MOIU.Model{Float64}()),
         ECOS.Optimizer(),
     )
-    model = POI.ParametricOptimizer(cached)
+    model = POI.Optimizer(cached)
 
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
@@ -75,7 +75,7 @@ end
         MOIU.UniversalFallback(MOIU.Model{Float64}()),
         ECOS.Optimizer(),
     )
-    optimizer = POI.ParametricOptimizer(cached)
+    optimizer = POI.Optimizer(cached)
 
     model = direct_model(optimizer)
     @variable(model, x)
@@ -110,7 +110,7 @@ end
             1 - t ∈ {0}
             (t, x-p ,y) ∈ SOC₃
 
-        opt 
+        opt
             x* = p - 1/√2
             y* = 1/√2
     """
@@ -118,7 +118,7 @@ end
         MOIU.UniversalFallback(MOIU.Model{Float64}()),
         ECOS.Optimizer(),
     )
-    model = POI.ParametricOptimizer(cached)
+    model = POI.Optimizer(cached)
 
     x, y, t = MOI.add_variables(model, 3)
     p, cp = MOI.add_constrained_variable(model, POI.Parameter(0))
@@ -193,7 +193,7 @@ end
             1 - t ∈ {0}
             (t, x-p ,y) ∈ SOC₃
 
-        opt 
+        opt
             x* = p - 1/√2
             y* = 1/√2
     """
@@ -202,7 +202,7 @@ end
         MOIU.UniversalFallback(MOIU.Model{Float64}()),
         ECOS.Optimizer(),
     )
-    optimizer = POI.ParametricOptimizer(cached)
+    optimizer = POI.Optimizer(cached)
 
     model = direct_model(optimizer)
     @variable(model, x)

@@ -2,7 +2,7 @@
     ipopt = Ipopt.Optimizer()
     MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
-    optimizer = POI.ParametricOptimizer(opt_in)
+    optimizer = POI.Optimizer(opt_in)
 
     Q = [4.0 1.0; 1.0 2.0]
     q = [1.0; 1.0]
@@ -60,7 +60,7 @@ end
     ipopt = Ipopt.Optimizer()
     MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
-    optimizer = POI.ParametricOptimizer(opt_in)
+    optimizer = POI.Optimizer(opt_in)
 
     A = [0.0 1.0; 1.0 0.0]
     a = [0.0, 0.0]
@@ -121,7 +121,7 @@ end
     ipopt = Ipopt.Optimizer()
     MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
-    optimizer = POI.ParametricOptimizer(opt_in)
+    optimizer = POI.Optimizer(opt_in)
 
     Q = [3.0 2.0; 2.0 1.0]
     q = [1.0, 6.0]
@@ -200,7 +200,7 @@ end
     ipopt = Ipopt.Optimizer()
     MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
-    optimizer = POI.ParametricOptimizer(opt_in)
+    optimizer = POI.Optimizer(opt_in)
 
     Q = [3.0 2.0; 2.0 1.0]
     q = [1.0, 6.0, 1.0]
@@ -288,7 +288,7 @@ end
     ipopt = Ipopt.Optimizer()
     MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
-    optimizer = POI.ParametricOptimizer(opt_in)
+    optimizer = POI.Optimizer(opt_in)
 
     A = [2.0 1.0; 1.0 2.0]
     a = [1.0, 1.0]
@@ -367,7 +367,7 @@ end
     ipopt = Ipopt.Optimizer()
     MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
-    optimizer = POI.ParametricOptimizer(opt_in)
+    optimizer = POI.Optimizer(opt_in)
 
     A = [2.0 1.0; 1.0 2.0]
     a = [1.0, 2.0]
@@ -446,7 +446,7 @@ end
     ipopt = Ipopt.Optimizer()
     MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
-    optimizer = POI.ParametricOptimizer(opt_in)
+    optimizer = POI.Optimizer(opt_in)
 
     A = [2.0 1.0; 1.0 2.0]
     a = [1.0, 1.0]
@@ -513,7 +513,7 @@ end
     ipopt = Ipopt.Optimizer()
     MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
-    optimizer = POI.ParametricOptimizer(opt_in)
+    optimizer = POI.Optimizer(opt_in)
 
     A = [2.0 1.0; 1.0 2.0]
     a = [1.0, 1.0]
@@ -580,7 +580,7 @@ end
     ipopt = Ipopt.Optimizer()
     MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
-    optimizer = POI.ParametricOptimizer(opt_in)
+    optimizer = POI.Optimizer(opt_in)
 
     A = [2.0 1.0; 1.0 2.0]
     a = [1.0, 1.0]
@@ -657,7 +657,7 @@ end
     ipopt = Ipopt.Optimizer()
     MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
-    optimizer = POI.ParametricOptimizer(opt_in)
+    optimizer = POI.Optimizer(opt_in)
 
     Q = [3.0 2.0 0.0; 2.0 1.0 0.0; 0.0 0.0 1.0]
     q = [1.0, 6.0, 0.0]
@@ -731,7 +731,7 @@ end
     ipopt = Ipopt.Optimizer()
     MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
-    optimizer = POI.ParametricOptimizer(opt_in)
+    optimizer = POI.Optimizer(opt_in)
 
     A = [0.0 1.0; 1.0 0.0]
     a = [1.0, 1.0]
@@ -801,7 +801,7 @@ end
     ipopt = Ipopt.Optimizer()
     MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
-    optimizer = POI.ParametricOptimizer(opt_in)
+    optimizer = POI.Optimizer(opt_in)
 
     A = [0.0 1.0; 1.0 0.0]
     a = [2.0, 1.0]
