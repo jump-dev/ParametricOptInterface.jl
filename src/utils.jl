@@ -1,9 +1,11 @@
 function next_variable_index!(model::ParametricOptimizer)
     return model.last_variable_index_added += 1
 end
+
 function next_parameter_index!(model::ParametricOptimizer)
     return model.last_parameter_index_added += 1
 end
+
 function update_number_of_parameters!(model::ParametricOptimizer)
     return model.number_of_parameters_in_model += 1
 end
@@ -29,6 +31,7 @@ function function_has_parameters(
     end
     return false
 end
+
 function function_has_parameters(
     model::ParametricOptimizer,
     f::MOI.VectorOfVariables,
@@ -40,6 +43,7 @@ function function_has_parameters(
     end
     return false
 end
+
 function function_has_parameters(
     model::ParametricOptimizer,
     f::MOI.VectorAffineFunction{T},
@@ -51,6 +55,7 @@ function function_has_parameters(
     end
     return false
 end
+
 function function_has_parameters(
     model::ParametricOptimizer,
     f::MOI.ScalarQuadraticFunction{T},
@@ -58,6 +63,7 @@ function function_has_parameters(
     return function_affine_terms_has_parameters(model, f.affine_terms) ||
            function_quadratic_terms_has_parameters(model, f.quadratic_terms)
 end
+
 function function_affine_terms_has_parameters(
     model::ParametricOptimizer,
     affine_terms::Vector{MOI.ScalarAffineTerm{T}},
@@ -69,6 +75,7 @@ function function_affine_terms_has_parameters(
     end
     return false
 end
+
 function function_quadratic_terms_has_parameters(
     model::ParametricOptimizer,
     quadratic_terms::Vector{MOI.ScalarQuadraticTerm{T}},
@@ -103,6 +110,7 @@ function separate_possible_terms_and_calculate_parameter_constant(
     end
     return vars, params, param_constant
 end
+
 # This version is used on SQFs
 function separate_possible_terms_and_calculate_parameter_constant(
     model::ParametricOptimizer,
@@ -133,12 +141,13 @@ function separate_possible_terms_and_calculate_parameter_constant(
     terms_with_variables_associated_to_parameters,
     param_constant
 end
+
 function separate_possible_terms_and_calculate_parameter_constant(
     model::ParametricOptimizer,
     terms::Vector{MOI.ScalarQuadraticTerm{T}},
 ) where {T}
     quad_params = MOI.ScalarQuadraticTerm{T}[] # parameter x parameter
-    quad_aff_vars = MOI.ScalarQuadraticTerm{T}[] # parameter x variable 
+    quad_aff_vars = MOI.ScalarQuadraticTerm{T}[] # parameter x variable
     quad_vars = MOI.ScalarQuadraticTerm{T}[] # variable x variable
     aff_terms = MOI.ScalarAffineTerm{T}[]
     variables_associated_to_parameters = MOI.VariableIndex[]
@@ -253,10 +262,8 @@ function separate_possible_terms_and_calculate_parameter_constant(
 ) where {T,S<:MOI.AbstractVectorSet}
     vars = MOI.VectorAffineTerm{T}[]
     params = MOI.VectorAffineTerm{T}[]
-
     n_dims = length(f.constants)
     param_constants = zeros(T, n_dims)
-
     for term in f.terms
         oi = term.output_index
 
@@ -271,6 +278,5 @@ function separate_possible_terms_and_calculate_parameter_constant(
             error("Constraint uses a variable that is not in the model")
         end
     end
-
     return vars, params, param_constants
 end
