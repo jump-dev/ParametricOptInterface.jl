@@ -1,11 +1,11 @@
 # Example
 
-Lets write a setep-by-step example of `POI` usage. 
+Lets write a setep-by-step example of `POI` usage.
 
-First, we declare a `ParametricOptimizer` on top of a `MOI` optimizer. In the example, we consider `GLPK` as the underlying solver:
+First, we declare a `Optimizer` on top of a `MOI` optimizer. In the example, we consider `GLPK` as the underlying solver:
 
 ```julia
-julia> optimizer = POI.ParametricOptimizer(GLPK.Optimizer())
+julia> optimizer = POI.Optimizer(GLPK.Optimizer())
 ```
 
 Then, we declare the constants that will be used in this model, for ease of reference:
@@ -92,7 +92,7 @@ The same is valid for the remaining parameters. In case a parameter appears in m
 So far, we only added some parameters that had no influence at first in solving the model. Let's change the values associated to each parameter to assess its implications.
 First, we set the value of parameters `y` and `z` to `1.0`. Notice that we are changing the feasible set of the decision variables:
 
-```julia 
+```julia
 julia> MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(1.0))
 julia> MOI.set(optimizer, MOI.ConstraintSet(), cz, POI.Parameter(1.0))
 ```
@@ -107,7 +107,7 @@ julia> isapprox.(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 4/3, atol = 1e-
 
 Although we changed the parameter values, we didn't optimize the model yet. Thus, **to apply the parameters' changes, the model must be optimized again**:
 
-```julia 
+```julia
 julia> MOI.optimize!(optimizer)
 ```
 

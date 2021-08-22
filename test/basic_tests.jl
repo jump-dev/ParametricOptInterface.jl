@@ -1,5 +1,5 @@
 @testset "Basic tests" begin
-    optimizer = POI.ParametricOptimizer(GLPK.Optimizer())
+    optimizer = POI.Optimizer(GLPK.Optimizer())
 
     MOI.set(optimizer, MOI.Silent(), true)
 
@@ -88,8 +88,7 @@
 
     @test MOI.get(optimizer, MOI.ObjectiveValue()) == 1
 
-    @test MOI.get(optimizer, MOI.SolverName()) ==
-          "ParametricOptimizer with GLPK attached"
+    @test MOI.get(optimizer, MOI.SolverName()) == "Optimizer with GLPK attached"
 
     @test MOI.supports(optimizer, MOI.VariableName(), MOI.VariableIndex)
     @test MOI.supports(optimizer, MOI.ConstraintName(), MOI.ConstraintIndex)
@@ -102,7 +101,7 @@ end
     ipopt = Ipopt.Optimizer()
     MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
-    optimizer = POI.ParametricOptimizer(opt_in)
+    optimizer = POI.Optimizer(opt_in)
 
     A = [2.0 1.0; 1.0 2.0]
     a = [1.0, 1.0]

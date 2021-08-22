@@ -1,5 +1,5 @@
 @testset "JuMP direct model - Linear Constraints - Affine parameters" begin
-    optimizer = POI.ParametricOptimizer(GLPK.Optimizer())
+    optimizer = POI.Optimizer(GLPK.Optimizer())
 
     model = direct_model(optimizer)
 
@@ -30,7 +30,7 @@
 end
 
 @testset "JuMP direct model - Linear Constraints - Parameter x variable" begin
-    optimizer = POI.ParametricOptimizer(GLPK.Optimizer())
+    optimizer = POI.Optimizer(GLPK.Optimizer())
 
     model = direct_model(optimizer)
 
@@ -61,7 +61,7 @@ end
 end
 
 @testset "JuMP - Linear Constraints - Affine parameters" begin
-    model = Model(() -> POI.ParametricOptimizer(GLPK.Optimizer()))
+    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
 
     @variable(model, x[i = 1:2] >= 0)
 
@@ -90,7 +90,7 @@ end
 end
 
 @testset "JuMP - Linear Constraints - Parameter x variable" begin
-    model = Model(() -> POI.ParametricOptimizer(GLPK.Optimizer()))
+    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
 
     @variable(model, x[i = 1:2] >= 0)
 
