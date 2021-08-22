@@ -93,14 +93,20 @@ mutable struct ParametricOptimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             Dict{MOI.VariableIndex,MOI.VariableIndex}(),
             0,
             PARAMETER_INDEX_THRESHOLD,
-            MOI.Utilities.DoubleDicts.DoubleDict{Vector{MOI.ScalarAffineTerm{Float64}}}(),
+            MOI.Utilities.DoubleDicts.DoubleDict{
+                Vector{MOI.ScalarAffineTerm{Float64}},
+            }(),
             Dict{MOI.ConstraintIndex,Vector{MOI.ScalarQuadraticTerm{Float64}}}(),
             Dict{MOI.ConstraintIndex,Vector{MOI.ScalarQuadraticTerm{Float64}}}(),
-            MOI.Utilities.DoubleDicts.DoubleDict{Vector{MOI.ScalarAffineTerm{Float64}}}(),
+            MOI.Utilities.DoubleDicts.DoubleDict{
+                Vector{MOI.ScalarAffineTerm{Float64}},
+            }(),
             Dict{MOI.ConstraintIndex,Vector{MOI.ScalarAffineTerm{Float64}}}(),
             Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}(),
             0,
-            MOI.Utilities.DoubleDicts.DoubleDict{Vector{MOI.VectorAffineTerm{Float64}}}(),
+            MOI.Utilities.DoubleDicts.DoubleDict{
+                Vector{MOI.VectorAffineTerm{Float64}},
+            }(),
             Vector{MOI.ScalarAffineTerm{Float64}}(),
             Vector{MOI.ScalarQuadraticTerm{Float64}}(),
             Vector{MOI.ScalarQuadraticTerm{Float64}}(),
@@ -678,7 +684,8 @@ function add_constraint_with_parameters_on_function(
         MOI.ScalarAffineFunction(aff_terms, const_term)
     end
     model.last_quad_add_added += 1
-    ci = MOI.Utilities.normalize_and_add_constraint(model.optimizer, f_quad, set)
+    ci =
+        MOI.Utilities.normalize_and_add_constraint(model.optimizer, f_quad, set)
     # This part is used to remember that ci came from a quadratic function
     # It is particularly useful because sometimes the constraint mutates
     new_ci = MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},S}(
@@ -778,8 +785,7 @@ function MOI.set(
     end
 
     if !isempty(quad_terms)
-        f_quad =
-            MOI.ScalarQuadraticFunction(aff_terms, quad_terms, const_term)
+        f_quad = MOI.ScalarQuadraticFunction(aff_terms, quad_terms, const_term)
 
         MOI.set(model.optimizer, attr, f_quad)
     else

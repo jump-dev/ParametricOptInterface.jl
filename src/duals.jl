@@ -76,7 +76,10 @@ end
 function update_duals_with_quadratic_constraint_cache!(
     param_dual_cum_sum::Vector{Float64},
     model::ParametricOptimizer,
-    quadratic_constraint_cache_pc_inner::MOI.Utilities.DoubleDicts.WithType{F,S},
+    quadratic_constraint_cache_pc_inner::MOI.Utilities.DoubleDicts.WithType{
+        F,
+        S,
+    },
 ) where {F,S}
     for (poi_ci, param_array) in quadratic_constraint_cache_pc_inner
         moi_ci = model.quadratic_added_cache[poi_ci]
@@ -154,7 +157,7 @@ end
 function MOI.get(
     model::ParametricOptimizer,
     ::MOI.ConstraintDual,
-    cp::MOI.ConstraintIndex{MOI.SingleVariable,POI.Parameter},
+    cp::MOI.ConstraintIndex{MOI.SingleVariable,Parameter},
 )
     if !is_additive(model, cp)
         error("Cannot calculate the dual of a multiplicative parameter")
