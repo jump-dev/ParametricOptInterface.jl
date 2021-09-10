@@ -20,7 +20,7 @@ end
 
 function update_duals_with_affine_constraint_cache!(
     param_dual_cum_sum::Vector{Float64},
-    model::POI.Optimizer,
+    model::Optimizer,
 )
     for S in SUPPORTED_SETS
         affine_constraint_cache_inner =
@@ -39,7 +39,7 @@ end
 function update_duals_with_affine_constraint_cache!(
     param_dual_cum_sum::Vector{Float64},
     optimizer::OT,
-    affine_constraint_cache_inner::DD.WithType{F,S},
+    affine_constraint_cache_inner::MOI.Utilities.DoubleDicts.WithType{F,S},
 ) where {OT,F,S}
     for (ci, param_array) in affine_constraint_cache_inner
         calculate_parameters_in_ci!(
@@ -54,7 +54,7 @@ end
 
 function update_duals_with_quadratic_constraint_cache!(
     param_dual_cum_sum::Vector{Float64},
-    model::POI.Optimizer,
+    model::Optimizer,
 )
     for S in SUPPORTED_SETS
         quadratic_constraint_cache_pc_inner =
@@ -76,7 +76,10 @@ end
 function update_duals_with_quadratic_constraint_cache!(
     param_dual_cum_sum::Vector{Float64},
     model::Optimizer,
-    quadratic_constraint_cache_pc_inner::DD.WithType{F,S},
+    quadratic_constraint_cache_pc_inner::MOI.Utilities.DoubleDicts.WithType{
+        F,
+        S,
+    },
 ) where {F,S}
     for (poi_ci, param_array) in quadratic_constraint_cache_pc_inner
         moi_ci = model.quadratic_added_cache[poi_ci]
@@ -154,7 +157,7 @@ end
 function MOI.get(
     model::Optimizer,
     ::MOI.ConstraintDual,
-    cp::MOI.ConstraintIndex{MOI.SingleVariable,POI.Parameter},
+    cp::MOI.ConstraintIndex{MOI.SingleVariable,Parameter},
 )
     if !is_additive(model, cp)
         error("Cannot calculate the dual of a multiplicative parameter")

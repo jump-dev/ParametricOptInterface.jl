@@ -31,7 +31,7 @@ function update_parameter_in_affine_constraints!(
     optimizer::OT,
     parameters::Dict{MOI.VariableIndex,T},
     updated_parameters::Dict{MOI.VariableIndex,T},
-    affine_constraint_cache_inner::DD.WithType{F,S},
+    affine_constraint_cache_inner::MOI.Utilities.DoubleDicts.WithType{F,S},
 ) where {OT,T,F,S}
     for (ci, param_array) in affine_constraint_cache_inner
         update_parameter_in_affine_constraints!(
@@ -111,7 +111,7 @@ function update_parameter_in_quadratic_constraints_pc!(model::Optimizer)
                 MOI.ConstraintSet(),
                 model.quadratic_added_cache[ci],
             )
-            set = POI.update_constant!(set, param_constant)
+            set = update_constant!(set, param_constant)
             MOI.set(
                 model.optimizer,
                 MOI.ConstraintSet(),
@@ -188,7 +188,7 @@ function update_parameter_in_quadratic_constraints_pp!(model::Optimizer)
                 MOI.ConstraintSet(),
                 model.quadratic_added_cache[ci],
             )
-            set = POI.update_constant!(set, param_constant)
+            set = update_constant!(set, param_constant)
             MOI.set(
                 model.optimizer,
                 MOI.ConstraintSet(),
@@ -268,7 +268,7 @@ function update_parameter_in_vector_affine_constraints!(
     optimizer::OT,
     parameters::Dict{MOI.VariableIndex,T},
     updated_parameters::Dict{MOI.VariableIndex,T},
-    vector_constraint_cache_inner::DD.WithType{F,S},
+    vector_constraint_cache_inner::MOI.Utilities.DoubleDicts.WithType{F,S},
 ) where {OT,T,F,S}
     for (ci, param_array) in vector_constraint_cache_inner
         update_parameter_in_vector_affine_constraints!(
