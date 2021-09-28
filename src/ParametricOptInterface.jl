@@ -257,6 +257,14 @@ function MOI.get(model::Optimizer, attr::MOI.VariableName, v::MOI.VariableIndex)
     end
 end
 
+function MOI.get(model::Optimizer, tp::Type{MOI.VariableIndex}, attr::String)
+    return MOI.get(model.optimizer, tp, attr)
+end
+
+function MOI.get(model::Optimizer, attr::MOI.ObjectiveBound)
+    return MOI.get(model.optimizer, attr)
+end
+
 function MOI.supports(
     model::Optimizer,
     attr::MOI.VariableName,
@@ -311,6 +319,35 @@ function MOI.get(
     end
 end
 
+function MOI.get(model::Optimizer, tp::Type{MOI.ConstraintIndex{F, S}}, attr::String
+) where {F,S}
+    return MOI.get(model.optimizer, tp, attr)
+end
+
+function MOI.get(model::Optimizer, tp::Type{MOI.ConstraintIndex}, attr::String)
+    return MOI.get(model.optimizer, tp, attr)
+end
+
+function MOI.is_valid(model::Optimizer, vi::MOI.VariableIndex)
+    return MOI.is_valid(model.optimizer, vi)
+end
+
+function MOI.get(model::Optimizer, attr::MOI.TimeLimitSec)
+    return MOI.get(model.optimizer, MOI.TimeLimitSec())
+end
+
+function MOI.get(model::Optimizer, attr::MOI.SolveTime)
+    return MOI.get(model.optimizer, MOI.SolveTime())
+end
+
+function MOI.supports(model::Optimizer, attr::MOI.Silent)
+    return MOI.supports(model.optimizer, MOI.Silent())
+end
+
+function MOI.get(model::Optimizer, attr::MOI.RawStatusString)
+    return MOI.get(model.optimizer, MOI.RawStatusString())
+end
+
 # TODO: This requires that MOI.ListOfConstraintIndices is implemented correctly for all cases
 function MOI.get(
     model::Optimizer,
@@ -351,14 +388,28 @@ function MOI.get(model::Optimizer, attr::MOI.ObjectiveFunctionType)
     return MOI.get(model.optimizer, attr)
 end
 
-# TODO
-# Same as ConstraintFunction getter. And you also need to convert to F
-# function MOI.get(
-#     model::Optimizer,
-#     attr::MOI.ObjectiveFunction{F}) where F <: Union{MOI.SingleVariable,MOI.ScalarAffineFunction{T}} where T
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.ObjectiveFunction{F}) where F <: Union{MOI.SingleVariable,MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}} where T
 
-#     MOI.get(model.optimizer, attr)
-# end
+    # Check if the index was cached as Affine expression
+    if !isempty(model.affine_objective_cache)
+        return model.affine_objective_cache
+    # Check if the index was cached as a Quadratic
+    elseif !isempty(model.quadratic_objective_cache_pv)
+        return model.quadratic_objective_cache_pv
+    elseif !isempty(model.quadratic_objective_cache_pp)
+        return model.quadratic_objective_cache_pp
+    elseif !isempty(model.quadratic_objective_cache_pc)
+        return model.quadratic_objective_cache_pc
+    else
+        return MOI.get(model.optimizer, attr)
+    end
+end
+
+function MOI.get(model::Optimizer, attr::MOI.ResultCount)
+    return MOI.get(model.optimizer, attr)
+end
 
 # TODO:
 # In the AbstractBridgeOptimizer, we collect all the possible constraint types and them filter with NumberOfConstraints.
@@ -368,7 +419,9 @@ end
 # Then you remove the number of constraints of that that in values(quadratic_added_cache)
 function MOI.get(model::Optimizer, ::MOI.ListOfConstraints)
     inner_ctrs = MOI.get(model.optimizer, MOI.ListOfConstraints())
-    !has_quadratic_constraint_caches(model) && return inner_ctrs
+    if !has_quadratic_constraint_caches(model)
+        return inner_ctrs
+    end
 
     cache_keys = collect(keys(model.quadratic_added_cache))
     constraints = Set{Tuple{DataType,DataType}}()
@@ -380,7 +433,9 @@ function MOI.get(model::Optimizer, ::MOI.ListOfConstraints)
             quadratic_constraint_cache_map_check(mode, inner_index)
             push!(constraints, typeof.(cache_keys[cache_map])...)
             # If not all the constraints are chached then also push the original type
-            !all(cache_map_check) && push!(constraints, (F, S))
+            if !all(cache_map_check)
+                push!(constraints, (F, S))
+            end
         end
     
         return collect(constraints)
@@ -448,6 +503,14 @@ function MOI.supports_add_constrained_variables(
 )
     return MOI.supports_add_constrained_variables(model.optimizer, MOI.Reals)
 end
+
+# TODO: Why the inner solver does not support MOI.Nonnegatives?
+# function MOI.supports_add_constrained_variables(
+#     model::Optimizer,
+#     ::Type{MOI.Nonnegatives},
+# )
+#     return MOI.supports_add_constrained_variables(model.optimizer, MOI.Nonnegatives)
+# end
 
 function MOI.add_variable(model::Optimizer)
     next_variable_index!(model)
@@ -810,8 +873,9 @@ function MOI.delete(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
 ) where {F<:MOI.ScalarAffineFunction,S<:MOI.AbstractSet}
-    haskey(model.affine_constraint_cache, c) &&
-    delete!(model.affine_constraint_cache, c)
+    if haskey(model.affine_constraint_cache, c) 
+        delete!(model.affine_constraint_cache, c)
+    end
     MOI.delete(model.optimizer, c)
     return
 end
