@@ -1,6 +1,7 @@
 module ParametricOptInterface
 
 using MathOptInterface
+using DataStructures: OrderedDict
 
 const MOI = MathOptInterface
 
@@ -47,29 +48,37 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     variables::Dict{MOI.VariableIndex,MOI.VariableIndex}
     last_variable_index_added::Int64
     last_parameter_index_added::Int64
+    # Store reference to affine constraints with parameters: v + p >= 0
     affine_constraint_cache::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.ScalarAffineTerm{Float64}},
     }
+    # Store reference to parameter * variable constraints: p*v >= 0.0
     quadratic_constraint_cache_pv::Dict{
         MOI.ConstraintIndex,
         Vector{MOI.ScalarQuadraticTerm{Float64}},
     }
+    # Store reference to parameter * parameter constraints: p*p >= var
     quadratic_constraint_cache_pp::Dict{
         MOI.ConstraintIndex,
         Vector{MOI.ScalarQuadraticTerm{Float64}},
     }
+    # Store reference to constraints quad_variable_term + affine_with_parameters: v*v + p >= 0
     quadratic_constraint_cache_pc::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.ScalarAffineTerm{Float64}},
     }
+    # Probably for QPs p*v*v (?)
     quadratic_constraint_variables_associated_to_parameters_cache::Dict{
         MOI.ConstraintIndex,
         Vector{MOI.ScalarAffineTerm{T}},
     }
-    quadratic_added_cache::Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}
+    # Store the map between quadratic terms add as var * parameter to the resulting shape when implemented in the solver
+    # for instance p*p + var -> ScalarAffine(var)
+    quadratic_added_cache::OrderedDict{MOI.ConstraintIndex,MOI.ConstraintIndex}
     last_quad_add_added::Int64
     vector_constraint_cache::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.VectorAffineTerm{Float64}},
     }
+    # Ditto from the constraint caches but for the objective function
     affine_objective_cache::Vector{MOI.ScalarAffineTerm{T}}
     quadratic_objective_cache_pv::Vector{MOI.ScalarQuadraticTerm{T}}
     quadratic_objective_cache_pp::Vector{MOI.ScalarQuadraticTerm{T}}
@@ -180,6 +189,14 @@ function MOI.supports_constraint(
     )
 end
 
+function MOI.supports_constraint(
+    model::Optimizer,
+    F::Type{MOI.VectorQuadraticFunction{T}},
+    S::Type{<:MOI.AbstractSet},
+) where {T}
+    return MOI.supports_constraint(model.optimizer, F, S)
+end
+
 function MOI.supports(
     model::Optimizer,
     attr::Union{
@@ -278,11 +295,29 @@ function MOI.supports(
     return MOI.supports(model.optimizer, attr, tp)
 end
 
-# TODO
-# This is not correct, you need to put the parameters back into the function
-# function MOI.get(model::Optimizer, attr::MOI.ConstraintFunction, ci::MOI.ConstraintIndex{F, S}) where {F, S}
-#     MOI.get(model.optimizer, attr, ci)
-# end
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.ConstraintFunction,
+    ci::MOI.ConstraintIndex{F,S},
+) where {F,S}
+    # Check if the index was cached as Affine expression
+    if haskey(model.affine_constraint_cache, ci)
+        return model.affine_constraint_cache[ci]
+    # Check if the index was cached as a Quadratic
+    elseif haskey(model.quadratic_added_cache, ci)
+        return model.quadratic_added_cache[ci]
+    else
+        return MOI.get(model.optimizer, attr, ci)
+    end
+end
+
+# TODO: This requires that MOI.ListOfConstraintIndices is implemented correctly for all cases
+function MOI.get(
+    model::Optimizer,
+    ::MOI.NumberOfConstraints{F,S},
+) where {F,S}
+    return length(MOI.get(model, MOI.ListOfConstraintIndices{F,S}()))
+end
 
 function MOI.get(
     model::Optimizer,
@@ -290,6 +325,17 @@ function MOI.get(
     ci::MOI.ConstraintIndex{F,S},
 ) where {F,S}
     MOI.throw_if_not_valid(model, ci)
+    return MOI.get(model.optimizer, attr, ci)
+end
+
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.ConstraintSet,
+    ci::MOI.ConstraintIndex{F,S},
+) where {
+    F<:Union{MOI.SingleVariable,MOI.VectorOfVariables,MOI.VectorAffineFunction},
+    S<:MOI.AbstractSet,
+}
     return MOI.get(model.optimizer, attr, ci)
 end
 
@@ -314,17 +360,31 @@ end
 #     MOI.get(model.optimizer, attr)
 # end
 
-# TODO
-# You might have transformed quadratic functions into affine functions so this is incorrect
-# function MOI.get(model::Optimizer, ::MOI.ListOfConstraints)
-#     constraints = Set{Tuple{DataType, DataType}}()
-#     inner_ctrs = MOI.get(model.optimizer, MOI.ListOfConstraints())
-#     for (F, S) in inner_ctrs
-#         push!(constraints, (F,S))
-#     end
+# TODO:
+# In the AbstractBridgeOptimizer, we collect all the possible constraint types and them filter with NumberOfConstraints.
+# If NumberOfConstraints is zero then we remove it from the list.
+# Here, you can look over keys(quadratic_added_cache) and add the F-S types of all the keys in constraints.
+# To implement NumberOfConstraints, you call NumberOfConstraints to the inner optimizer.
+# Then you remove the number of constraints of that that in values(quadratic_added_cache)
+function MOI.get(model::Optimizer, ::MOI.ListOfConstraints)
+    inner_ctrs = MOI.get(model.optimizer, MOI.ListOfConstraints())
+    !has_quadratic_constraint_caches(model) && return inner_ctrs
 
-#     collect(constraints)
-# end
+    cache_keys = collect(keys(model.quadratic_added_cache))
+    constraints = Set{Tuple{DataType,DataType}}()
+
+    for (F, S) in inner_ctrs
+        inner_index =
+            MOI.get(model.optimizer, MOI.ListOfConstraintIndices{F,S}())
+        cache_map_check =
+            quadratic_constraint_cache_map_check(mode, inner_index)
+            push!(constraints, typeof.(cache_keys[cache_map])...)
+            # If not all the constraints are chached then also push the original type
+            !all(cache_map_check) && push!(constraints, (F, S))
+        end
+    
+        return collect(constraints)
+    end
 
 function MOI.get(
     model::Optimizer,
@@ -333,17 +393,50 @@ function MOI.get(
     return MOI.get(model.optimizer, attr)
 end
 
-# TODO
-# You might have transformed quadratic functions into affine functions so this is incorrect
-# function MOI.get(
-#     model::Optimizer,
-#     ::MOI.ListOfConstraintIndices{F, S}
-# ) where {S<:MOI.AbstractSet, F<:Union{
-#     MOI.ScalarAffineFunction{T},
-#     MOI.VectorAffineFunction{T},
-# }} where T
-#     MOI.get(model.optimizer, MOI.ListOfConstraintIndices{F, S}())
-# end
+function MOI.get(
+    model::Optimizer,
+    ::MOI.ListOfConstraintIndices{F,S},
+) where {
+    S<:MOI.AbstractSet,
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.VectorAffineFunction{T}},
+} where {T}
+    inner_index = MOI.get(model.optimizer, MOI.ListOfConstraintIndices{F,S}())
+    if !has_quadratic_constraint_caches(model)
+        return inner_index
+    end
+
+    cache_map_check = quadratic_constraint_cache_map_check(mode, inner_index)
+    return inner_index[cache_map_check]
+end
+
+function MOI.get(
+    model::Optimizer,
+    ::MOI.ListOfConstraintIndices{F,S},
+) where {S<:MOI.AbstractSet,F<:MOI.ScalarQuadraticFunction{T}} where {T}
+    inner_index = MOI.ConstraintIndex{F,S}[]
+    if MOI.supports_constraint(model.optimizer, F, S)
+        inner_index =
+            MOI.get(model.optimizer, MOI.ListOfConstraintIndices{F,S}())
+        if !has_quadratic_constraint_caches(model)
+            return inner_index
+        end
+    end
+
+    quadratic_caches = [
+        :quadratic_constraint_cache_pc,
+        :quadratic_constraint_cache_pp,
+        :quadratic_constraint_cache_pv,
+        # JD: Check if this applies here
+        # :quadratic_constraint_variables_associated_to_parameters_cache
+    ]
+
+    for field in quadratic_caches
+        cache = getfield(model, field)
+        push!(inner_index, keys(cache)...)
+    end
+    return inner_index
+end
+
 
 function MOI.supports_add_constrained_variable(::Optimizer, ::Type{Parameter})
     return true
@@ -705,6 +798,57 @@ function MOI.add_constraint(
     else
         return add_constraint_with_parameters_on_function(model, f, set)
     end
+end
+
+function MOI.delete(model::Optimizer, v::MOI.VariableIndex)
+    pop!(model.variables, v)
+    MOI.delete(model.optimizer, v)
+    return
+end
+
+function MOI.delete(
+    model::Optimizer,
+    c::MOI.ConstraintIndex{F,S},
+) where {F<:MOI.ScalarAffineFunction,S<:MOI.AbstractSet}
+    haskey(model.affine_constraint_cache, c) &&
+    delete!(model.affine_constraint_cache, c)
+    MOI.delete(model.optimizer, c)
+    return
+end
+
+function MOI.delete(
+    model::Optimizer,
+    c::MOI.ConstraintIndex{F,S},
+) where {
+    F<:Union{MOI.SingleVariable,MOI.VectorOfVariables,MOI.VectorAffineFunction},
+    S<:MOI.AbstractSet,
+}
+    MOI.delete(model.optimizer, c)
+    return
+end
+
+function MOI.is_valid(
+    model::Optimizer,
+    c::MOI.ConstraintIndex{F,S},
+) where {
+    F<:Union{MOI.SingleVariable,MOI.VectorOfVariables,MOI.VectorAffineFunction},
+    S<:MOI.AbstractSet,
+}
+    return MOI.is_valid(model.optimizer, c)
+end
+
+function MOI.is_valid(
+    model::Optimizer,
+    c::MOI.ConstraintIndex{F,S},
+) where {F<:MOI.ScalarAffineFunction,S<:MOI.AbstractSet}
+    if haskey(model.affine_constraint_cache, c)
+        # TODO: how to check the cached constraint is valid (?)
+        return function_has_parameters(
+            model,
+            model.affine_constraint_cache[c],
+        ) && MOI.is_valid(model.optimizer, c)
+    end
+    return MOI.is_valid(model.optimizer, c)
 end
 
 function MOI.set(
