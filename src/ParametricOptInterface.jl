@@ -108,7 +108,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
                 Vector{MOI.ScalarAffineTerm{Float64}},
             }(),
             Dict{MOI.ConstraintIndex,Vector{MOI.ScalarAffineTerm{Float64}}}(),
-            Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}(),
+            OrderedDict{MOI.ConstraintIndex,MOI.ConstraintIndex}(),
             0,
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.VectorAffineTerm{Float64}},
@@ -332,19 +332,33 @@ function MOI.is_valid(model::Optimizer, vi::MOI.VariableIndex)
     return MOI.is_valid(model.optimizer, vi)
 end
 
-function MOI.get(model::Optimizer, attr::MOI.TimeLimitSec)
+MOI.supports(model::Optimizer, ::MOI.NumberOfThreads) = MOI.supports(model.optimizer, MOI.NumberOfThreads())
+
+MOI.supports(model::Optimizer, ::MOI.TimeLimitSec) = MOI.supports(model.optimizer, MOI.TimeLimitSec())
+
+function MOI.set(model::Optimizer, ::MOI.TimeLimitSec, value)
+    MOI.set(model.optimizer, MOI.TimeLimitSec(), value)
+    return
+end
+
+function MOI.get(model::Optimizer, ::MOI.TimeLimitSec)
     return MOI.get(model.optimizer, MOI.TimeLimitSec())
 end
 
-function MOI.get(model::Optimizer, attr::MOI.SolveTime)
+function MOI.get(model::Optimizer, ::MOI.SolveTime)
     return MOI.get(model.optimizer, MOI.SolveTime())
 end
 
-function MOI.supports(model::Optimizer, attr::MOI.Silent)
-    return MOI.supports(model.optimizer, MOI.Silent())
+MOI.supports(model::Optimizer, ::MOI.Silent) = MOI.supports(model.optimizer, MOI.Silent())
+
+function MOI.set(model::Optimizer, ::MOI.Silent, value::Bool)
+    MOI.set(model.optimizer, MOI.Silent())
+    return
 end
 
-function MOI.get(model::Optimizer, attr::MOI.RawStatusString)
+MOI.get(model::Optimizer, ::MOI.Silent) = MOI.get(model.optimizer, MOI.Silent())
+
+function MOI.get(model::Optimizer, ::MOI.RawStatusString)
     return MOI.get(model.optimizer, MOI.RawStatusString())
 end
 
@@ -864,7 +878,7 @@ function MOI.add_constraint(
 end
 
 function MOI.delete(model::Optimizer, v::MOI.VariableIndex)
-    pop!(model.variables, v)
+    pop!(model.variables, v, 0) # 0 is a default value if v is not found
     MOI.delete(model.optimizer, v)
     return
 end

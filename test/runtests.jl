@@ -7,9 +7,8 @@ using ECOS
 using JuMP
 
 const POI = ParametricOptInterface
-const MOI = MathOptInterface
-const MOIU = MathOptInterface.Utilities
-const MOIT = MathOptInterface.Test
+const MOIU = MOI.Utilities
+const MOIT = MOI.Test
 
 const ATOL = 1e-4
 
