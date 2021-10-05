@@ -20,6 +20,10 @@ function is_variable_in_model(model::Optimizer, v::MOI.VariableIndex)
     return 0 < v.value <= model.last_variable_index_added
 end
 
+function has_quadratic_constraint_caches(model::Optimizer)
+    return !isempty(model.quadratic_added_cache)
+end
+
 function function_has_parameters(
     model::Optimizer,
     f::MOI.ScalarAffineFunction{T},
@@ -249,6 +253,16 @@ function fill_quadratic_constraint_caches!(
             terms_with_variables_associated_to_parameters
     end
     return nothing
+end
+
+function quadratic_constraint_cache_map_check(
+    model::Optimizer,
+    idxs::MOI.ConstraintIndex{F,S},
+) where {F,S}
+    cached_constraints = values(model.quadratic_added_cache)
+    # Using this becuase some custom brodcast method throws errors if
+    # inner_idex .∈ cached_constraints is used
+    return [i ∈ cached_constraints for i in idxs]
 end
 
 # Vector Affine

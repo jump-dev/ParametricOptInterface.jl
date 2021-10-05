@@ -9,9 +9,11 @@ using JuMP
 const POI = ParametricOptInterface
 const MOI = MathOptInterface
 const MOIU = MathOptInterface.Utilities
+const MOIT = MathOptInterface.Test
 
 const ATOL = 1e-4
 
+include("MOI_wrapper.jl")
 include("production_problem_test.jl")
 include("basic_tests.jl")
 include("quad_tests.jl")
