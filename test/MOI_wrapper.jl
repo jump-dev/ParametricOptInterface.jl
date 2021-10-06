@@ -11,7 +11,7 @@ const OPTIMIZER_CACHED_IPOPT = MOI.Bridges.full_bridge_optimizer(
                                 Float64)
 const CONFIG = MOIT.TestConfig()
 
-@testset "Unit Tests with GLPK" begin
+@testset "GLPK tests" begin
     MOIT.basic_constraint_tests(
         OPTIMIZER_GLPK, 
         CONFIG,
@@ -28,6 +28,7 @@ const CONFIG = MOIT.TestConfig()
             (MathOptInterface.ScalarQuadraticFunction{Float64}, MathOptInterface.Interval{Float64}),
         ]
     )
+
     MOIT.unittest(
         OPTIMIZER_GLPK,
         CONFIG,
@@ -44,9 +45,42 @@ const CONFIG = MOIT.TestConfig()
             "solve_zero_one_with_bounds_3",
         ],
     )
+
+    MOIT.modificationtest(OPTIMIZER_GLPK, CONFIG)
+
+    @testset "ModelLike tests" begin
+        @test MOI.get(OPTIMIZER_GLPK, MOI.SolverName()) == "Parametric Optimizer with GLPK attached"
+        @testset "default_objective_test" begin
+            MOIT.default_objective_test(OPTIMIZER_GLPK)
+        end
+        @testset "default_status_test" begin
+            MOIT.default_status_test(OPTIMIZER_GLPK)
+        end
+        @testset "nametest" begin
+            MOIT.nametest(OPTIMIZER_GLPK)
+        end
+        @testset "validtest" begin
+            MOIT.validtest(OPTIMIZER_GLPK)
+        end
+        @testset "emptytest" begin
+            MOIT.emptytest(OPTIMIZER_GLPK)
+        end
+        @testset "orderedindicestest" begin
+            MOIT.orderedindicestest(OPTIMIZER_GLPK)
+        end
+        @testset "copytest" begin
+            MOIT.copytest(
+                OPTIMIZER_GLPK,
+                MOI.Bridges.full_bridge_optimizer(GLPK.Optimizer(), Float64),
+            )
+        end
+        @testset "scalar_function_constant_not_zero" begin
+            MOIT.scalar_function_constant_not_zero(OPTIMIZER_GLPK)
+        end
+    end
 end
 
-@testset "Unit Tests with cached Ipopt" begin
+@testset "Ipopt tests" begin
     MOIT.basic_constraint_tests(
         OPTIMIZER_CACHED_IPOPT, 
         CONFIG

@@ -209,6 +209,57 @@ function MOI.supports(
     return MOI.supports(model.optimizer, attr)
 end
 
+MOI.Utilities.supports_default_copy_to(model::Optimizer, bool::Bool) = MOI.Utilities.supports_default_copy_to(model.optimizer, bool)
+MOI.supports(model::Optimizer, ::MOI.Name) = MOI.supports(model.optimizer, MOI.Name())
+MOI.get(model::Optimizer, ::MOI.ListOfModelAttributesSet) = MOI.get(model.optimizer, MOI.ListOfModelAttributesSet())
+MOI.get(model::Optimizer, ::MOI.Name) = MOI.get(model.optimizer, MOI.Name())
+MOI.set(model::Optimizer, ::MOI.Name, name::String) = MOI.set(model.optimizer, MOI.Name(), name)
+MOI.get(model::Optimizer, ::MOI.ListOfVariableIndices) = MOI.get(model.optimizer, MOI.ListOfVariableIndices())
+MOI.get(model::Optimizer, ::MOI.ListOfVariableAttributesSet) = MOI.get(model.optimizer, MOI.ListOfVariableAttributesSet())
+MOI.get(model::Optimizer, ::MOI.ListOfConstraintAttributesSet) = MOI.get(model.optimizer, MOI.ListOfConstraintAttributesSet())
+function MOI.set(
+    model::Optimizer,
+    ::MOI.ConstraintFunction,
+    c::MOI.ConstraintIndex{F,S},
+    f::F,
+) where {F, S}
+    MOI.set(model.optimizer, MOI.ConstraintFunction(), c, f)
+    return
+end
+function MOI.set(
+    model::Optimizer,
+    ::MOI.ConstraintSet,
+    c::MOI.ConstraintIndex{F,S},
+    s::S,
+) where {F, S}
+    MOI.set(model.optimizer, MOI.ConstraintSet(), c, s)
+    return
+end
+function MOI.modify(
+    model::Optimizer,
+    c::MOI.ConstraintIndex{F,S},
+    chg::MOI.ScalarCoefficientChange{Float64},
+) where {F, S}
+    MOI.modify(model.optimizer, c, chg)
+    return 
+end
+function MOI.modify(
+    model::Optimizer,
+    c::MOI.ObjectiveFunction{F},
+    chg::MOI.ScalarCoefficientChange{Float64},
+) where F <: MathOptInterface.AbstractScalarFunction
+    MOI.modify(model.optimizer, c, chg)
+    return
+end
+function MOI.modify(
+    model::Optimizer,
+    c::MOI.ObjectiveFunction{F},
+    chg::MOI.ScalarConstantChange{Float64},
+) where F <: MathOptInterface.AbstractScalarFunction
+    MOI.modify(model.optimizer, c, chg)
+    return
+end
+
 function MOI.empty!(model::Optimizer{T}) where {T}
     MOI.empty!(model.optimizer)
     empty!(model.parameters)
@@ -352,7 +403,7 @@ end
 MOI.supports(model::Optimizer, ::MOI.Silent) = MOI.supports(model.optimizer, MOI.Silent())
 
 function MOI.set(model::Optimizer, ::MOI.Silent, value::Bool)
-    MOI.set(model.optimizer, MOI.Silent())
+    MOI.set(model.optimizer, MOI.Silent(), value)
     return
 end
 
@@ -362,7 +413,6 @@ function MOI.get(model::Optimizer, ::MOI.RawStatusString)
     return MOI.get(model.optimizer, MOI.RawStatusString())
 end
 
-# TODO: This requires that MOI.ListOfConstraintIndices is implemented correctly for all cases
 function MOI.get(
     model::Optimizer,
     ::MOI.NumberOfConstraints{F,S},
@@ -425,7 +475,6 @@ function MOI.get(model::Optimizer, attr::MOI.ResultCount)
     return MOI.get(model.optimizer, attr)
 end
 
-# TODO:
 # In the AbstractBridgeOptimizer, we collect all the possible constraint types and them filter with NumberOfConstraints.
 # If NumberOfConstraints is zero then we remove it from the list.
 # Here, you can look over keys(quadratic_added_cache) and add the F-S types of all the keys in constraints.
@@ -727,11 +776,6 @@ function MOI.get(
     return MOI.get(model.optimizer, attr, c)
 end
 
-function MOI.set(model::Optimizer, ::MOI.Silent, bool::Bool)
-    MOI.set(model.optimizer, MOI.Silent(), bool)
-    return
-end
-
 function MOI.set(model::Optimizer, attr::MOI.RawParameter, val::Any)
     MOI.set(model.optimizer, attr, val)
     return
@@ -744,7 +788,7 @@ end
 
 function MOI.get(model::Optimizer, ::MOI.SolverName)
     name = MOI.get(model.optimizer, MOI.SolverName())
-    return "Optimizer with $(name) attached"
+    return "Parametric Optimizer with $(name) attached"
 end
 
 function MOI.add_constraint(
