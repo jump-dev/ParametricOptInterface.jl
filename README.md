@@ -1,4 +1,4 @@
-# ParametricOptInterface.jl - moi tests
+# ParametricOptInterface.jl
 GSOC 2020 project
 
 
