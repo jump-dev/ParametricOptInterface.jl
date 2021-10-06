@@ -88,8 +88,6 @@
 
     @test MOI.get(optimizer, MOI.ObjectiveValue()) == 1
 
-    @test MOI.get(optimizer, MOI.SolverName()) == "Optimizer with GLPK attached"
-
     @test MOI.supports(optimizer, MOI.VariableName(), MOI.VariableIndex)
     @test MOI.supports(optimizer, MOI.ConstraintName(), MOI.ConstraintIndex)
     @test MOI.get(optimizer, MOI.ObjectiveSense()) == MOI.MIN_SENSE
