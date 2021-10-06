@@ -446,14 +446,14 @@ function MOI.get(model::Optimizer, ::MOI.ListOfConstraints)
         cache_map_check =
             quadratic_constraint_cache_map_check(mode, inner_index)
             push!(constraints, typeof.(cache_keys[cache_map])...)
-            # If not all the constraints are chached then also push the original type
-            if !all(cache_map_check)
-                push!(constraints, (F, S))
-            end
+        # If not all the constraints are chached then also push the original type
+        if !all(cache_map_check)
+            push!(constraints, (F, S))
         end
-    
-        return collect(constraints)
     end
+
+    return collect(constraints)
+end
 
 function MOI.get(
     model::Optimizer,
@@ -517,14 +517,6 @@ function MOI.supports_add_constrained_variables(
 )
     return MOI.supports_add_constrained_variables(model.optimizer, MOI.Reals)
 end
-
-# TODO: Why the inner solver does not support MOI.Nonnegatives?
-# function MOI.supports_add_constrained_variables(
-#     model::Optimizer,
-#     ::Type{MOI.Nonnegatives},
-# )
-#     return MOI.supports_add_constrained_variables(model.optimizer, MOI.Nonnegatives)
-# end
 
 function MOI.add_variable(model::Optimizer)
     next_variable_index!(model)
