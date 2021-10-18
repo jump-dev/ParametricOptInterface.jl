@@ -191,10 +191,14 @@ end
 
 function MOI.supports_constraint(
     model::Optimizer,
-    F::Type{MOI.VectorQuadraticFunction{T}},
+    ::Type{MOI.VectorQuadraticFunction{T}},
     S::Type{<:MOI.AbstractSet},
 ) where {T}
-    return MOI.supports_constraint(model.optimizer, F, S)
+    return MOI.supports_constraint(
+        model.optimizer, 
+        MOI.VectorAffineFunction{T}, 
+        S
+    )
 end
 
 function MOI.supports(
