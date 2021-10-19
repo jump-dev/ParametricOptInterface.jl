@@ -195,9 +195,9 @@ function MOI.supports_constraint(
     S::Type{<:MOI.AbstractSet},
 ) where {T}
     return MOI.supports_constraint(
-        model.optimizer, 
-        MOI.VectorAffineFunction{T}, 
-        S
+        model.optimizer,
+        MOI.VectorAffineFunction{T},
+        S,
     )
 end
 
@@ -213,20 +213,34 @@ function MOI.supports(
     return MOI.supports(model.optimizer, attr)
 end
 
-MOI.Utilities.supports_default_copy_to(model::Optimizer, bool::Bool) = MOI.Utilities.supports_default_copy_to(model.optimizer, bool)
-MOI.supports(model::Optimizer, ::MOI.Name) = MOI.supports(model.optimizer, MOI.Name())
-MOI.get(model::Optimizer, ::MOI.ListOfModelAttributesSet) = MOI.get(model.optimizer, MOI.ListOfModelAttributesSet())
+function MOI.Utilities.supports_default_copy_to(model::Optimizer, bool::Bool)
+    return MOI.Utilities.supports_default_copy_to(model.optimizer, bool)
+end
+function MOI.supports(model::Optimizer, ::MOI.Name)
+    return MOI.supports(model.optimizer, MOI.Name())
+end
+function MOI.get(model::Optimizer, ::MOI.ListOfModelAttributesSet)
+    return MOI.get(model.optimizer, MOI.ListOfModelAttributesSet())
+end
 MOI.get(model::Optimizer, ::MOI.Name) = MOI.get(model.optimizer, MOI.Name())
-MOI.set(model::Optimizer, ::MOI.Name, name::String) = MOI.set(model.optimizer, MOI.Name(), name)
-MOI.get(model::Optimizer, ::MOI.ListOfVariableIndices) = MOI.get(model.optimizer, MOI.ListOfVariableIndices())
-MOI.get(model::Optimizer, ::MOI.ListOfVariableAttributesSet) = MOI.get(model.optimizer, MOI.ListOfVariableAttributesSet())
-MOI.get(model::Optimizer, ::MOI.ListOfConstraintAttributesSet) = MOI.get(model.optimizer, MOI.ListOfConstraintAttributesSet())
+function MOI.set(model::Optimizer, ::MOI.Name, name::String)
+    return MOI.set(model.optimizer, MOI.Name(), name)
+end
+function MOI.get(model::Optimizer, ::MOI.ListOfVariableIndices)
+    return MOI.get(model.optimizer, MOI.ListOfVariableIndices())
+end
+function MOI.get(model::Optimizer, ::MOI.ListOfVariableAttributesSet)
+    return MOI.get(model.optimizer, MOI.ListOfVariableAttributesSet())
+end
+function MOI.get(model::Optimizer, ::MOI.ListOfConstraintAttributesSet)
+    return MOI.get(model.optimizer, MOI.ListOfConstraintAttributesSet())
+end
 function MOI.set(
     model::Optimizer,
     ::MOI.ConstraintFunction,
     c::MOI.ConstraintIndex{F,S},
     f::F,
-) where {F, S}
+) where {F,S}
     MOI.set(model.optimizer, MOI.ConstraintFunction(), c, f)
     return
 end
@@ -235,7 +249,7 @@ function MOI.set(
     ::MOI.ConstraintSet,
     c::MOI.ConstraintIndex{F,S},
     s::S,
-) where {F, S}
+) where {F,S}
     MOI.set(model.optimizer, MOI.ConstraintSet(), c, s)
     return
 end
@@ -243,15 +257,15 @@ function MOI.modify(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
     chg::MOI.ScalarCoefficientChange{Float64},
-) where {F, S}
+) where {F,S}
     MOI.modify(model.optimizer, c, chg)
-    return 
+    return
 end
 function MOI.modify(
     model::Optimizer,
     c::MOI.ObjectiveFunction{F},
     chg::MOI.ScalarCoefficientChange{Float64},
-) where F <: MathOptInterface.AbstractScalarFunction
+) where {F<:MathOptInterface.AbstractScalarFunction}
     MOI.modify(model.optimizer, c, chg)
     return
 end
@@ -259,7 +273,7 @@ function MOI.modify(
     model::Optimizer,
     c::MOI.ObjectiveFunction{F},
     chg::MOI.ScalarConstantChange{Float64},
-) where F <: MathOptInterface.AbstractScalarFunction
+) where {F<:MathOptInterface.AbstractScalarFunction}
     MOI.modify(model.optimizer, c, chg)
     return
 end
@@ -366,7 +380,7 @@ function MOI.get(
     # Check if the index was cached as Affine expression
     if haskey(model.affine_constraint_cache, ci)
         return model.affine_constraint_cache[ci]
-    # Check if the index was cached as a Quadratic
+        # Check if the index was cached as a Quadratic
     elseif haskey(model.quadratic_added_cache, ci)
         return model.quadratic_added_cache[ci]
     else
@@ -374,7 +388,10 @@ function MOI.get(
     end
 end
 
-function MOI.get(model::Optimizer, tp::Type{MOI.ConstraintIndex{F, S}}, attr::String
+function MOI.get(
+    model::Optimizer,
+    tp::Type{MOI.ConstraintIndex{F,S}},
+    attr::String,
 ) where {F,S}
     return MOI.get(model.optimizer, tp, attr)
 end
@@ -387,9 +404,13 @@ function MOI.is_valid(model::Optimizer, vi::MOI.VariableIndex)
     return MOI.is_valid(model.optimizer, vi)
 end
 
-MOI.supports(model::Optimizer, ::MOI.NumberOfThreads) = MOI.supports(model.optimizer, MOI.NumberOfThreads())
+function MOI.supports(model::Optimizer, ::MOI.NumberOfThreads)
+    return MOI.supports(model.optimizer, MOI.NumberOfThreads())
+end
 
-MOI.supports(model::Optimizer, ::MOI.TimeLimitSec) = MOI.supports(model.optimizer, MOI.TimeLimitSec())
+function MOI.supports(model::Optimizer, ::MOI.TimeLimitSec)
+    return MOI.supports(model.optimizer, MOI.TimeLimitSec())
+end
 
 function MOI.set(model::Optimizer, ::MOI.TimeLimitSec, value)
     MOI.set(model.optimizer, MOI.TimeLimitSec(), value)
@@ -404,7 +425,9 @@ function MOI.get(model::Optimizer, ::MOI.SolveTime)
     return MOI.get(model.optimizer, MOI.SolveTime())
 end
 
-MOI.supports(model::Optimizer, ::MOI.Silent) = MOI.supports(model.optimizer, MOI.Silent())
+function MOI.supports(model::Optimizer, ::MOI.Silent)
+    return MOI.supports(model.optimizer, MOI.Silent())
+end
 
 function MOI.set(model::Optimizer, ::MOI.Silent, value::Bool)
     MOI.set(model.optimizer, MOI.Silent(), value)
@@ -417,10 +440,7 @@ function MOI.get(model::Optimizer, ::MOI.RawStatusString)
     return MOI.get(model.optimizer, MOI.RawStatusString())
 end
 
-function MOI.get(
-    model::Optimizer,
-    ::MOI.NumberOfConstraints{F,S},
-) where {F,S}
+function MOI.get(model::Optimizer, ::MOI.NumberOfConstraints{F,S}) where {F,S}
     return length(MOI.get(model, MOI.ListOfConstraintIndices{F,S}()))
 end
 
@@ -458,12 +478,19 @@ end
 
 function MOI.get(
     model::Optimizer,
-    attr::MOI.ObjectiveFunction{F}) where F <: Union{MOI.SingleVariable,MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}} where T
+    attr::MOI.ObjectiveFunction{F},
+) where {
+    F<:Union{
+        MOI.SingleVariable,
+        MOI.ScalarAffineFunction{T},
+        MOI.ScalarQuadraticFunction{T},
+    },
+} where {T}
 
     # Check if the index was cached as Affine expression
     if !isempty(model.affine_objective_cache)
         return model.affine_objective_cache
-    # Check if the index was cached as a Quadratic
+        # Check if the index was cached as a Quadratic
     elseif !isempty(model.quadratic_objective_cache_pv)
         return model.quadratic_objective_cache_pv
     elseif !isempty(model.quadratic_objective_cache_pp)
@@ -498,7 +525,7 @@ function MOI.get(model::Optimizer, ::MOI.ListOfConstraints)
             MOI.get(model.optimizer, MOI.ListOfConstraintIndices{F,S}())
         cache_map_check =
             quadratic_constraint_cache_map_check(mode, inner_index)
-            push!(constraints, typeof.(cache_keys[cache_map])...)
+        push!(constraints, typeof.(cache_keys[cache_map])...)
         # If not all the constraints are chached then also push the original type
         if !all(cache_map_check)
             push!(constraints, (F, S))
@@ -558,7 +585,6 @@ function MOI.get(
     end
     return inner_index
 end
-
 
 function MOI.supports_add_constrained_variable(::Optimizer, ::Type{Parameter})
     return true
@@ -927,7 +953,7 @@ function MOI.delete(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
 ) where {F<:MOI.ScalarAffineFunction,S<:MOI.AbstractSet}
-    if haskey(model.affine_constraint_cache, c) 
+    if haskey(model.affine_constraint_cache, c)
         delete!(model.affine_constraint_cache, c)
     end
     MOI.delete(model.optimizer, c)
