@@ -9,11 +9,7 @@
     cz = MOI.ConstraintIndex{MOI.VariableIndex,POI.Parameter}(4)
 
     for x_i in x
-        MOI.add_constraint(
-            optimizer,
-            x_i,
-            MOI.GreaterThan(0.0),
-        )
+        MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
 
     @test_throws ErrorException("Cannot constrain a parameter") MOI.add_constraint(
@@ -107,11 +103,7 @@ end
     x = MOI.add_variables(optimizer, 2)
 
     for x_i in x
-        MOI.add_constraint(
-            optimizer,
-            x_i,
-            MOI.GreaterThan(0.0),
-        )
+        MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
 
     y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))

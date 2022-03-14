@@ -16,8 +16,7 @@ const CONFIG = MOIT.Config()
     MOIT.runtests(
         OPTIMIZER_GLPK,
         CONFIG;
-        exclude = 
-        [
+        exclude = [
             "test_attribute_SolverVersion",
             "test_linear_Interval_inactive",
             "test_linear_add_constraints",
@@ -28,8 +27,8 @@ const CONFIG = MOIT.Config()
             "test_model_ModelFilter_ListOfConstraintIndices",
             "test_model_ModelFilter_ListOfConstraintTypesPresent",
             "test_constraint_ZeroOne_bounds_3",
-            "test_linear_integration_2"
-        ]
+            "test_linear_integration_2",
+        ],
     )
 end
 

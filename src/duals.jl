@@ -39,8 +39,12 @@ end
 function update_duals_with_affine_constraint_cache!(
     param_dual_cum_sum::Vector{Float64},
     optimizer::OT,
-    affine_constraint_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{F, S, V}
-) where {OT, F, S, V}
+    affine_constraint_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{
+        F,
+        S,
+        V,
+    },
+) where {OT,F,S,V}
     for (ci, param_array) in affine_constraint_cache_inner
         calculate_parameters_in_ci!(
             param_dual_cum_sum,
@@ -76,8 +80,12 @@ end
 function update_duals_with_quadratic_constraint_cache!(
     param_dual_cum_sum::Vector{Float64},
     model::Optimizer,
-    quadratic_constraint_cache_pc_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{F, S, V}
-) where {F, S, V}
+    quadratic_constraint_cache_pc_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{
+        F,
+        S,
+        V,
+    },
+) where {F,S,V}
     for (poi_ci, param_array) in quadratic_constraint_cache_pc_inner
         moi_ci = model.quadratic_added_cache[poi_ci]
         calculate_parameters_in_ci!(
