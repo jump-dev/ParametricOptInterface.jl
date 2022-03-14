@@ -1,13 +1,14 @@
 name = "ParametricOptInterface"
 uuid = "0ce4ce61-57bf-432b-a095-efac525d185e"
 authors = ["Tomás Gutierrez <tomasfmgutierrez@gmail.com>"]
-version = "0.2"
+version = "0.2.0"
 
 [deps]
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
 
 [compat]
+DataStructures = "0.18"
 MathOptInterface = "0.10"
 julia = "1"
 

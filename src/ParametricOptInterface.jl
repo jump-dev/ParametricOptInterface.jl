@@ -907,7 +907,7 @@ function add_constraint_with_parameters_on_function(
     const_term = f.constant + aff_param_constant + quad_param_constant
     quad_terms = quad_vars
     f_quad = if !isempty(quad_vars)
-        MOI.ScalarQuadraticFunction(aff_terms, quad_terms, const_term)
+        MOI.ScalarQuadraticFunction(quad_terms, aff_terms, const_term)
     else
         MOI.ScalarAffineFunction(aff_terms, const_term)
     end
@@ -1054,7 +1054,7 @@ function MOI.set(
         MOI.set(
             model.optimizer,
             attr,
-            MOI.ScalarQuadraticFunction(aff_terms, quad_terms, const_term),
+            MOI.ScalarQuadraticFunction(quad_terms, aff_terms, const_term),
         )
     else
         MOI.set(
