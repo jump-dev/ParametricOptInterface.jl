@@ -20,7 +20,7 @@
     for x_i in x
         MOI.add_constraint(
             optimizer,
-            MOI.SingleVariable(x_i),
+            x_i,
             MOI.GreaterThan(0.0),
         )
     end
@@ -38,7 +38,7 @@
     MOI.add_constraint(optimizer, cons2, MOI.LessThan(b2))
 
     @test cons1.terms[1].coefficient == 2
-    @test POI.is_parameter_in_model(optimizer, cons2.terms[3].variable_index)
+    @test POI.is_parameter_in_model(optimizer, cons2.terms[3].variable)
 
     obj_func = MOI.ScalarAffineFunction(
         MOI.ScalarAffineTerm.([c[1], c[2], 3.0], [x[1], x[2], w]),
@@ -167,7 +167,7 @@ end
     for x_i in x
         MOI.add_constraint(
             optimizer,
-            MOI.SingleVariable(x_i),
+            x_i,
             MOI.GreaterThan(0.0),
         )
     end
@@ -185,7 +185,7 @@ end
     ci2 = MOI.add_constraint(optimizer, cons2, MOI.LessThan(b2))
 
     @test cons1.terms[1].coefficient == 2
-    @test POI.is_parameter_in_model(optimizer, cons2.terms[3].variable_index)
+    @test POI.is_parameter_in_model(optimizer, cons2.terms[3].variable)
 
     obj_func = MOI.ScalarAffineFunction(
         MOI.ScalarAffineTerm.([c[1], c[2], 2.0], [x[1], x[2], w]),

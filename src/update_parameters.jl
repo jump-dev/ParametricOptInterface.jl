@@ -31,8 +31,8 @@ function update_parameter_in_affine_constraints!(
     optimizer::OT,
     parameters::Dict{MOI.VariableIndex,T},
     updated_parameters::Dict{MOI.VariableIndex,T},
-    affine_constraint_cache_inner::MOI.Utilities.DoubleDicts.WithType{F,S},
-) where {OT,T,F,S}
+    affine_constraint_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{F, S, V},
+) where {OT,T,F,S,V}
     for (ci, param_array) in affine_constraint_cache_inner
         update_parameter_in_affine_constraints!(
             optimizer,
@@ -54,11 +54,11 @@ function update_parameter_in_affine_constraints!(
 ) where {OT,T,CI}
     param_constant = zero(T)
     for term in param_array
-        if haskey(updated_parameters, term.variable_index) # TODO This haskey can be slow
+        if haskey(updated_parameters, term.variable) # TODO This haskey can be slow
             param_constant +=
                 term.coefficient * (
-                    updated_parameters[term.variable_index] -
-                    parameters[term.variable_index]
+                    updated_parameters[term.variable] -
+                    parameters[term.variable]
                 )
         end
     end
@@ -74,9 +74,9 @@ function update_parameters_in_affine_objective!(model::Optimizer)
     if !isempty(model.affine_objective_cache)
         objective_constant = 0
         for j in model.affine_objective_cache
-            if haskey(model.updated_parameters, j.variable_index)
-                param_old = model.parameters[j.variable_index]
-                param_new = model.updated_parameters[j.variable_index]
+            if haskey(model.updated_parameters, j.variable)
+                param_old = model.parameters[j.variable]
+                param_new = model.updated_parameters[j.variable]
                 aux = param_new - param_old
                 objective_constant += j.coefficient * aux
             end
@@ -98,9 +98,9 @@ function update_parameter_in_quadratic_constraints_pc!(model::Optimizer)
     for (ci, fparam) in model.quadratic_constraint_cache_pc
         param_constant = 0
         for j in fparam
-            if haskey(model.updated_parameters, j.variable_index)
-                param_old = model.parameters[j.variable_index]
-                param_new = model.updated_parameters[j.variable_index]
+            if haskey(model.updated_parameters, j.variable)
+                param_old = model.parameters[j.variable]
+                param_new = model.updated_parameters[j.variable]
                 aux = param_new - param_old
                 param_constant += j.coefficient * aux
             end
@@ -126,9 +126,9 @@ function update_parameter_in_quadratic_objective_pc!(model::Optimizer)
     if !isempty(model.quadratic_objective_cache_pc)
         objective_constant = 0
         for j in model.quadratic_objective_cache_pc
-            if haskey(model.updated_parameters, j.variable_index)
-                param_old = model.parameters[j.variable_index]
-                param_new = model.updated_parameters[j.variable_index]
+            if haskey(model.updated_parameters, j.variable)
+                param_old = model.parameters[j.variable]
+                param_new = model.updated_parameters[j.variable]
                 aux = param_new - param_old
                 objective_constant += j.coefficient * aux
             end
@@ -144,8 +144,8 @@ function update_parameter_in_quadratic_objective_pc!(model::Optimizer)
                 MOI.ScalarAffineFunction(f.terms, f.constant + objective_constant)
             else
                 MOI.ScalarQuadraticFunction(
-                    f.affine_terms,
                     f.quadratic_terms,
+                    f.affine_terms,
                     f.constant + objective_constant,
                 )
             end
@@ -159,25 +159,25 @@ function update_parameter_in_quadratic_constraints_pp!(model::Optimizer)
     for (ci, fparam) in model.quadratic_constraint_cache_pp
         param_constant = 0
         for j in fparam
-            if haskey(model.updated_parameters, j.variable_index_1) &&
-               haskey(model.updated_parameters, j.variable_index_2)
-                param_new_1 = model.updated_parameters[j.variable_index_1]
-                param_new_2 = model.updated_parameters[j.variable_index_2]
-                param_old_1 = model.parameters[j.variable_index_1]
-                param_old_2 = model.parameters[j.variable_index_2]
+            if haskey(model.updated_parameters, j.variable_1) &&
+               haskey(model.updated_parameters, j.variable_2)
+                param_new_1 = model.updated_parameters[j.variable_1]
+                param_new_2 = model.updated_parameters[j.variable_2]
+                param_old_1 = model.parameters[j.variable_1]
+                param_old_2 = model.parameters[j.variable_2]
                 param_constant +=
                     j.coefficient *
                     ((param_new_1 * param_new_2) - (param_old_1 * param_old_2))
-            elseif haskey(model.updated_parameters, j.variable_index_1)
-                param_new_1 = model.updated_parameters[j.variable_index_1]
-                param_old_1 = model.parameters[j.variable_index_1]
-                param_old_2 = model.parameters[j.variable_index_2]
+            elseif haskey(model.updated_parameters, j.variable_1)
+                param_new_1 = model.updated_parameters[j.variable_1]
+                param_old_1 = model.parameters[j.variable_1]
+                param_old_2 = model.parameters[j.variable_2]
                 param_constant +=
                     j.coefficient * param_old_2 * (param_new_1 - param_old_1)
-            elseif haskey(model.updated_parameters, j.variable_index_2)
-                param_new_2 = model.updated_parameters[j.variable_index_2]
-                param_old_1 = model.parameters[j.variable_index_1]
-                param_old_2 = model.parameters[j.variable_index_2]
+            elseif haskey(model.updated_parameters, j.variable_2)
+                param_new_2 = model.updated_parameters[j.variable_2]
+                param_old_1 = model.parameters[j.variable_1]
+                param_old_2 = model.parameters[j.variable_2]
                 param_constant +=
                     j.coefficient * param_old_1 * (param_new_2 - param_old_2)
             end
@@ -203,25 +203,25 @@ function update_parameter_in_quadratic_objective_pp!(model::Optimizer)
     if !isempty(model.quadratic_objective_cache_pp)
         objective_constant = 0
         for j in model.quadratic_objective_cache_pp
-            if haskey(model.updated_parameters, j.variable_index_1) &&
-               haskey(model.updated_parameters, j.variable_index_2)
-                param_new_1 = model.updated_parameters[j.variable_index_1]
-                param_new_2 = model.updated_parameters[j.variable_index_2]
-                param_old_1 = model.parameters[j.variable_index_1]
-                param_old_2 = model.parameters[j.variable_index_2]
+            if haskey(model.updated_parameters, j.variable_1) &&
+               haskey(model.updated_parameters, j.variable_2)
+                param_new_1 = model.updated_parameters[j.variable_1]
+                param_new_2 = model.updated_parameters[j.variable_2]
+                param_old_1 = model.parameters[j.variable_1]
+                param_old_2 = model.parameters[j.variable_2]
                 objective_constant +=
                     j.coefficient *
                     ((param_new_1 * param_new_2) - (param_old_1 * param_old_2))
-            elseif haskey(model.updated_parameters, j.variable_index_1)
-                param_new_1 = model.updated_parameters[j.variable_index_1]
-                param_old_1 = model.parameters[j.variable_index_1]
-                param_old_2 = model.parameters[j.variable_index_2]
+            elseif haskey(model.updated_parameters, j.variable_1)
+                param_new_1 = model.updated_parameters[j.variable_1]
+                param_old_1 = model.parameters[j.variable_1]
+                param_old_2 = model.parameters[j.variable_2]
                 objective_constant +=
                     j.coefficient * param_old_2 * (param_new_1 - param_old_1)
-            elseif haskey(model.updated_parameters, j.variable_index_2)
-                param_new_2 = model.updated_parameters[j.variable_index_2]
-                param_old_1 = model.parameters[j.variable_index_1]
-                param_old_2 = model.parameters[j.variable_index_2]
+            elseif haskey(model.updated_parameters, j.variable_2)
+                param_new_2 = model.updated_parameters[j.variable_2]
+                param_old_1 = model.parameters[j.variable_1]
+                param_old_2 = model.parameters[j.variable_2]
                 objective_constant +=
                     j.coefficient * param_old_1 * (param_new_2 - param_old_2)
             end
@@ -237,8 +237,8 @@ function update_parameter_in_quadratic_objective_pp!(model::Optimizer)
                 MOI.ScalarAffineFunction(f.terms, f.constant + objective_constant)
             else
                 MOI.ScalarQuadraticFunction(
-                    f.affine_terms,
                     f.quadratic_terms,
+                    f.affine_terms,
                     f.constant + objective_constant,
                 )
             end
@@ -268,8 +268,8 @@ function update_parameter_in_vector_affine_constraints!(
     optimizer::OT,
     parameters::Dict{MOI.VariableIndex,T},
     updated_parameters::Dict{MOI.VariableIndex,T},
-    vector_constraint_cache_inner::MOI.Utilities.DoubleDicts.WithType{F,S},
-) where {OT,T,F,S}
+    vector_constraint_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{F,S,V},
+) where {OT,T,F,S,V}
     for (ci, param_array) in vector_constraint_cache_inner
         update_parameter_in_vector_affine_constraints!(
             optimizer,
@@ -296,7 +296,7 @@ function update_parameter_in_vector_affine_constraints!(
     param_constants = zeros(T, n_dims)
 
     for term in param_array
-        vi = term.scalar_term.variable_index
+        vi = term.scalar_term.variable
 
         if haskey(updated_parameters, vi) # TODO This haskey can be slow
             param_constants[term.output_index] =
@@ -330,14 +330,14 @@ function update_parameters!(model::Optimizer)
 
     for (ci, fparam) in model.quadratic_constraint_cache_pv
         for j in fparam
-            if haskey(model.updated_parameters, j.variable_index_1)
+            if haskey(model.updated_parameters, j.variable_1)
                 coef = j.coefficient
-                param_new = model.updated_parameters[j.variable_index_1]
-                if haskey(constraint_aux_dict, (ci, j.variable_index_2))
-                    constraint_aux_dict[(ci, j.variable_index_2)] +=
+                param_new = model.updated_parameters[j.variable_1]
+                if haskey(constraint_aux_dict, (ci, j.variable_2))
+                    constraint_aux_dict[(ci, j.variable_2)] +=
                         param_new * coef
                 else
-                    constraint_aux_dict[(ci, j.variable_index_2)] =
+                    constraint_aux_dict[(ci, j.variable_2)] =
                         param_new * coef
                 end
             end
@@ -348,10 +348,10 @@ function update_parameters!(model::Optimizer)
         model.quadratic_constraint_variables_associated_to_parameters_cache
         for j in fparam
             coef = j.coefficient
-            if haskey(constraint_aux_dict, (ci, j.variable_index))#
-                constraint_aux_dict[(ci, j.variable_index)] += coef
+            if haskey(constraint_aux_dict, (ci, j.variable))#
+                constraint_aux_dict[(ci, j.variable)] += coef
             else
-                constraint_aux_dict[(ci, j.variable_index)] = coef
+                constraint_aux_dict[(ci, j.variable)] = coef
             end
         end
     end
@@ -369,13 +369,13 @@ function update_parameters!(model::Optimizer)
 
     if !isempty(model.quadratic_objective_cache_pv)
         for j in model.quadratic_objective_cache_pv
-            if haskey(model.updated_parameters, j.variable_index_1)
+            if haskey(model.updated_parameters, j.variable_1)
                 coef = j.coefficient
-                param_new = model.updated_parameters[j.variable_index_1]
-                if haskey(objective_aux_dict, (j.variable_index_2))
-                    objective_aux_dict[(j.variable_index_2)] += param_new * coef
+                param_new = model.updated_parameters[j.variable_1]
+                if haskey(objective_aux_dict, (j.variable_2))
+                    objective_aux_dict[(j.variable_2)] += param_new * coef
                 else
-                    objective_aux_dict[(j.variable_index_2)] = param_new * coef
+                    objective_aux_dict[(j.variable_2)] = param_new * coef
                 end
             end
         end
@@ -383,10 +383,10 @@ function update_parameters!(model::Optimizer)
 
     for j in model.quadratic_objective_variables_associated_to_parameters_cache
         coef = j.coefficient
-        if haskey(objective_aux_dict, j.variable_index)
-            objective_aux_dict[j.variable_index] += coef
+        if haskey(objective_aux_dict, j.variable)
+            objective_aux_dict[j.variable] += coef
         else
-            objective_aux_dict[j.variable_index] = coef
+            objective_aux_dict[j.variable] = coef
         end
     end
 

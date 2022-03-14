@@ -39,8 +39,8 @@ end
 function update_duals_with_affine_constraint_cache!(
     param_dual_cum_sum::Vector{Float64},
     optimizer::OT,
-    affine_constraint_cache_inner::MOI.Utilities.DoubleDicts.WithType{F,S},
-) where {OT,F,S}
+    affine_constraint_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{F, S, V}
+) where {OT, F, S, V}
     for (ci, param_array) in affine_constraint_cache_inner
         calculate_parameters_in_ci!(
             param_dual_cum_sum,
@@ -76,11 +76,8 @@ end
 function update_duals_with_quadratic_constraint_cache!(
     param_dual_cum_sum::Vector{Float64},
     model::Optimizer,
-    quadratic_constraint_cache_pc_inner::MOI.Utilities.DoubleDicts.WithType{
-        F,
-        S,
-    },
-) where {F,S}
+    quadratic_constraint_cache_pc_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{F, S, V}
+) where {F, S, V}
     for (poi_ci, param_array) in quadratic_constraint_cache_pc_inner
         moi_ci = model.quadratic_added_cache[poi_ci]
         calculate_parameters_in_ci!(
@@ -102,7 +99,7 @@ function calculate_parameters_in_ci!(
     cons_dual = MOI.get(optimizer, MOI.ConstraintDual(), ci)
 
     for param in param_array
-        param_dual_cum_sum[param.variable_index.value-PARAMETER_INDEX_THRESHOLD] +=
+        param_dual_cum_sum[param.variable.value-PARAMETER_INDEX_THRESHOLD] +=
             cons_dual * param.coefficient
     end
     return
@@ -113,7 +110,7 @@ function update_duals_in_affine_objective!(
     affine_objective_cache::Vector{MOI.ScalarAffineTerm{T}},
 ) where {T}
     for param in affine_objective_cache
-        param_dual_cum_sum[param.variable_index.value-PARAMETER_INDEX_THRESHOLD] +=
+        param_dual_cum_sum[param.variable.value-PARAMETER_INDEX_THRESHOLD] +=
             param.coefficient
     end
     return
@@ -124,7 +121,7 @@ function update_duals_in_quadratic_objective!(
     quadratic_objective_cache_pc::Vector{MOI.ScalarAffineTerm{T}},
 ) where {T}
     for param in quadratic_objective_cache_pc
-        param_dual_cum_sum[param.variable_index.value-PARAMETER_INDEX_THRESHOLD] +=
+        param_dual_cum_sum[param.variable.value-PARAMETER_INDEX_THRESHOLD] +=
             param.coefficient
     end
     return
@@ -147,7 +144,7 @@ struct ParameterDual <: MOI.AbstractVariableAttribute end
 function MOI.get(model::Optimizer, ::ParameterDual, vi_val::Int64)
     if !is_additive(
         model,
-        MOI.ConstraintIndex{MOI.SingleVariable,Parameter}(vi_val),
+        MOI.ConstraintIndex{MOI.VariableIndex,Parameter}(vi_val),
     )
         error("Cannot calculate the dual of a multiplicative parameter")
     end
@@ -157,7 +154,7 @@ end
 function MOI.get(
     model::Optimizer,
     ::MOI.ConstraintDual,
-    cp::MOI.ConstraintIndex{MOI.SingleVariable,Parameter},
+    cp::MOI.ConstraintIndex{MOI.VariableIndex,Parameter},
 )
     if !is_additive(model, cp)
         error("Cannot calculate the dual of a multiplicative parameter")

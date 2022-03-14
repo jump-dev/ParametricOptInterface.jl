@@ -6,25 +6,25 @@
     x = MOI.add_variables(optimizer, 2)
     y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
     z = MOI.VariableIndex(4)
-    cz = MOI.ConstraintIndex{MOI.SingleVariable,POI.Parameter}(4)
+    cz = MOI.ConstraintIndex{MOI.VariableIndex,POI.Parameter}(4)
 
     for x_i in x
         MOI.add_constraint(
             optimizer,
-            MOI.SingleVariable(x_i),
+            x_i,
             MOI.GreaterThan(0.0),
         )
     end
 
     @test_throws ErrorException("Cannot constrain a parameter") MOI.add_constraint(
         optimizer,
-        MOI.SingleVariable(y),
+        y,
         MOI.EqualTo(0.0),
     )
 
     @test_throws ErrorException("Variable not in the model") MOI.add_constraint(
         optimizer,
-        MOI.SingleVariable(z),
+        z,
         MOI.GreaterThan(0.0),
     )
 
@@ -89,7 +89,6 @@
     @test MOI.get(optimizer, MOI.ObjectiveValue()) == 1
 
     @test MOI.supports(optimizer, MOI.VariableName(), MOI.VariableIndex)
-    @test MOI.supports(optimizer, MOI.ConstraintName(), MOI.ConstraintIndex)
     @test MOI.get(optimizer, MOI.ObjectiveSense()) == MOI.MIN_SENSE
     @test MOI.get(optimizer, MOI.VariableName(), x[1]) == ""
     @test MOI.get(optimizer, MOI.ConstraintName(), c1) == ""
@@ -97,7 +96,7 @@ end
 
 @testset "Special cases of getters" begin
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
+    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
 
@@ -110,7 +109,7 @@ end
     for x_i in x
         MOI.add_constraint(
             optimizer,
-            MOI.SingleVariable(x_i),
+            x_i,
             MOI.GreaterThan(0.0),
         )
     end
@@ -124,8 +123,8 @@ end
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[2, 2], x[2], y))
 
     constraint_function = MOI.ScalarQuadraticFunction(
-        MOI.ScalarAffineTerm.(a, [x[1], y]),
         quad_terms,
+        MOI.ScalarAffineTerm.(a, [x[1], y]),
         0.0,
     )
 
@@ -133,8 +132,8 @@ end
         MOI.add_constraint(optimizer, constraint_function, MOI.LessThan(25.0))
 
     obj_func = MOI.ScalarQuadraticFunction(
-        MOI.ScalarAffineTerm.(c, [x[1], x[2]]),
         [MOI.ScalarQuadraticTerm(A[2, 2], x[2], y)],
+        MOI.ScalarAffineTerm.(c, [x[1], x[2]]),
         0.0,
     )
     MOI.set(
