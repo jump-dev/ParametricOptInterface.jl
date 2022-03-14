@@ -69,16 +69,8 @@ end
     x = MOI.add_variables(optimizer, 2)
 
     for x_i in x
-        MOI.add_constraint(
-            optimizer,
-            x_i,
-            MOI.GreaterThan(1.0),
-        )
-        MOI.add_constraint(
-            optimizer,
-            x_i,
-            MOI.LessThan(5.0),
-        )
+        MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(1.0))
+        MOI.add_constraint(optimizer, x_i, MOI.LessThan(5.0))
     end
 
     quad_terms = MOI.ScalarQuadraticTerm{Float64}[]
@@ -297,11 +289,7 @@ end
     x = MOI.add_variables(optimizer, 2)
 
     for x_i in x
-        MOI.add_constraint(
-            optimizer,
-            x_i,
-            MOI.GreaterThan(0.0),
-        )
+        MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
 
     y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
@@ -376,11 +364,7 @@ end
     x = MOI.add_variables(optimizer, 2)
 
     for x_i in x
-        MOI.add_constraint(
-            optimizer,
-            x_i,
-            MOI.GreaterThan(0.0),
-        )
+        MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
 
     y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
@@ -456,11 +440,7 @@ end
     x = MOI.add_variables(optimizer, 2)
 
     for x_i in x
-        MOI.add_constraint(
-            optimizer,
-            x_i,
-            MOI.GreaterThan(0.0),
-        )
+        MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
 
     MOI.add_constraint(optimizer, x[1], MOI.LessThan(20.0))
@@ -523,11 +503,7 @@ end
     x = MOI.add_variables(optimizer, 2)
 
     for x_i in x
-        MOI.add_constraint(
-            optimizer,
-            x_i,
-            MOI.GreaterThan(0.0),
-        )
+        MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
 
     MOI.add_constraint(optimizer, x[1], MOI.LessThan(20.0))
@@ -590,11 +566,7 @@ end
     x = MOI.add_variables(optimizer, 2)
 
     for x_i in x
-        MOI.add_constraint(
-            optimizer,
-            x_i,
-            MOI.GreaterThan(0.0),
-        )
+        MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
 
     MOI.add_constraint(optimizer, x[1], MOI.LessThan(20.0))
@@ -739,11 +711,7 @@ end
     x = MOI.add_variables(optimizer, 2)
 
     for x_i in x
-        MOI.add_constraint(
-            optimizer,
-            x_i,
-            MOI.GreaterThan(0.0),
-        )
+        MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
 
     y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(1))
@@ -768,7 +736,11 @@ end
     MOI.optimize!(optimizer)
 
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 1.0, atol = ATOL)
-    @test isapprox(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 0.0, atol = ATOL)
+    @test isapprox(
+        MOI.get(optimizer, MOI.VariablePrimal(), x[1]),
+        0.0,
+        atol = ATOL,
+    )
 
     @test_throws ErrorException(
         "Cannot calculate the dual of a multiplicative parameter",
@@ -809,11 +781,7 @@ end
     x = MOI.add_variables(optimizer, 2)
 
     for x_i in x
-        MOI.add_constraint(
-            optimizer,
-            x_i,
-            MOI.GreaterThan(0.0),
-        )
+        MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
 
     y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(1))

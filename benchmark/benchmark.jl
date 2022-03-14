@@ -16,11 +16,7 @@ MOI.Benchmarks.@add_benchmark function add_constraint_svf(new_model)
     model = new_model()
     x = MOI.add_variables(model, 10_000)
     for i in 1:10_000
-        MOI.add_constraint(
-            model,
-            x[i],
-            MOI.GreaterThan(1.0),
-        )
+        MOI.add_constraint(model, x[i], MOI.GreaterThan(1.0))
     end
     return
 end

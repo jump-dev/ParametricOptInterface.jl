@@ -31,7 +31,11 @@ function update_parameter_in_affine_constraints!(
     optimizer::OT,
     parameters::Dict{MOI.VariableIndex,T},
     updated_parameters::Dict{MOI.VariableIndex,T},
-    affine_constraint_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{F, S, V},
+    affine_constraint_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{
+        F,
+        S,
+        V,
+    },
 ) where {OT,T,F,S,V}
     for (ci, param_array) in affine_constraint_cache_inner
         update_parameter_in_affine_constraints!(
@@ -56,10 +60,8 @@ function update_parameter_in_affine_constraints!(
     for term in param_array
         if haskey(updated_parameters, term.variable) # TODO This haskey can be slow
             param_constant +=
-                term.coefficient * (
-                    updated_parameters[term.variable] -
-                    parameters[term.variable]
-                )
+                term.coefficient *
+                (updated_parameters[term.variable] - parameters[term.variable])
         end
     end
     if param_constant != 0
@@ -268,7 +270,11 @@ function update_parameter_in_vector_affine_constraints!(
     optimizer::OT,
     parameters::Dict{MOI.VariableIndex,T},
     updated_parameters::Dict{MOI.VariableIndex,T},
-    vector_constraint_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{F,S,V},
+    vector_constraint_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{
+        F,
+        S,
+        V,
+    },
 ) where {OT,T,F,S,V}
     for (ci, param_array) in vector_constraint_cache_inner
         update_parameter_in_vector_affine_constraints!(
@@ -334,11 +340,9 @@ function update_parameters!(model::Optimizer)
                 coef = j.coefficient
                 param_new = model.updated_parameters[j.variable_1]
                 if haskey(constraint_aux_dict, (ci, j.variable_2))
-                    constraint_aux_dict[(ci, j.variable_2)] +=
-                        param_new * coef
+                    constraint_aux_dict[(ci, j.variable_2)] += param_new * coef
                 else
-                    constraint_aux_dict[(ci, j.variable_2)] =
-                        param_new * coef
+                    constraint_aux_dict[(ci, j.variable_2)] = param_new * coef
                 end
             end
         end

@@ -18,11 +18,7 @@
     @test MOI.get(optimizer, MOI.VariablePrimal(), w) == 0
 
     for x_i in x
-        MOI.add_constraint(
-            optimizer,
-            x_i,
-            MOI.GreaterThan(0.0),
-        )
+        MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
 
     cons1 = MOI.ScalarAffineFunction(
@@ -165,11 +161,7 @@ end
     @test MOI.get(optimizer, MOI.VariablePrimal(), w) == 0
 
     for x_i in x
-        MOI.add_constraint(
-            optimizer,
-            x_i,
-            MOI.GreaterThan(0.0),
-        )
+        MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
 
     cons1 = MOI.ScalarAffineFunction(
