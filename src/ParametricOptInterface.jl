@@ -167,7 +167,7 @@ end
 function MOI.supports_constraint(
     model::Optimizer,
     F::Union{
-        Type{MOI.SingleVariable},
+        Type{MOI.VariableIndex},
         Type{MOI.ScalarAffineFunction{T}},
         Type{MOI.VectorOfVariables},
         Type{MOI.VectorAffineFunction{T}},
@@ -205,7 +205,7 @@ function MOI.supports(
     model::Optimizer,
     attr::Union{
         MOI.ObjectiveSense,
-        MOI.ObjectiveFunction{MOI.SingleVariable},
+        MOI.ObjectiveFunction{MOI.VariableIndex},
         MOI.ObjectiveFunction{MOI.ScalarAffineFunction{T}},
         MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{T}},
     },
@@ -213,8 +213,8 @@ function MOI.supports(
     return MOI.supports(model.optimizer, attr)
 end
 
-function MOI.Utilities.supports_default_copy_to(model::Optimizer, bool::Bool)
-    return MOI.Utilities.supports_default_copy_to(model.optimizer, bool)
+function MOI.supports_incremental_interface(model::Optimizer)
+    return MOI.supports_incremental_interface(model.optimizer)
 end
 function MOI.supports(model::Optimizer, ::MOI.Name)
     return MOI.supports(model.optimizer, MOI.Name())
@@ -421,8 +421,8 @@ function MOI.get(model::Optimizer, ::MOI.TimeLimitSec)
     return MOI.get(model.optimizer, MOI.TimeLimitSec())
 end
 
-function MOI.get(model::Optimizer, ::MOI.SolveTime)
-    return MOI.get(model.optimizer, MOI.SolveTime())
+function MOI.get(model::Optimizer, ::MOI.SolveTimeSec)
+    return MOI.get(model.optimizer, MOI.SolveTimeSec())
 end
 
 function MOI.supports(model::Optimizer, ::MOI.Silent)
@@ -458,7 +458,7 @@ function MOI.get(
     attr::MOI.ConstraintSet,
     ci::MOI.ConstraintIndex{F,S},
 ) where {
-    F<:Union{MOI.SingleVariable,MOI.VectorOfVariables,MOI.VectorAffineFunction},
+    F<:Union{MOI.VariableIndex,MOI.VectorOfVariables,MOI.VectorAffineFunction},
     S<:MOI.AbstractSet,
 }
     return MOI.get(model.optimizer, attr, ci)
@@ -481,7 +481,7 @@ function MOI.get(
     attr::MOI.ObjectiveFunction{F},
 ) where {
     F<:Union{
-        MOI.SingleVariable,
+        MOI.VariableIndex,
         MOI.ScalarAffineFunction{T},
         MOI.ScalarQuadraticFunction{T},
     },
@@ -511,8 +511,8 @@ end
 # Here, you can look over keys(quadratic_added_cache) and add the F-S types of all the keys in constraints.
 # To implement NumberOfConstraints, you call NumberOfConstraints to the inner optimizer.
 # Then you remove the number of constraints of that that in values(quadratic_added_cache)
-function MOI.get(model::Optimizer, ::MOI.ListOfConstraints)
-    inner_ctrs = MOI.get(model.optimizer, MOI.ListOfConstraints())
+function MOI.get(model::Optimizer, ::MOI.ListOfConstraintTypesPresent)
+    inner_ctrs = MOI.get(model.optimizer, MOI.ListOfConstraintTypesPresent())
     if !has_quadratic_constraint_caches(model)
         return inner_ctrs
     end
@@ -538,7 +538,7 @@ end
 function MOI.get(
     model::Optimizer,
     attr::MOI.ListOfConstraintIndices{F,S},
-) where {S,F<:Union{MOI.VectorOfVariables,MOI.SingleVariable}}
+) where {S,F<:Union{MOI.VectorOfVariables,MOI.VariableIndex}}
     return MOI.get(model.optimizer, attr)
 end
 
@@ -609,7 +609,7 @@ function MOI.add_constrained_variable(model::Optimizer, set::Parameter)
     next_parameter_index!(model)
     p = MOI.VariableIndex(model.last_parameter_index_added)
     model.parameters[p] = set.val
-    cp = MOI.ConstraintIndex{MOI.SingleVariable,Parameter}(
+    cp = MOI.ConstraintIndex{MOI.VariableIndex,Parameter}(
         model.last_parameter_index_added,
     )
     update_number_of_parameters!(model)
@@ -618,12 +618,12 @@ end
 
 function MOI.add_constraint(
     model::Optimizer,
-    f::MOI.SingleVariable,
+    f::MOI.VariableIndex,
     set::MOI.AbstractScalarSet,
 )
-    if is_parameter_in_model(model, f.variable)
+    if is_parameter_in_model(model, f)
         error("Cannot constrain a parameter")
-    elseif !is_variable_in_model(model, f.variable)
+    elseif !is_variable_in_model(model, f)
         error("Variable not in the model")
     end
     return MOI.add_constraint(model.optimizer, f, set)
@@ -674,7 +674,7 @@ end
 function MOI.set(
     model::Optimizer,
     ::MOI.ConstraintSet,
-    cp::MOI.ConstraintIndex{MOI.SingleVariable,Parameter},
+    cp::MOI.ConstraintIndex{MOI.VariableIndex,Parameter},
     set::Parameter,
 )
     p = MOI.VariableIndex(cp.value)
@@ -760,7 +760,7 @@ end
 function MOI.set(
     model::Optimizer,
     attr::MOI.ObjectiveFunction,
-    v::MOI.SingleVariable,
+    v::MOI.VariableIndex,
 )
     if haskey(model.parameters, v)
         error("Cannot use a parameter as objective function alone")
@@ -770,7 +770,7 @@ function MOI.set(
     return MOI.set(
         model.optimizer,
         attr,
-        MOI.SingleVariable(model.variables[v.variable]),
+        MOI.VariableIndex(model.variables[v.variable]),
     )
 end
 
@@ -806,14 +806,14 @@ function MOI.get(
     return MOI.get(model.optimizer, attr, c)
 end
 
-function MOI.set(model::Optimizer, attr::MOI.RawParameter, val::Any)
+function MOI.set(model::Optimizer, attr::MOI.RawOptimizerAttribute, val::Any)
     MOI.set(model.optimizer, attr, val)
     return
 end
 
 # TODO(odow): remove this.
 function MOI.set(model::Optimizer, attr::String, val::Any)
-    return MOI.set(model.optimizer, MOI.RawParameter(attr), val)
+    return MOI.set(model.optimizer, MOI.RawOptimizerAttribute(attr), val)
 end
 
 function MOI.get(model::Optimizer, ::MOI.SolverName)
@@ -964,7 +964,7 @@ function MOI.delete(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
 ) where {
-    F<:Union{MOI.SingleVariable,MOI.VectorOfVariables,MOI.VectorAffineFunction},
+    F<:Union{MOI.VariableIndex,MOI.VectorOfVariables,MOI.VectorAffineFunction},
     S<:MOI.AbstractSet,
 }
     MOI.delete(model.optimizer, c)
@@ -975,7 +975,7 @@ function MOI.is_valid(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
 ) where {
-    F<:Union{MOI.SingleVariable,MOI.VectorOfVariables,MOI.VectorAffineFunction},
+    F<:Union{MOI.VariableIndex,MOI.VectorOfVariables,MOI.VectorAffineFunction},
     S<:MOI.AbstractSet,
 }
     return MOI.is_valid(model.optimizer, c)
@@ -1065,7 +1065,7 @@ function MOI.set(
     end
 
     if !isempty(quad_terms)
-        f_quad = MOI.ScalarQuadraticFunction(aff_terms, quad_terms, const_term)
+        f_quad = MOI.ScalarQuadraticFunction(quad_terms, aff_terms, const_term)
 
         MOI.set(model.optimizer, attr, f_quad)
     else

@@ -24,7 +24,7 @@ We declare the variable `x` as in a typical `MOI` model, and we add a non-negati
 julia> x = MOI.add_variables(optimizer, length(c))
 
 julia> for x_i in x
-            MOI.add_constraint(optimizer, MOI.SingleVariable(x_i), MOI.GreaterThan(0.0))
+            MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
         end
 ```
 

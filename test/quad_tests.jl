@@ -1,6 +1,6 @@
 @testset "QP - No parameters 1" begin
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
+    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
 
@@ -20,8 +20,8 @@
     end
 
     objective_function = MOI.ScalarQuadraticFunction(
-        MOI.ScalarAffineTerm.(q, x),
         quad_terms,
+        MOI.ScalarAffineTerm.(q, x),
         0.0,
     )
     MOI.set(
@@ -58,7 +58,7 @@ end
 
 @testset "QP - No parameters 2" begin
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
+    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
 
@@ -71,12 +71,12 @@ end
     for x_i in x
         MOI.add_constraint(
             optimizer,
-            MOI.SingleVariable(x_i),
+            x_i,
             MOI.GreaterThan(1.0),
         )
         MOI.add_constraint(
             optimizer,
-            MOI.SingleVariable(x_i),
+            x_i,
             MOI.LessThan(5.0),
         )
     end
@@ -86,8 +86,8 @@ end
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 2], x[1], x[2]))
 
     constraint_function = MOI.ScalarQuadraticFunction(
-        MOI.ScalarAffineTerm.(a, x),
         [MOI.ScalarQuadraticTerm(A[1, 2], x[1], x[2])],
+        MOI.ScalarAffineTerm.(a, x),
         0.0,
     )
 
@@ -119,7 +119,7 @@ end
 
 @testset "QP - Parameter in affine constraint" begin
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
+    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
 
@@ -141,8 +141,8 @@ end
     end
 
     objective_function = MOI.ScalarQuadraticFunction(
-        MOI.ScalarAffineTerm.(q, x),
         quad_terms,
+        MOI.ScalarAffineTerm.(q, x),
         0.0,
     )
     MOI.set(
@@ -198,7 +198,7 @@ end
 
 @testset "QP - Parameter in affine part of quadratic constraint" begin
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
+    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
 
@@ -221,8 +221,8 @@ end
     end
 
     objective_function = MOI.ScalarQuadraticFunction(
-        MOI.ScalarAffineTerm.(q, [x[1], x[2], y]),
         quad_terms,
+        MOI.ScalarAffineTerm.(q, [x[1], x[2], y]),
         0.0,
     )
     MOI.set(
@@ -286,7 +286,7 @@ end
 
 @testset "QP - Quadratic constraint variable x variable + parameter in affine part" begin
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
+    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
 
@@ -299,7 +299,7 @@ end
     for x_i in x
         MOI.add_constraint(
             optimizer,
-            MOI.SingleVariable(x_i),
+            x_i,
             MOI.GreaterThan(0.0),
         )
     end
@@ -313,8 +313,8 @@ end
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[2, 2], x[2], x[2]))
 
     constraint_function = MOI.ScalarQuadraticFunction(
-        MOI.ScalarAffineTerm.(a, [x[1], y]),
         quad_terms,
+        MOI.ScalarAffineTerm.(a, [x[1], y]),
         0.0,
     )
 
@@ -365,7 +365,7 @@ end
 
 @testset "QP - Quadratic constraint variable x variable + parameter in affine part - variation to assess duals" begin
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
+    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
 
@@ -378,7 +378,7 @@ end
     for x_i in x
         MOI.add_constraint(
             optimizer,
-            MOI.SingleVariable(x_i),
+            x_i,
             MOI.GreaterThan(0.0),
         )
     end
@@ -392,8 +392,8 @@ end
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[2, 2], x[2], x[2]))
 
     constraint_function = MOI.ScalarQuadraticFunction(
-        MOI.ScalarAffineTerm.(a, [x[1], y]),
         quad_terms,
+        MOI.ScalarAffineTerm.(a, [x[1], y]),
         0.0,
     )
 
@@ -444,7 +444,7 @@ end
 
 @testset "QP - Quadratic constraint parameter x variable" begin
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
+    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
 
@@ -458,12 +458,12 @@ end
     for x_i in x
         MOI.add_constraint(
             optimizer,
-            MOI.SingleVariable(x_i),
+            x_i,
             MOI.GreaterThan(0.0),
         )
     end
 
-    MOI.add_constraint(optimizer, MOI.SingleVariable(x[1]), MOI.LessThan(20.0))
+    MOI.add_constraint(optimizer, x[1], MOI.LessThan(20.0))
 
     y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
 
@@ -474,8 +474,8 @@ end
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[2, 2], y, y))
 
     constraint_function = MOI.ScalarQuadraticFunction(
-        MOI.ScalarAffineTerm.(a, x),
         quad_terms,
+        MOI.ScalarAffineTerm.(a, x),
         0.0,
     )
 
@@ -511,7 +511,7 @@ end
 
 @testset "QP - Quadratic constraint variable x parameter" begin
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
+    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
 
@@ -525,12 +525,12 @@ end
     for x_i in x
         MOI.add_constraint(
             optimizer,
-            MOI.SingleVariable(x_i),
+            x_i,
             MOI.GreaterThan(0.0),
         )
     end
 
-    MOI.add_constraint(optimizer, MOI.SingleVariable(x[1]), MOI.LessThan(20.0))
+    MOI.add_constraint(optimizer, x[1], MOI.LessThan(20.0))
 
     y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
 
@@ -541,8 +541,8 @@ end
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 1], x[1], x[1]))
 
     constraint_function = MOI.ScalarQuadraticFunction(
-        MOI.ScalarAffineTerm.(a, x),
         quad_terms,
+        MOI.ScalarAffineTerm.(a, x),
         0.0,
     )
 
@@ -578,7 +578,7 @@ end
 
 @testset "QP - Quadratic constraint parameter x parameter" begin
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
+    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
 
@@ -592,12 +592,12 @@ end
     for x_i in x
         MOI.add_constraint(
             optimizer,
-            MOI.SingleVariable(x_i),
+            x_i,
             MOI.GreaterThan(0.0),
         )
     end
 
-    MOI.add_constraint(optimizer, MOI.SingleVariable(x[1]), MOI.LessThan(20.0))
+    MOI.add_constraint(optimizer, x[1], MOI.LessThan(20.0))
 
     y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
     z, cz = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
@@ -609,8 +609,8 @@ end
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[2, 2], z, z))
 
     constraint_function = MOI.ScalarQuadraticFunction(
-        MOI.ScalarAffineTerm.(a, x),
         quad_terms,
+        MOI.ScalarAffineTerm.(a, x),
         0.0,
     )
 
@@ -655,7 +655,7 @@ end
 
 @testset "QP - Quadratic parameter becomes constant" begin
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
+    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
 
@@ -681,8 +681,8 @@ end
     push!(quad_terms, MOI.ScalarQuadraticTerm(Q[3, 3], y, y))
 
     objective_function = MOI.ScalarQuadraticFunction(
-        MOI.ScalarAffineTerm.(q, [x[1], x[2], y]),
         quad_terms,
+        MOI.ScalarAffineTerm.(q, [x[1], x[2], y]),
         0.0,
     )
 
@@ -729,7 +729,7 @@ end
 
 @testset "QP - Quadratic objective parameter x parameter" begin
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
+    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
 
@@ -741,7 +741,7 @@ end
     for x_i in x
         MOI.add_constraint(
             optimizer,
-            MOI.SingleVariable(x_i),
+            x_i,
             MOI.GreaterThan(0.0),
         )
     end
@@ -753,8 +753,8 @@ end
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 2], y, z))
 
     objective_function = MOI.ScalarQuadraticFunction(
-        MOI.ScalarAffineTerm.(a, x),
         quad_terms,
+        MOI.ScalarAffineTerm.(a, x),
         0.0,
     )
 
@@ -768,7 +768,7 @@ end
     MOI.optimize!(optimizer)
 
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 1.0, atol = ATOL)
-    @test MOI.get(optimizer, MOI.VariablePrimal(), x[1]) == 0
+    @test isapprox(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 0.0, atol = ATOL)
 
     @test_throws ErrorException(
         "Cannot calculate the dual of a multiplicative parameter",
@@ -799,7 +799,7 @@ end
 
 @testset "QP - Quadratic objective parameter in affine part" begin
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawParameter("print_level"), 0)
+    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in = MOIU.CachingOptimizer(MOIU.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
 
@@ -811,7 +811,7 @@ end
     for x_i in x
         MOI.add_constraint(
             optimizer,
-            MOI.SingleVariable(x_i),
+            x_i,
             MOI.GreaterThan(0.0),
         )
     end
@@ -825,8 +825,8 @@ end
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[2, 2], x[2], x[2]))
 
     objective_function = MOI.ScalarQuadraticFunction(
-        MOI.ScalarAffineTerm.(a, [y, z]),
         quad_terms,
+        MOI.ScalarAffineTerm.(a, [y, z]),
         0.0,
     )
 
