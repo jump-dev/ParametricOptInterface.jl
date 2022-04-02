@@ -9,7 +9,7 @@ using BenchmarkTools
 
 const MOI = MathOptInterface
 const POI = ParametricOptInterface
-SOLVER = Xpress
+SOLVER = GLPK
 
 if SOLVER == GLPK
     MAX_ITER_PARAM = "it_lim"
