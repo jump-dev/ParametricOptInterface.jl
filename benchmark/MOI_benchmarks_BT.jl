@@ -9,6 +9,15 @@ using BenchmarkTools
 
 const MOI = MathOptInterface
 const POI = ParametricOptInterface
+SOLVER = Xpress
+
+if SOLVER == GLPK
+    MAX_ITER_PARAM = "it_lim"
+elseif SOLVER == Gurobi
+    MAX_ITER_PARAM = "IterationLimit"
+elseif SOLVER == Xpress
+    MAX_ITER_PARAM = "LPITERLIMIT"
+end
 
 struct PMedianData
     num_facilities::Int
@@ -18,7 +27,7 @@ struct PMedianData
 end
 
 # This is the LP relaxation.
-function generate_poi_problem(model, data::PMedianData; add_parameters::Bool=true)
+function generate_poi_problem(model, data::PMedianData, add_parameters::Bool)
     NL = data.num_locations
     NC = data.num_customers
 
@@ -129,121 +138,89 @@ function generate_poi_problem(model, data::PMedianData; add_parameters::Bool=tru
     return assignment_variables, facility_variables
 end
 
-function solve_moi(data::PMedianData, optimizer; vector_version, params)
-    cache = MOI.Utilities.CachingOptimizer(
-        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-        optimizer()
+function solve_moi(data::PMedianData, optimizer; vector_version, params, add_parameters=false)
+    model = optimizer()
+    for (param, value) in params
+        MOI.set(model, param, value)
+    end
+    @timeit "generate" x, y = if vector_version
+        generate_poi_problem_vector(model, data, add_parameters)
+    else
+        generate_poi_problem(model, data, add_parameters)
+    end
+    @timeit "solve" MOI.optimize!(model)
+    return MOI.get(model, MOI.ObjectiveValue())
+end
+
+function POI_OPTIMIZER()
+    return POI.Optimizer(SOLVER.Optimizer())
+end
+
+function MOI_OPTIMIZER()
+    return SOLVER.Optimizer()
+end
+
+function solve_moi_loop(data::PMedianData; vector_version, max_iters=Inf, time_limit_sec=Inf, loops)
+    params = []
+    if isfinite(time_limit_sec)
+        push!(params, (MOI.TimeLimitSec(), time_limit_sec))
+    end
+    if isfinite(max_iters)
+        push!(params, (MOI.RawOptimizerAttribute(MAX_ITER_PARAM), max_iters))
+    end
+    push!(params, (MOI.Silent(),true))
+    s_type = vector_version ? "vector" : "scalar"
+
+    solve_moi(
+        data, MOI_OPTIMIZER; vector_version=vector_version, params=params
     )
-    model = MOI.Bridges.full_bridge_optimizer(cache, Float64)
-    # resetting optimizer is necessary to use copy_to to transfer all the data
-    # from caching optimizer to GLPK in a single batch. If that is not called
-    # constraints are passed one by one during model generation phase.
-    MOI.Utilities.reset_optimizer(cache)
-    for (param, value) in params
-        MOI.set(model, param, value)
-    end
-    if vector_version
-        generate_poi_problem_vector(model, data, add_parameters = false)
-    else
-        generate_poi_problem(model, data, add_parameters = false)
-    end
-    MOI.optimize!(model)
-    return MOI.get(model, MOI.ObjectiveValue())
 end
 
-function solve_poi(data::PMedianData, optimizer; vector_version, params)
-
-    model = MOI.Bridges.full_bridge_optimizer(optimizer(), Float64)
-    # resetting optimizer is necessary to use copy_to to transfer all the data
-    # from caching optimizer to GLPK in a single batch. If that is not called
-    # constraints are passed one by one during model generation phase.
-    #MOI.Utilities.reset_optimizer(cache)
-    for (param, value) in params
-        MOI.set(model, param, value)
-    end
-    if vector_version
-        generate_poi_problem_vector(model, data)
-    else
-        generate_poi_problem(model, data)
-    end
-    MOI.optimize!(model)
-    return MOI.get(model, MOI.ObjectiveValue())
-end
-
-function solve_poi_no_params(data::PMedianData, optimizer; vector_version, params)
-
-    model = MOI.Bridges.full_bridge_optimizer(optimizer(), Float64)
-    # resetting optimizer is necessary to use copy_to to transfer all the data
-    # from caching optimizer to GLPK in a single batch. If that is not called
-    # constraints are passed one by one during model generation phase.
-    #MOI.Utilities.reset_optimizer(cache)
-    for (param, value) in params
-        MOI.set(model, param, value)
-    end
-    if vector_version
-        generate_poi_problem_vector(model, data, add_parameters = false)
-    else
-        generate_poi_problem(model, data, add_parameters = false)
-    end
-    MOI.optimize!(model)
-    return MOI.get(model, MOI.ObjectiveValue())
-end
-
-function solve_glpk_moi(data::PMedianData; vector_version, time_limit_sec=Inf)
+function solve_poi_no_params_loop(data::PMedianData; vector_version, max_iters=Inf, time_limit_sec=Inf, loops)
     params = []
     if isfinite(time_limit_sec)
         push!(params, (MOI.TimeLimitSec(), time_limit_sec))
     end
+    if isfinite(max_iters)
+        push!(params, (MOI.RawOptimizerAttribute(MAX_ITER_PARAM), max_iters))
+    end
+    push!(params, (MOI.Silent(),true))
     s_type = vector_version ? "vector" : "scalar"
-    solve_moi(data, GLPK.Optimizer; vector_version=vector_version, params=params)
+
+    solve_moi(
+        data,POI_OPTIMIZER; vector_version=vector_version, params=params
+    )
 end
 
-function solve_poi_no_params_glpk(data::PMedianData; vector_version, time_limit_sec=Inf)
+function solve_poi_loop(data::PMedianData; vector_version, max_iters=Inf, time_limit_sec=Inf, loops=1)
     params = []
     if isfinite(time_limit_sec)
         push!(params, (MOI.TimeLimitSec(), time_limit_sec))
     end
-    s_type = vector_version ? "vector" : "scalar"
-
-    solve_poi_no_params(data,() -> POI.Optimizer(GLPK.Optimizer()); vector_version=vector_version, params=params)
-end
-
-function solve_poi_glpk(data::PMedianData; vector_version, time_limit_sec=Inf)
-    params = []
-    if isfinite(time_limit_sec)
-        push!(params, (MOI.TimeLimitSec(), time_limit_sec))
+    if isfinite(max_iters)
+        push!(params, (MOI.RawOptimizerAttribute(MAX_ITER_PARAM), max_iters))
     end
+    push!(params, (MOI.Silent(),true))
     s_type = vector_version ? "vector" : "scalar"
 
-    solve_poi(data,() -> POI.Optimizer(GLPK.Optimizer()); vector_version=vector_version, params=params)
+    solve_moi(
+        data,POI_OPTIMIZER; vector_version=vector_version, params=params, add_parameters = true
+    )
 end
 
 function run_benchmark(;
-    num_facilities, num_customers, num_locations, time_limit_sec, max_iters
+    num_facilities, num_customers, num_locations, time_limit_sec, max_iters, samples
 )
     Random.seed!(10)
     data = PMedianData(num_facilities, num_customers, num_locations, rand(num_customers) .* num_locations)
-    @info "Solve MOI"
-    b1 = @benchmark solve_glpk_moi($data, vector_version=false, time_limit_sec=$time_limit_sec) samples=100 
-    display(b1)
+    @info "Solve $(SOLVER) MOI"
+    b1 = @btime solve_glpk_moi($data, vector_version=false, time_limit_sec=$time_limit_sec) samples=samples 
     println()
-    @info "Solve POI no params"
-    b2 = @benchmark solve_poi_no_params_glpk($data, vector_version=false, time_limit_sec=$time_limit_sec) samples=100
-    display(b2)
+    @info "Solve $(SOLVER) POI no params"
+    b2 = @btime solve_poi_no_params_glpk($data, vector_version=false, time_limit_sec=$time_limit_sec) samples=samples
     println()
-    @info "Solve POI"
-    b3 = @benchmark solve_poi_glpk($data, vector_version=false, time_limit_sec=$time_limit_sec) samples=100
-    display(b3)
-    m1 = median(b1)
-    m2 = median(b2)
-    m3 = median(b3)
-    @info "Comparison MOI-POI"
-    j1 = judge(m1,m2)
-    display(j1)
-
-    @info "Comparison MOI-POI with parameters"
-    j2 = judge(m1,m3)
-    display(j2)
+    @info "Solve $(SOLVER) POI"
+    b3 = @btime solve_poi_glpk($data, vector_version=false, time_limit_sec=$time_limit_sec) samples=samples
     println()
 end
 
@@ -252,5 +229,15 @@ run_benchmark(
             num_customers = 100,
             num_locations = 100,
             time_limit_sec = 0.0001,
-            max_iters = 100,
+            max_iters = 1,
+            samples = 1
         )
+
+run_benchmark(
+    num_facilities = 100,
+    num_customers = 100,
+    num_locations = 100,
+    time_limit_sec = 0.0001,
+    max_iters = 1,
+    samples = 100
+)
