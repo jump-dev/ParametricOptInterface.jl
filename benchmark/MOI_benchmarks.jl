@@ -232,8 +232,8 @@ function run_benchmark(;
     GC.gc()
     solve_poi_no_params_loop(data, vector_version=false, max_iters=max_iters, time_limit_sec=time_limit_sec, loops=loops)
     GC.gc()
-    #solve_poi_loop(data, vector_version=false, max_iters=max_iters, time_limit_sec=time_limit_sec, loops=loops)
-    #GC.gc()
+    solve_poi_loop(data, vector_version=false, max_iters=max_iters, time_limit_sec=time_limit_sec, loops=loops)
+    GC.gc()
     print_timer()
     println()
 end

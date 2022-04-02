@@ -143,12 +143,12 @@ function solve_moi(data::PMedianData, optimizer; vector_version, params, add_par
     for (param, value) in params
         MOI.set(model, param, value)
     end
-    @timeit "generate" x, y = if vector_version
+    if vector_version
         generate_poi_problem_vector(model, data, add_parameters)
     else
         generate_poi_problem(model, data, add_parameters)
     end
-    @timeit "solve" MOI.optimize!(model)
+    MOI.optimize!(model)
     return MOI.get(model, MOI.ObjectiveValue())
 end
 
@@ -160,7 +160,7 @@ function MOI_OPTIMIZER()
     return SOLVER.Optimizer()
 end
 
-function solve_moi_loop(data::PMedianData; vector_version, max_iters=Inf, time_limit_sec=Inf, loops)
+function solve_moi(data::PMedianData; vector_version, max_iters=Inf, time_limit_sec=Inf)
     params = []
     if isfinite(time_limit_sec)
         push!(params, (MOI.TimeLimitSec(), time_limit_sec))
@@ -176,7 +176,7 @@ function solve_moi_loop(data::PMedianData; vector_version, max_iters=Inf, time_l
     )
 end
 
-function solve_poi_no_params_loop(data::PMedianData; vector_version, max_iters=Inf, time_limit_sec=Inf, loops)
+function solve_poi_no_params(data::PMedianData; vector_version, max_iters=Inf, time_limit_sec=Inf)
     params = []
     if isfinite(time_limit_sec)
         push!(params, (MOI.TimeLimitSec(), time_limit_sec))
@@ -192,7 +192,7 @@ function solve_poi_no_params_loop(data::PMedianData; vector_version, max_iters=I
     )
 end
 
-function solve_poi_loop(data::PMedianData; vector_version, max_iters=Inf, time_limit_sec=Inf, loops=1)
+function solve_poi(data::PMedianData; vector_version, max_iters=Inf, time_limit_sec=Inf)
     params = []
     if isfinite(time_limit_sec)
         push!(params, (MOI.TimeLimitSec(), time_limit_sec))
@@ -214,13 +214,13 @@ function run_benchmark(;
     Random.seed!(10)
     data = PMedianData(num_facilities, num_customers, num_locations, rand(num_customers) .* num_locations)
     @info "Solve $(SOLVER) MOI"
-    b1 = @btime solve_glpk_moi($data, vector_version=false, time_limit_sec=$time_limit_sec) samples=samples 
+    b1 = @btime solve_moi($data, vector_version=false, time_limit_sec=$time_limit_sec) samples=samples 
     println()
     @info "Solve $(SOLVER) POI no params"
-    b2 = @btime solve_poi_no_params_glpk($data, vector_version=false, time_limit_sec=$time_limit_sec) samples=samples
+    b2 = @btime solve_poi_no_params($data, vector_version=false, time_limit_sec=$time_limit_sec) samples=samples
     println()
     @info "Solve $(SOLVER) POI"
-    b3 = @btime solve_poi_glpk($data, vector_version=false, time_limit_sec=$time_limit_sec) samples=samples
+    b3 = @btime solve_poi($data, vector_version=false, time_limit_sec=$time_limit_sec) samples=samples
     println()
 end
 
