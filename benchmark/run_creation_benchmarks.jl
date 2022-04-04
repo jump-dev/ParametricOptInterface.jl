@@ -2,7 +2,6 @@ import Pkg
 Pkg.activate(@__DIR__)
 Pkg.instantiate()
 
-push!(LOAD_PATH, joinpath(dirname(@__DIR__), "src"))
 using ParametricOptInterface
 using MathOptInterface
 using GLPK
@@ -45,20 +44,45 @@ function generate_problem(
     ###
     ### Objective function
     ###
-    MOI.set(
-        model,
-        MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
-        MOI.ScalarAffineFunction(
-            [
-                MOI.ScalarAffineTerm(
-                    data.customer_locations[i] - j,
-                    assignment_variables[i, j]
-                )
-                for i in 1:NC for j in 1:NL
-            ],
-            0.0,
-        ),
-    )
+    if add_parameters_objective
+        MOI.set(
+            model,
+            MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
+            MOI.ScalarQuadraticFunction(
+                [
+                    MOI.ScalarQuadraticTerm(
+                        1.0,
+                        d[j],
+                        assignment_variables[i, j]
+                    )
+                    for i in 1:NC for j in 1:NL
+                ],
+                [
+                    MOI.ScalarAffineTerm(
+                        data.customer_locations[i] - j,
+                        assignment_variables[i, j]
+                    )
+                    for i in 1:NC for j in 1:NL
+                ],
+                0.0,
+            ),
+        )
+    else
+        MOI.set(
+            model,
+            MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
+            MOI.ScalarAffineFunction(
+                [
+                    MOI.ScalarAffineTerm(
+                        data.customer_locations[i] - j,
+                        assignment_variables[i, j]
+                    )
+                    for i in 1:NC for j in 1:NL
+                ],
+                0.0,
+            ),
+        )
+    end
     MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
 
@@ -174,6 +198,13 @@ function run_benchmark(;
                 add_parameters_lhs = $(Ref(false))[],
                 add_parameters_objective = $(Ref(false))[]
             )
+    println("POI params on the objective")
+    @btime generate_problem(
+                $(Ref(POI_OPTIMIZER))[], $(Ref(data))[]; 
+                add_parameters_rhs = $(Ref(false))[],
+                add_parameters_lhs = $(Ref(false))[],
+                add_parameters_objective = $(Ref(true))[]
+            )
     println("POI params on the lhs")
     @btime generate_problem(
                 $(Ref(POI_OPTIMIZER))[], $(Ref(data))[]; 
@@ -187,6 +218,13 @@ function run_benchmark(;
                 add_parameters_rhs = $(Ref(true))[],
                 add_parameters_lhs = $(Ref(true))[],
                 add_parameters_objective = $(Ref(false))[]
+            )
+    println("POI params on the rhs, lhs and objective")
+    @btime generate_problem(
+                $(Ref(POI_OPTIMIZER))[], $(Ref(data))[]; 
+                add_parameters_rhs = $(Ref(true))[],
+                add_parameters_lhs = $(Ref(true))[],
+                add_parameters_objective = $(Ref(true))[]
             )
     return nothing
 end
