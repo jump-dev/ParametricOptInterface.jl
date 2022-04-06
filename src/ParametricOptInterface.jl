@@ -70,9 +70,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     }
     # Store the map between quadratic terms add as var * parameter to the resulting shape when implemented in the solver
     # for instance p*p + var -> ScalarAffine(var)
-    quadratic_added_cache::MOI.Utilities.DoubleDicts.DoubleDict{
-        MOI.ConstraintIndex,
-    }
+    quadratic_added_cache::OrderedDict{MOI.ConstraintIndex,MOI.ConstraintIndex}
     last_quad_add_added::Int64
     vector_constraint_cache::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.VectorAffineTerm{Float64}},
@@ -113,9 +111,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.ScalarAffineTerm{Float64}},
             }(),
-            MOI.Utilities.DoubleDicts.DoubleDict{
-                MOI.ConstraintIndex,
-            }(),
+            OrderedDict{MOI.ConstraintIndex,MOI.ConstraintIndex}(),
             0,
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.VectorAffineTerm{Float64}},
