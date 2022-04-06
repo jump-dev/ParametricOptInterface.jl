@@ -189,7 +189,8 @@ function separate_possible_terms_and_calculate_parameter_constant(
                 is_variable_in_model(model, term.variable_1) &&
                 is_parameter_in_model(model, term.variable_2)
             )
-                # Check convention defined above
+                # Check convention defined above. We use the convention to know decide who is a variable and who is
+                # a parameter withou having to recheck which is which.
                 push!(
                     quad_aff_vars,
                     MOI.ScalarQuadraticTerm(
