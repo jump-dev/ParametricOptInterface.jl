@@ -865,44 +865,30 @@ function add_constraint_with_parameters_on_function(
     f::MOI.ScalarQuadraticFunction{T},
     set::S,
 ) where {T,S<:MOI.AbstractScalarSet}
-    if function_quadratic_terms_has_parameters(model, f.quadratic_terms)
-        (
-            quad_vars,
-            quad_aff_vars,
-            quad_params,
-            aff_terms,
-            variables_associated_to_parameters,
-            quad_param_constant,
-        ) = separate_possible_terms_and_calculate_parameter_constant(
-            model,
-            f.quadratic_terms,
-        )
-    else
-        quad_vars = f.quadratic_terms
-        quad_aff_vars = MOI.ScalarQuadraticTerm{T}[]
-        quad_params = MOI.ScalarQuadraticTerm{T}[]
-        aff_terms = MOI.ScalarAffineTerm{T}[]
-        quad_param_constant = zero(T)
-        variables_associated_to_parameters = MOI.VariableIndex[]
-    end
-    if function_affine_terms_has_parameters(model, f.affine_terms)
-        (
-            aff_vars,
-            aff_params,
-            terms_with_variables_associated_to_parameters,
-            aff_param_constant,
-        ) = separate_possible_terms_and_calculate_parameter_constant(
-            model,
-            f.affine_terms,
-            variables_associated_to_parameters,
-        )
-    else
-        aff_vars = f.affine_terms
-        aff_params = MOI.ScalarAffineTerm{T}[]
-        terms_with_variables_associated_to_parameters =
-            MOI.ScalarAffineTerm{T}[]
-        aff_param_constant = zero(T)
-    end
+    
+    (
+        quad_vars,
+        quad_aff_vars,
+        quad_params,
+        aff_terms,
+        variables_associated_to_parameters,
+        quad_param_constant,
+    ) = separate_possible_terms_and_calculate_parameter_constant(
+        model,
+        f.quadratic_terms,
+    )
+   
+    (
+        aff_vars,
+        aff_params,
+        terms_with_variables_associated_to_parameters,
+        aff_param_constant,
+    ) = separate_possible_terms_and_calculate_parameter_constant(
+        model,
+        f.affine_terms,
+        variables_associated_to_parameters,
+    )
+
     aff_terms = vcat(aff_terms, aff_vars)
     const_term = f.constant + aff_param_constant + quad_param_constant
     quad_terms = quad_vars
@@ -1006,45 +992,28 @@ function MOI.set(
         MOI.set(model.optimizer, attr, f)
         return
     end
-    if function_quadratic_terms_has_parameters(model, f.quadratic_terms)
-        (
-            quad_vars,
-            quad_aff_vars,
-            quad_params,
-            aff_terms,
-            variables_associated_to_parameters,
-            quad_param_constant,
-        ) = separate_possible_terms_and_calculate_parameter_constant(
-            model,
-            f.quadratic_terms,
-        )
-    else
-        quad_vars = f.quadratic_terms
-        quad_aff_vars = MOI.ScalarQuadraticTerm{T}[]
-        quad_params = MOI.ScalarQuadraticTerm{T}[]
-        aff_terms = MOI.ScalarAffineTerm{T}[]
-        quad_param_constant = zero(T)
-        variables_associated_to_parameters = MOI.VariableIndex[]
-    end
+    (
+        quad_vars,
+        quad_aff_vars,
+        quad_params,
+        aff_terms,
+        variables_associated_to_parameters,
+        quad_param_constant,
+    ) = separate_possible_terms_and_calculate_parameter_constant(
+        model,
+        f.quadratic_terms,
+    )
 
-    if function_affine_terms_has_parameters(model, f.affine_terms)
-        (
-            aff_vars,
-            aff_params,
-            terms_with_variables_associated_to_parameters,
-            aff_param_constant,
-        ) = separate_possible_terms_and_calculate_parameter_constant(
-            model,
-            f.affine_terms,
-            variables_associated_to_parameters,
-        )
-    else
-        aff_vars = f.affine_terms
-        aff_params = MOI.ScalarAffineTerm{T}[]
-        terms_with_variables_associated_to_parameters =
-            MOI.ScalarAffineTerm{T}[]
-        aff_param_constant = zero(T)
-    end
+    (
+        aff_vars,
+        aff_params,
+        terms_with_variables_associated_to_parameters,
+        aff_param_constant,
+    ) = separate_possible_terms_and_calculate_parameter_constant(
+        model,
+        f.affine_terms,
+        variables_associated_to_parameters,
+    )
 
     aff_terms = vcat(aff_terms, aff_vars)
     const_term = f.constant + aff_param_constant + quad_param_constant
@@ -1066,11 +1035,9 @@ function MOI.set(
 
     if !isempty(quad_terms)
         f_quad = MOI.ScalarQuadraticFunction(quad_terms, aff_terms, const_term)
-
         MOI.set(model.optimizer, attr, f_quad)
     else
         f_quad = MOI.ScalarAffineFunction(aff_terms, const_term)
-
         MOI.set(
             model.optimizer,
             MOI.ObjectiveFunction{MOI.ScalarAffineFunction{T}}(),

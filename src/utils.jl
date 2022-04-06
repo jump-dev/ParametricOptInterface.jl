@@ -98,15 +98,19 @@ function separate_possible_terms_and_calculate_parameter_constant(
     params = MOI.ScalarAffineTerm{T}[]
     param_constant = zero(T)
 
-    for term in terms
-        if is_variable_in_model(model, term.variable)
-            push!(vars, term)
-        elseif is_parameter_in_model(model, term.variable)
-            push!(params, term)
-            param_constant += term.coefficient * model.parameters[term.variable]
-        else
-            error("Constraint uses a variable that is not in the model")
+    if function_affine_terms_has_parameters(model, terms)
+        for term in terms
+            if is_variable_in_model(model, term.variable)
+                push!(vars, term)
+            elseif is_parameter_in_model(model, term.variable)
+                push!(params, term)
+                param_constant += term.coefficient * model.parameters[term.variable]
+            else
+                error("Constraint uses a variable that is not in the model")
+            end
         end
+    else
+        vars = terms
     end
     return vars, params, param_constant
 end
@@ -122,18 +126,22 @@ function separate_possible_terms_and_calculate_parameter_constant(
     terms_with_variables_associated_to_parameters = MOI.ScalarAffineTerm{T}[]
     param_constant = zero(T)
 
-    for term in terms
-        if is_variable_in_model(model, term.variable)
-            push!(vars, term)
-            if term.variable in variables_associated_to_parameters
-                push!(terms_with_variables_associated_to_parameters, term)
+    if function_affine_terms_has_parameters(model, terms)
+        for term in terms
+            if is_variable_in_model(model, term.variable)
+                push!(vars, term)
+                if term.variable in variables_associated_to_parameters
+                    push!(terms_with_variables_associated_to_parameters, term)
+                end
+            elseif is_parameter_in_model(model, term.variable)
+                push!(params, term)
+                param_constant += term.coefficient * model.parameters[term.variable]
+            else
+                error("Constraint uses a variable that is not in the model")
             end
-        elseif is_parameter_in_model(model, term.variable)
-            push!(params, term)
-            param_constant += term.coefficient * model.parameters[term.variable]
-        else
-            error("Constraint uses a variable that is not in the model")
         end
+    else
+        vars = terms
     end
     return vars,
     params,
@@ -152,72 +160,76 @@ function separate_possible_terms_and_calculate_parameter_constant(
     variables_associated_to_parameters = MOI.VariableIndex[]
     quad_param_constant = zero(T)
 
-    # TODO (guilherme) do we really need the convention ?
-    # When we have a parameter x variable or a variable x parameter the convention is to rewrite
-    # the SQT with parameter as variable_index_1 and variable as variable_index_2
-    for term in terms
-        if (
-            is_variable_in_model(model, term.variable_1) &&
-            is_variable_in_model(model, term.variable_2)
-        )
-            push!(quad_vars, term) # if there are only variables, it remains a quadratic term
+    if function_quadratic_terms_has_parameters(model, terms)
+        # When we have a parameter x variable or a variable x parameter the convention is to rewrite
+        # the SQT with parameter as variable_index_1 and variable as variable_index_2
+        for term in terms
+            if (
+                is_variable_in_model(model, term.variable_1) &&
+                is_variable_in_model(model, term.variable_2)
+            )
+                push!(quad_vars, term) # if there are only variables, it remains a quadratic term
 
-        elseif (
-            is_parameter_in_model(model, term.variable_1) &&
-            is_variable_in_model(model, term.variable_2)
-        )
-            push!(quad_aff_vars, term)
-            push!(variables_associated_to_parameters, term.variable_2)
-            push!(model.multiplicative_parameters, term.variable_1.value)
-            push!(
-                aff_terms,
-                MOI.ScalarAffineTerm(
-                    term.coefficient * model.parameters[term.variable_1],
-                    term.variable_2,
-                ),
+            elseif (
+                is_parameter_in_model(model, term.variable_1) &&
+                is_variable_in_model(model, term.variable_2)
             )
+                push!(quad_aff_vars, term)
+                push!(variables_associated_to_parameters, term.variable_2)
+                push!(model.multiplicative_parameters, term.variable_1.value)
+                push!(
+                    aff_terms,
+                    MOI.ScalarAffineTerm(
+                        term.coefficient * model.parameters[term.variable_1],
+                        term.variable_2,
+                    ),
+                )
 
-        elseif (
-            is_variable_in_model(model, term.variable_1) &&
-            is_parameter_in_model(model, term.variable_2)
-        )
-            # Check convention defined above
-            push!(
-                quad_aff_vars,
-                MOI.ScalarQuadraticTerm(
-                    term.coefficient,
-                    term.variable_2,
-                    term.variable_1,
-                ),
+            elseif (
+                is_variable_in_model(model, term.variable_1) &&
+                is_parameter_in_model(model, term.variable_2)
             )
-            push!(variables_associated_to_parameters, term.variable_2)
-            push!(
-                aff_terms,
-                MOI.ScalarAffineTerm(
-                    term.coefficient * model.parameters[term.variable_2],
-                    term.variable_1,
-                ),
-            )
-            push!(model.multiplicative_parameters, term.variable_2.value)
+                # Check convention defined above. We use the convention to know decide who is a variable and who is
+                # a parameter withou having to recheck which is which.
+                push!(
+                    quad_aff_vars,
+                    MOI.ScalarQuadraticTerm(
+                        term.coefficient,
+                        term.variable_2,
+                        term.variable_1,
+                    ),
+                )
+                push!(variables_associated_to_parameters, term.variable_2)
+                push!(
+                    aff_terms,
+                    MOI.ScalarAffineTerm(
+                        term.coefficient * model.parameters[term.variable_2],
+                        term.variable_1,
+                    ),
+                )
+                push!(model.multiplicative_parameters, term.variable_2.value)
 
-        elseif (
-            is_parameter_in_model(model, term.variable_1) &&
-            is_parameter_in_model(model, term.variable_2)
-        )
-            push!(quad_params, term)
-            push!(model.multiplicative_parameters, term.variable_1.value)
-            push!(model.multiplicative_parameters, term.variable_2.value)
-            quad_param_constant +=
-                term.coefficient *
-                model.parameters[term.variable_1] *
-                model.parameters[term.variable_2]
-        else
-            throw(
-                ErrorException(
-                    "Constraint uses a variable or parameter that is not in the model",
-                ),
+            elseif (
+                is_parameter_in_model(model, term.variable_1) &&
+                is_parameter_in_model(model, term.variable_2)
             )
+                push!(quad_params, term)
+                push!(model.multiplicative_parameters, term.variable_1.value)
+                push!(model.multiplicative_parameters, term.variable_2.value)
+                quad_param_constant +=
+                    term.coefficient *
+                    model.parameters[term.variable_1] *
+                    model.parameters[term.variable_2]
+            else
+                throw(
+                    ErrorException(
+                        "Constraint uses a variable or parameter that is not in the model",
+                    ),
+                )
+            end
         end
+    else
+        quad_vars = terms
     end
     return quad_vars,
     quad_aff_vars,
