@@ -53,13 +53,11 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
         Vector{MOI.ScalarAffineTerm{Float64}},
     }
     # Store reference to parameter * variable constraints: p*v >= 0.0
-    quadratic_constraint_cache_pv::Dict{
-        MOI.ConstraintIndex,
+    quadratic_constraint_cache_pv::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.ScalarQuadraticTerm{Float64}},
     }
     # Store reference to parameter * parameter constraints: p*p >= var
-    quadratic_constraint_cache_pp::Dict{
-        MOI.ConstraintIndex,
+    quadratic_constraint_cache_pp::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.ScalarQuadraticTerm{Float64}},
     }
     # Store reference to constraints quad_variable_term + affine_with_parameters: v*v + p >= 0
@@ -67,13 +65,14 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
         Vector{MOI.ScalarAffineTerm{Float64}},
     }
     # Probably for QPs p*v*v (?)
-    quadratic_constraint_variables_associated_to_parameters_cache::Dict{
-        MOI.ConstraintIndex,
+    quadratic_constraint_variables_associated_to_parameters_cache::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.ScalarAffineTerm{T}},
     }
     # Store the map between quadratic terms add as var * parameter to the resulting shape when implemented in the solver
     # for instance p*p + var -> ScalarAffine(var)
-    quadratic_added_cache::OrderedDict{MOI.ConstraintIndex,MOI.ConstraintIndex}
+    quadratic_added_cache::MOI.Utilities.DoubleDicts.DoubleDict{
+        MOI.ConstraintIndex,
+    }
     last_quad_add_added::Int64
     vector_constraint_cache::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.VectorAffineTerm{Float64}},
@@ -102,13 +101,21 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.ScalarAffineTerm{Float64}},
             }(),
-            Dict{MOI.ConstraintIndex,Vector{MOI.ScalarQuadraticTerm{Float64}}}(),
-            Dict{MOI.ConstraintIndex,Vector{MOI.ScalarQuadraticTerm{Float64}}}(),
+            MOI.Utilities.DoubleDicts.DoubleDict{
+                Vector{MOI.ScalarQuadraticTerm{Float64}},
+            }(),
+            MOI.Utilities.DoubleDicts.DoubleDict{
+                Vector{MOI.ScalarQuadraticTerm{Float64}},
+            }(),
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.ScalarAffineTerm{Float64}},
             }(),
-            Dict{MOI.ConstraintIndex,Vector{MOI.ScalarAffineTerm{Float64}}}(),
-            OrderedDict{MOI.ConstraintIndex,MOI.ConstraintIndex}(),
+            MOI.Utilities.DoubleDicts.DoubleDict{
+                Vector{MOI.ScalarAffineTerm{Float64}},
+            }(),
+            MOI.Utilities.DoubleDicts.DoubleDict{
+                MOI.ConstraintIndex,
+            }(),
             0,
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.VectorAffineTerm{Float64}},
