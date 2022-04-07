@@ -154,9 +154,9 @@ function separate_possible_terms_and_calculate_parameter_constant(
     terms::Vector{MOI.ScalarQuadraticTerm{T}},
 ) where {T}
     quad_params = MOI.ScalarQuadraticTerm{T}[] # parameter x parameter
-    quad_aff_vars = MOI.ScalarQuadraticTerm{T}[] # parameter x variable
+    quad_aff_vars = MOI.ScalarQuadraticTerm{T}[] # parameter (as a variable) x variable
     quad_vars = MOI.ScalarQuadraticTerm{T}[] # variable x variable
-    aff_terms = MOI.ScalarAffineTerm{T}[]
+    aff_terms = MOI.ScalarAffineTerm{T}[] # parameter (as a number) x variable
     variables_associated_to_parameters = MOI.VariableIndex[]
     quad_param_constant = zero(T)
 
@@ -169,7 +169,6 @@ function separate_possible_terms_and_calculate_parameter_constant(
                 is_variable_in_model(model, term.variable_2)
             )
                 push!(quad_vars, term) # if there are only variables, it remains a quadratic term
-
             elseif (
                 is_parameter_in_model(model, term.variable_1) &&
                 is_variable_in_model(model, term.variable_2)
