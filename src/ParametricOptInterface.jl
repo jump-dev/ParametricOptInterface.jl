@@ -48,27 +48,37 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     variables::Dict{MOI.VariableIndex,MOI.VariableIndex}
     last_variable_index_added::Int64
     last_parameter_index_added::Int64
-    # Store reference to affine constraints with parameters: v + p >= 0
+    # Store reference to affine constraints with parameters: v + p
     affine_constraint_cache::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.ScalarAffineTerm{Float64}},
     }
-    # Store reference to parameter * variable constraints: p*v >= 0.0
-    quadratic_constraint_cache_pv::MOI.Utilities.DoubleDicts.DoubleDict{
+    # Store reference quadratic constraints with parameter * variable constraints: p * v
+    quadratic_constraint_cache_pv::Dict{
+        MOI.ConstraintIndex,
         Vector{MOI.ScalarQuadraticTerm{Float64}},
     }
-    # Store reference to parameter * parameter constraints: p*p >= var
-    quadratic_constraint_cache_pp::MOI.Utilities.DoubleDicts.DoubleDict{
+    # Store reference quadratic constraints with parameter * variable constraints: p * v
+    quadratic_constraint_cache_pp::Dict{
+        MOI.ConstraintIndex,
         Vector{MOI.ScalarQuadraticTerm{Float64}},
     }
-    # Store reference to constraints quad_variable_term + affine_with_parameters: v*v + p >= 0
+    # Store reference to constraints with quad_variable_term + affine_with_parameters: v * v + p
     quadratic_constraint_cache_pc::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.ScalarAffineTerm{Float64}},
     }
-    # Probably for QPs p*v*v (?)
-    quadratic_constraint_variables_associated_to_parameters_cache::MOI.Utilities.DoubleDicts.DoubleDict{
+    # Store the reference to variables in the scalar affine part that are 
+    # multiplied by parameters in the scalar quadratic terms.
+    # i.e.
+    # If we have a constraint function with both scalar quadratic terms and 
+    # scalar affine terms such as p_1 * v_1 + 2.0 * v_1
+    # When we need to update the constraint coefficient after updating the parameter 
+    # we must do (new_p_1 + 2.0) * v_1
+    # This cache is storing the 2.0 * v_1 part.
+    quadratic_constraint_variables_associated_to_parameters_cache::Dict{
+        MOI.ConstraintIndex,
         Vector{MOI.ScalarAffineTerm{T}},
     }
-    # Store the map between quadratic terms add as var * parameter to the resulting shape when implemented in the solver
+    # Store the map for SQFs that were transformed into SAF
     # for instance p*p + var -> ScalarAffine(var)
     quadratic_added_cache::OrderedDict{MOI.ConstraintIndex,MOI.ConstraintIndex}
     last_quad_add_added::Int64
