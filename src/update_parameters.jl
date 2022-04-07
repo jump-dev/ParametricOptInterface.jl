@@ -253,7 +253,7 @@ function update_parameter_in_quadratic_constraints_pv!(model::Optimizer)
     for (ci, quad_aff_vars) in model.quadratic_constraint_cache_pv
         # We need this dictionary because we could have terms like
         # p_1 * v_1 + p_2 * v_1 and we should add p_1 and p_2 on the update
-        new_coeff_per_variable = Dict{MOI.VariableIndex, Float64}()
+        new_coeff_per_variable = Dict{MOI.VariableIndex,Float64}()
         for term in quad_aff_vars
             # Here we use the convention that the parameter always comes as the first variables
             # in the caches
@@ -267,8 +267,12 @@ function update_parameter_in_quadratic_constraints_pv!(model::Optimizer)
                 end
             end
         end
-        if haskey(model.quadratic_constraint_variables_associated_to_parameters_cache, ci)
-            for aff_term in model.quadratic_constraint_variables_associated_to_parameters_cache[ci]
+        if haskey(
+            model.quadratic_constraint_variables_associated_to_parameters_cache,
+            ci,
+        )
+            for aff_term in
+                model.quadratic_constraint_variables_associated_to_parameters_cache[ci]
                 coef = aff_term.coefficient
                 if haskey(new_coeff_per_variable, aff_term.variable)
                     new_coeff_per_variable[aff_term.variable] += coef
@@ -292,7 +296,7 @@ end
 function update_parameter_in_quadratic_objective_pv!(model::Optimizer)
     # We need this dictionary because we could have terms like
     # p_1 * v_1 + p_2 * v_1 and we should add p_1 and p_2 on the update
-    new_coeff_per_variable = Dict{MOI.VariableIndex, Float64}()
+    new_coeff_per_variable = Dict{MOI.VariableIndex,Float64}()
     for term in model.quadratic_objective_cache_pv
         # Here we use the convention that the parameter always comes as the first variables
         # in the caches
@@ -306,8 +310,9 @@ function update_parameter_in_quadratic_objective_pv!(model::Optimizer)
             end
         end
     end
-    
-    for aff_term in model.quadratic_objective_variables_associated_to_parameters_cache
+
+    for aff_term in
+        model.quadratic_objective_variables_associated_to_parameters_cache
         coef = aff_term.coefficient
         if haskey(new_coeff_per_variable, aff_term.variable)
             new_coeff_per_variable[aff_term.variable] += coef
