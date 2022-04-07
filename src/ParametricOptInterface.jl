@@ -45,7 +45,12 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     parameters::Dict{MOI.VariableIndex,T}
     parameters_name::Dict{MOI.VariableIndex,String}
     updated_parameters::Dict{MOI.VariableIndex,T}
-    variables::MOI.Utilities.CleverDicts.CleverDict{MOI.VariableIndex, MOI.VariableIndex, typeof(MOI.Utilities.CleverDicts.key_to_index), typeof(MOI.Utilities.CleverDicts.index_to_key)}
+    variables::MOI.Utilities.CleverDicts.CleverDict{
+        MOI.VariableIndex,
+        MOI.VariableIndex,
+        typeof(MOI.Utilities.CleverDicts.key_to_index),
+        typeof(MOI.Utilities.CleverDicts.index_to_key),
+    }
     last_variable_index_added::Int64
     last_parameter_index_added::Int64
     # Store reference to affine constraints with parameters: v + p >= 0
@@ -96,7 +101,13 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             Dict{MOI.VariableIndex,Float64}(),
             Dict{MOI.VariableIndex,String}(),
             Dict{MOI.VariableIndex,Float64}(),
-            MOI.Utilities.CleverDicts.CleverDict{MOI.VariableIndex, MOI.VariableIndex}(MOI.Utilities.CleverDicts.key_to_index, MOI.Utilities.CleverDicts.index_to_key),
+            MOI.Utilities.CleverDicts.CleverDict{
+                MOI.VariableIndex,
+                MOI.VariableIndex,
+            }(
+                MOI.Utilities.CleverDicts.key_to_index,
+                MOI.Utilities.CleverDicts.index_to_key,
+            ),
             0,
             PARAMETER_INDEX_THRESHOLD,
             MOI.Utilities.DoubleDicts.DoubleDict{
@@ -599,7 +610,10 @@ end
 
 function MOI.add_variable(model::Optimizer)
     next_variable_index!(model)
-    return MOI.Utilities.CleverDicts.add_item(model.variables, MOI.add_variable(model.optimizer))
+    return MOI.Utilities.CleverDicts.add_item(
+        model.variables,
+        MOI.add_variable(model.optimizer),
+    )
 end
 
 function MOI.add_constrained_variable(model::Optimizer, set::Parameter)
@@ -857,7 +871,6 @@ function add_constraint_with_parameters_on_function(
     f::MOI.ScalarQuadraticFunction{T},
     set::S,
 ) where {T,S<:MOI.AbstractScalarSet}
-    
     (
         quad_vars,
         quad_aff_vars,
@@ -869,7 +882,7 @@ function add_constraint_with_parameters_on_function(
         model,
         f.quadratic_terms,
     )
-   
+
     (
         aff_vars,
         aff_params,
