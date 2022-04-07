@@ -45,7 +45,12 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     parameters::Dict{MOI.VariableIndex,T}
     parameters_name::Dict{MOI.VariableIndex,String}
     updated_parameters::Dict{MOI.VariableIndex,T}
-    variables::Dict{MOI.VariableIndex,MOI.VariableIndex}
+    variables::MOI.Utilities.CleverDicts.CleverDict{
+        MOI.VariableIndex,
+        MOI.VariableIndex,
+        typeof(MOI.Utilities.CleverDicts.key_to_index),
+        typeof(MOI.Utilities.CleverDicts.index_to_key),
+    }
     last_variable_index_added::Int64
     last_parameter_index_added::Int64
     # Store reference to affine constraints with parameters: v + p
@@ -100,7 +105,13 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             Dict{MOI.VariableIndex,Float64}(),
             Dict{MOI.VariableIndex,String}(),
             Dict{MOI.VariableIndex,Float64}(),
-            Dict{MOI.VariableIndex,MOI.VariableIndex}(),
+            MOI.Utilities.CleverDicts.CleverDict{
+                MOI.VariableIndex,
+                MOI.VariableIndex,
+            }(
+                MOI.Utilities.CleverDicts.key_to_index,
+                MOI.Utilities.CleverDicts.index_to_key,
+            ),
             0,
             PARAMETER_INDEX_THRESHOLD,
             MOI.Utilities.DoubleDicts.DoubleDict{
@@ -609,10 +620,10 @@ end
 
 function MOI.add_variable(model::Optimizer)
     next_variable_index!(model)
-    v_p = MOI.VariableIndex(model.last_variable_index_added)
-    v = MOI.add_variable(model.optimizer)
-    model.variables[v_p] = v
-    return v_p
+    return MOI.Utilities.CleverDicts.add_item(
+        model.variables,
+        MOI.add_variable(model.optimizer),
+    )
 end
 
 function MOI.add_constrained_variable(model::Optimizer, set::Parameter)
@@ -821,11 +832,6 @@ function MOI.set(model::Optimizer, attr::MOI.RawOptimizerAttribute, val::Any)
     return
 end
 
-# TODO(odow): remove this.
-function MOI.set(model::Optimizer, attr::String, val::Any)
-    return MOI.set(model.optimizer, MOI.RawOptimizerAttribute(attr), val)
-end
-
 function MOI.get(model::Optimizer, ::MOI.SolverName)
     name = MOI.get(model.optimizer, MOI.SolverName())
     return "Parametric Optimizer with $(name) attached"
@@ -939,7 +945,7 @@ function MOI.add_constraint(
 end
 
 function MOI.delete(model::Optimizer, v::MOI.VariableIndex)
-    pop!(model.variables, v, 0) # 0 is a default value if v is not found
+    delete!(model.variables, v)
     MOI.delete(model.optimizer, v)
     return
 end
