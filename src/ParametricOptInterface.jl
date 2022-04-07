@@ -53,13 +53,11 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
         Vector{MOI.ScalarAffineTerm{Float64}},
     }
     # Store reference quadratic constraints with parameter * variable constraints: p * v
-    quadratic_constraint_cache_pv::Dict{
-        MOI.ConstraintIndex,
+    quadratic_constraint_cache_pv::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.ScalarQuadraticTerm{Float64}},
     }
     # Store reference quadratic constraints with parameter * variable constraints: p * v
-    quadratic_constraint_cache_pp::Dict{
-        MOI.ConstraintIndex,
+    quadratic_constraint_cache_pp::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.ScalarQuadraticTerm{Float64}},
     }
     # Store reference to constraints with quad_variable_term + affine_with_parameters: v * v + p
@@ -74,8 +72,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     # When we need to update the constraint coefficient after updating the parameter 
     # we must do (new_p_1 + 2.0) * v_1
     # This cache is storing the 2.0 * v_1 part.
-    quadratic_constraint_variables_associated_to_parameters_cache::Dict{
-        MOI.ConstraintIndex,
+    quadratic_constraint_variables_associated_to_parameters_cache::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.ScalarAffineTerm{T}},
     }
     # Store the map for SQFs that were transformed into SAF
@@ -878,7 +875,6 @@ function add_constraint_with_parameters_on_function(
     f::MOI.ScalarQuadraticFunction{T},
     set::S,
 ) where {T,S<:MOI.AbstractScalarSet}
-    
     (
         quad_vars,
         quad_aff_vars,
@@ -890,7 +886,7 @@ function add_constraint_with_parameters_on_function(
         model,
         f.quadratic_terms,
     )
-   
+
     (
         aff_vars,
         aff_params,
