@@ -367,11 +367,11 @@ end
 
 
 function update_parameters!(model::Optimizer)
-    @code_warntype POI.update_parameter_in_affine_constraints!(model)
-    @code_warntype POI.update_parameters_in_affine_objective!(model)
+    update_parameter_in_affine_constraints!(model)
+    update_parameters_in_affine_objective!(model)
     update_parameter_in_quadratic_constraints_pc!(model)
-    @code_warntype POI.update_parameter_in_quadratic_objective_pc!(model)
-    @code_warntype POI.update_parameter_in_quadratic_constraints_pv!(model)
+    update_parameter_in_quadratic_objective_pc!(model)
+    update_parameter_in_quadratic_constraints_pv!(model)
     # update_parameter_in_quadratic_objective_pv!(model)
     update_parameter_in_quadratic_constraints_pp!(model)
     update_parameter_in_quadratic_objective_pp!(model)
