@@ -854,19 +854,28 @@ end
     N = 10
     ipopt = Ipopt.Optimizer()
     model = POI.Optimizer(ipopt)
-    x = MOI.add_variables(model, N/2)
-    y = first.(MOI.add_constrained_variable.(model, POI.Parameter.(ones(Int(N/2)))))
+    x = MOI.add_variables(model, N / 2)
+    y =
+        first.(
+            MOI.add_constrained_variable.(
+                model,
+                POI.Parameter.(ones(Int(N / 2))),
+            ),
+        )
 
     MOI.add_constraint(
-                    model,
-                    MOI.ScalarQuadraticFunction(
-                        MOI.ScalarQuadraticTerm.(1.0, x, y),
-                        MOI.ScalarAffineTerm{Float64}[],
-                        0.0,
-                    ),
-                    MOI.GreaterThan(1.0),
-                )
-                
+        model,
+        MOI.ScalarQuadraticFunction(
+            MOI.ScalarQuadraticTerm.(1.0, x, y),
+            MOI.ScalarAffineTerm{Float64}[],
+            0.0,
+        ),
+        MOI.GreaterThan(1.0),
+    )
+
     list_ctrs_types = MOI.get(model, MOI.ListOfConstraintTypesPresent())
-    @test list_ctrs_types == [(MathOptInterface.ScalarQuadraticFunction{Float64}, MathOptInterface.GreaterThan{Float64})]
+    @test list_ctrs_types == [(
+        MathOptInterface.ScalarQuadraticFunction{Float64},
+        MathOptInterface.GreaterThan{Float64},
+    )]
 end

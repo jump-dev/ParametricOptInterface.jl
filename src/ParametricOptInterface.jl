@@ -547,7 +547,7 @@ function MOI.get(model::Optimizer, ::MOI.ListOfConstraintTypesPresent)
         cache_map_check =
             quadratic_constraint_cache_map_check.(model, inner_index)
         for type in typeof.(cache_keys[cache_map_check])
-            push!(constraints, (type.parameters[1],type.parameters[2]))
+            push!(constraints, (type.parameters[1], type.parameters[2]))
         end
         # If not all the constraints are chached then also push the original type
         if !all(cache_map_check)
