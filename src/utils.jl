@@ -268,12 +268,12 @@ end
 
 function quadratic_constraint_cache_map_check(
     model::Optimizer,
-    idxs::MOI.ConstraintIndex{F,S},
+    idx::MOI.ConstraintIndex{F,S},
 ) where {F,S}
     cached_constraints = values(model.quadratic_added_cache)
     # Using this becuase some custom brodcast method throws errors if
     # inner_idex .∈ cached_constraints is used
-    return [i ∈ cached_constraints for i in idxs]
+    return idx ∈ cached_constraints
 end
 
 # Vector Affine
