@@ -25,11 +25,31 @@ const CONFIG = MOIT.Config()
             "test_linear_integration_delete_variables",
             "test_model_ListOfConstraintAttributesSet",
             "test_model_ModelFilter_ListOfConstraintIndices",
-            "test_model_ModelFilter_ListOfConstraintTypesPresent",
+            "test_model_ModelFilter_ListOfConstraintTypesPresent", # Needs ListOfConstraintAttributesSet to work
             "test_constraint_ZeroOne_bounds_3",
             "test_linear_integration_2",
         ],
     )
+end
+
+@testset "ListOfConstraintTypesPresent" begin
+    N = 10
+    model = OPTIMIZER_GLPK
+    x = MOI.add_variables(model, N/2)
+    y = first.(MOI.add_constrained_variable.(model, POI.Parameter.(ones(Int(N/2)))))
+
+    MOI.add_constraint(
+                    model,
+                    MOI.ScalarQuadraticFunction(
+                        MOI.ScalarQuadraticTerm.(1.0, x, y),
+                        MOI.ScalarAffineTerm{Float64}[],
+                        0.0,
+                    ),
+                    MOI.GreaterThan(1.0),
+                )
+                
+    list_ctrs_types = MOI.get(model, MOI.ListOfConstraintTypesPresent())
+    @test list_ctrs_types == [((MathOptInterface.ScalarQuadraticFunction{Float64}, MathOptInterface.GreaterThan{Float64}))]
 end
 
 # @testset "Ipopt tests" begin
