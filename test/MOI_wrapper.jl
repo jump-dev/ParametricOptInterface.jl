@@ -25,7 +25,7 @@ const CONFIG = MOIT.Config()
             "test_linear_integration_delete_variables",
             "test_model_ListOfConstraintAttributesSet",
             "test_model_ModelFilter_ListOfConstraintIndices",
-            "test_model_ModelFilter_ListOfConstraintTypesPresent",
+            "test_model_ModelFilter_ListOfConstraintTypesPresent", # Needs ListOfConstraintAttributesSet to work
             "test_constraint_ZeroOne_bounds_3",
             "test_linear_integration_2",
         ],
