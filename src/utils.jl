@@ -201,9 +201,8 @@ function separate_possible_terms_and_calculate_parameter_constant(
                         term.variable_1,
                     ),
                 )
-        push!(model.multiplicative_parameters, term_v_p.variable_1.value)
-    end
-    
+                push!(model.multiplicative_parameters, term.variable_2.value)
+
             elseif (
                 is_parameter_in_model(model, term.variable_1) &&
                 is_parameter_in_model(model, term.variable_2)
