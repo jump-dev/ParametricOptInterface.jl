@@ -94,25 +94,18 @@ function separate_possible_terms_and_calculate_parameter_constant(
     model::Optimizer,
     terms::Vector{MOI.ScalarAffineTerm{T}},
 ) where {T}
-    vars = MOI.ScalarAffineTerm{T}[]
-    params = MOI.ScalarAffineTerm{T}[]
     param_constant = zero(T)
+    vars = filter(x -> is_variable_in_model(model, x.variable), terms)
+    params = filter(x -> is_parameter_in_model(model, x.variable), terms)
 
-    if function_affine_terms_has_parameters(model, terms)
-        for term in terms
-            if is_variable_in_model(model, term.variable)
-                push!(vars, term)
-            elseif is_parameter_in_model(model, term.variable)
-                push!(params, term)
-                param_constant +=
-                    term.coefficient * model.parameters[term.variable]
-            else
-                error("Constraint uses a variable that is not in the model")
-            end
-        end
-    else
-        vars = terms
+    if (length(vars) + length(params)) != length(terms)
+        error("Function uses a variable index that is not in the model")
     end
+
+    for param in params
+        param_constant += param.coefficient * model.parameters[param.variable]
+    end
+
     return vars, params, param_constant
 end
 
@@ -208,8 +201,9 @@ function separate_possible_terms_and_calculate_parameter_constant(
                         term.variable_1,
                     ),
                 )
-                push!(model.multiplicative_parameters, term.variable_2.value)
-
+        push!(model.multiplicative_parameters, term_v_p.variable_1.value)
+    end
+    
             elseif (
                 is_parameter_in_model(model, term.variable_1) &&
                 is_parameter_in_model(model, term.variable_2)
