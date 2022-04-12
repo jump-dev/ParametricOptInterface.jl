@@ -148,83 +148,56 @@ function separate_possible_terms_and_calculate_parameter_constant(
     model::Optimizer,
     terms::Vector{MOI.ScalarQuadraticTerm{T}},
 ) where {T}
-    quad_params = MOI.ScalarQuadraticTerm{T}[] # parameter x parameter
-    quad_aff_vars = MOI.ScalarQuadraticTerm{T}[] # parameter (as a variable) x variable
-    quad_vars = MOI.ScalarQuadraticTerm{T}[] # variable x variable
-    aff_terms = MOI.ScalarAffineTerm{T}[] # parameter (as a number) x variable
-    variables_associated_to_parameters = MOI.VariableIndex[]
+
     quad_param_constant = zero(T)
 
-    if function_quadratic_terms_has_parameters(model, terms)
-        # When we have a parameter x variable or a variable x parameter the convention is to rewrite
-        # the SQT with parameter as variable_index_1 and variable as variable_index_2
-        for term in terms
-            if (
-                is_variable_in_model(model, term.variable_1) &&
-                is_variable_in_model(model, term.variable_2)
-            )
-                push!(quad_vars, term) # if there are only variables, it remains a quadratic term
-            elseif (
-                is_parameter_in_model(model, term.variable_1) &&
-                is_variable_in_model(model, term.variable_2)
-            )
-                push!(quad_aff_vars, term)
-                push!(variables_associated_to_parameters, term.variable_2)
-                push!(model.multiplicative_parameters, term.variable_1.value)
-                push!(
-                    aff_terms,
-                    MOI.ScalarAffineTerm(
-                        term.coefficient * model.parameters[term.variable_1],
-                        term.variable_2,
-                    ),
-                )
+    quad_vars = filter(x -> (is_variable_in_model(model, x.variable_1) && is_variable_in_model(model, x.variable_2)), terms)
+    quad_params = filter(x -> (is_parameter_in_model(model, x.variable_1) && is_parameter_in_model(model, x.variable_2)), terms)
 
-            elseif (
-                is_variable_in_model(model, term.variable_1) &&
-                is_parameter_in_model(model, term.variable_2)
-            )
-                # Check convention defined above. We use the convention to know decide who is a variable and who is
-                # a parameter withou having to recheck which is which.
-                push!(
-                    quad_aff_vars,
-                    MOI.ScalarQuadraticTerm(
-                        term.coefficient,
-                        term.variable_2,
-                        term.variable_1,
-                    ),
-                )
-                push!(variables_associated_to_parameters, term.variable_2)
-                push!(
-                    aff_terms,
-                    MOI.ScalarAffineTerm(
-                        term.coefficient * model.parameters[term.variable_2],
-                        term.variable_1,
-                    ),
-                )
-                push!(model.multiplicative_parameters, term.variable_2.value)
+    # When we have a parameter x variable or a variable x parameter the convention is to rewrite
+    # the SQT with parameter as variable_index_1 and variable as variable_index_2
+    quad_aff_vars_p_v = filter(x -> (is_parameter_in_model(model, x.variable_1) && is_variable_in_model(model, x.variable_2)), terms)
+    quad_aff_vars_v_p = filter(x -> (is_variable_in_model(model, x.variable_1) && is_parameter_in_model(model, x.variable_2)), terms)
 
-            elseif (
-                is_parameter_in_model(model, term.variable_1) &&
-                is_parameter_in_model(model, term.variable_2)
-            )
-                push!(quad_params, term)
-                push!(model.multiplicative_parameters, term.variable_1.value)
-                push!(model.multiplicative_parameters, term.variable_2.value)
-                quad_param_constant +=
-                    term.coefficient *
-                    model.parameters[term.variable_1] *
-                    model.parameters[term.variable_2]
-            else
-                throw(
-                    ErrorException(
-                        "Constraint uses a variable or parameter that is not in the model",
-                    ),
-                )
-            end
-        end
-    else
-        quad_vars = terms
+    num_terms_p_v = length(quad_aff_vars_p_v)
+    num_terms_v_p = length(quad_aff_vars_v_p)
+
+    quad_aff_vars = Vector{MOI.ScalarQuadraticTerm{T}}(undef, num_terms_p_v + num_terms_v_p)
+    aff_terms = Vector{MOI.ScalarAffineTerm{T}}(undef, num_terms_p_v + num_terms_v_p)
+    variables_associated_to_parameters = Vector{MOI.VariableIndex}(undef, num_terms_p_v + num_terms_v_p)
+    for (i, term_p_v) in enumerate(quad_aff_vars_p_v)
+        quad_aff_vars[i] = term_p_v
+        variables_associated_to_parameters[i] = term_p_v.variable_2
+        aff_terms[i] = MOI.ScalarAffineTerm(
+            term_p_v.coefficient * model.parameters[term_p_v.variable_1],
+            term_p_v.variable_2,
+        )
+        model.evaluate_duals && push!(model.multiplicative_parameters, term_p_v.variable_1.value)
     end
+    for (i, term_v_p) in enumerate(quad_aff_vars_v_p)
+        idx = i + num_terms_p_v
+        quad_aff_vars[idx] = MOI.ScalarQuadraticTerm(
+            term_v_p.coefficient,
+            term_v_p.variable_2,
+            term_v_p.variable_1,
+        )
+        variables_associated_to_parameters[idx] = term_v_p.variable_1
+        aff_terms[idx] = MOI.ScalarAffineTerm(
+            term_v_p.coefficient * model.parameters[term_v_p.variable_2],
+            term_v_p.variable_1,
+        )
+        model.evaluate_duals && push!(model.multiplicative_parameters, term_v_p.variable_1.value)
+    end
+    
+    for term_p_p in quad_params
+        model.evaluate_duals && push!(model.multiplicative_parameters, term_p_p.variable_1.value)
+        model.evaluate_duals && push!(model.multiplicative_parameters, term_p_p.variable_2.value)
+        quad_param_constant +=
+                    term_p_p.coefficient *
+                    model.parameters[term_p_p.variable_1] *
+                    model.parameters[term_p_p.variable_2]
+    end
+          
     return quad_vars,
     quad_aff_vars,
     quad_params,
