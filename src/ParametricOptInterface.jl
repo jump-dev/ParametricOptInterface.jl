@@ -558,6 +558,10 @@ function MOI.get(model::Optimizer, ::MOI.ListOfConstraintTypesPresent)
     return collect(constraints)
 end
 
+MOI.get(model::Optimizer, ::MOI.ListOfModelAttributesSet) = MOI.get(model.optimizer, MOI.ListOfModelAttributesSet())
+MOI.get(model::Optimizer, ::MOI.ListOfVariableAttributesSet) = MOI.get(model.optimizer, MOI.ListOfVariableAttributesSet())
+MOI.get(model::Optimizer, ::MOI.ListOfConstraintAttributesSet) = MOI.get(model.optimizer, MOI.ListOfConstraintAttributesSet())
+
 function MOI.get(
     model::Optimizer,
     attr::MOI.ListOfConstraintIndices{F,S},
@@ -732,6 +736,7 @@ function MOI.set(
     vi::MOI.VariableIndex,
     val::Float64,
 )
+    @show vi
     if !is_parameter_in_model(model, vi)
         error("Parameter not in the model")
     end
@@ -1080,6 +1085,14 @@ function MOI.optimize!(model::Optimizer)
         calculate_dual_of_parameters(model)
     end
     return
+end
+
+## NLP
+
+MOI.supports(model::Optimizer, ::MOI.NLPBlock) = MOI.supports(model.optimizer, MOI.NLPBlock())
+
+function MOI.set(model::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
+    return MOI.set(model.optimizer, MOI.NLPBlock(), nlp_data)
 end
 
 end # module
