@@ -137,7 +137,7 @@ function separate_possible_terms_and_calculate_parameter_constant(
             i_vars += 1
         elseif is_parameter_in_model(model, term.variable)
             params[i_params] = term
-            param_constant += term.coefficient * model.parameters[term.variable]
+            param_constant += term.coefficient * model.parameters[p_idx(term.variable)]
             i_params += 1
         else
             error("Constraint uses a variable that is not in the model")
@@ -178,7 +178,7 @@ function separate_possible_terms_and_calculate_parameter_constant(
             i_vars += 1
         elseif is_parameter_in_model(model, term.variable)
             params[i_params] = term
-            param_constant += term.coefficient * model.parameters[term.variable]
+            param_constant += term.coefficient * model.parameters[p_idx(term.variable)]
             i_params += 1
         else
             error("Constraint uses a variable that is not in the model")
@@ -250,7 +250,7 @@ function separate_possible_terms_and_calculate_parameter_constant(
             variables_associated_to_parameters[i_quad_aff_vars] =
                 term.variable_2
             aff_terms[i_quad_aff_vars] = MOI.ScalarAffineTerm(
-                term.coefficient * model.parameters[term.variable_1],
+                term.coefficient * model.parameters[p_idx(term.variable_1)],
                 term.variable_2,
             )
             model.evaluate_duals &&
@@ -270,7 +270,7 @@ function separate_possible_terms_and_calculate_parameter_constant(
             variables_associated_to_parameters[i_quad_aff_vars] =
                 term.variable_1
             aff_terms[i_quad_aff_vars] = MOI.ScalarAffineTerm(
-                term.coefficient * model.parameters[term.variable_2],
+                term.coefficient * model.parameters[p_idx(term.variable_2)],
                 term.variable_1,
             )
             model.evaluate_duals &&
@@ -287,8 +287,8 @@ function separate_possible_terms_and_calculate_parameter_constant(
                 push!(model.multiplicative_parameters, term.variable_2.value)
             quad_param_constant +=
                 term.coefficient *
-                model.parameters[term.variable_1] *
-                model.parameters[term.variable_2]
+                model.parameters[p_idx(term.variable_1)] *
+                model.parameters[p_idx(term.variable_2)]
             i_quad_params += 1
         else
             throw(
@@ -361,7 +361,7 @@ function separate_possible_terms_and_calculate_parameter_constant(
             push!(params, term)
             param_constants[oi] +=
                 term.scalar_term.coefficient *
-                model.parameters[term.scalar_term.variable]
+                model.parameters[p_idx(term.scalar_term.variable)]
         else
             error("Constraint uses a variable that is not in the model")
         end

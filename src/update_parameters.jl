@@ -29,7 +29,12 @@ end
 
 function update_parameter_in_affine_constraints!(
     optimizer::OT,
-    parameters::Dict{MOI.VariableIndex,T},
+    parameters::MOI.Utilities.CleverDicts.CleverDict{
+        ParameterIndex,
+        T,
+        typeof(MOI.Utilities.CleverDicts.key_to_index),
+        typeof(MOI.Utilities.CleverDicts.index_to_key),
+    },
     updated_parameters::Dict{MOI.VariableIndex,T},
     affine_constraint_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{
         F,
@@ -53,7 +58,12 @@ function update_parameter_in_affine_constraints!(
     optimizer::OT,
     ci::CI,
     param_array::Vector{MOI.ScalarAffineTerm{T}},
-    parameters::Dict{MOI.VariableIndex,T},
+    parameters::MOI.Utilities.CleverDicts.CleverDict{
+        ParameterIndex,
+        T,
+        typeof(MOI.Utilities.CleverDicts.key_to_index),
+        typeof(MOI.Utilities.CleverDicts.index_to_key),
+    },
     updated_parameters::Dict{MOI.VariableIndex,T},
 ) where {OT,T,CI}
     param_constant = zero(T)
@@ -61,7 +71,7 @@ function update_parameter_in_affine_constraints!(
         if haskey(updated_parameters, term.variable) # TODO This haskey can be slow
             param_constant +=
                 term.coefficient *
-                (updated_parameters[term.variable] - parameters[term.variable])
+                (updated_parameters[term.variable] - parameters[p_idx(term.variable)])
         end
     end
     if param_constant != zero(Float64)
@@ -75,12 +85,12 @@ end
 function update_parameters_in_affine_objective!(model::Optimizer)
     if !isempty(model.affine_objective_cache)
         objective_constant = zero(Float64)
-        for j in model.affine_objective_cache
-            if haskey(model.updated_parameters, j.variable)
-                param_old = model.parameters[j.variable]
-                param_new = model.updated_parameters[j.variable]
+        for term in model.affine_objective_cache
+            if haskey(model.updated_parameters, term.variable)
+                param_old = model.parameters[p_idx(term.variable)]
+                param_new = model.updated_parameters[term.variable]
                 aux = param_new - param_old
-                objective_constant += j.coefficient * aux
+                objective_constant += term.coefficient * aux
             end
         end
         if objective_constant != zero(Float64)
@@ -99,12 +109,12 @@ end
 function update_parameter_in_quadratic_constraints_pc!(model::Optimizer)
     for (ci, fparam) in model.quadratic_constraint_cache_pc
         param_constant = zero(Float64)
-        for j in fparam
-            if haskey(model.updated_parameters, j.variable)
-                param_old = model.parameters[j.variable]
-                param_new = model.updated_parameters[j.variable]
+        for term in fparam
+            if haskey(model.updated_parameters, term.variable)
+                param_old = model.parameters[p_idx(term.variable)]
+                param_new = model.updated_parameters[term.variable]
                 aux = param_new - param_old
-                param_constant += j.coefficient * aux
+                param_constant += term.coefficient * aux
             end
         end
         if param_constant != zero(Float64)
@@ -127,12 +137,12 @@ end
 function update_parameter_in_quadratic_objective_pc!(model::Optimizer)
     if !isempty(model.quadratic_objective_cache_pc)
         objective_constant = zero(Float64)
-        for j in model.quadratic_objective_cache_pc
-            if haskey(model.updated_parameters, j.variable)
-                param_old = model.parameters[j.variable]
-                param_new = model.updated_parameters[j.variable]
+        for term in model.quadratic_objective_cache_pc
+            if haskey(model.updated_parameters, term.variable)
+                param_old = model.parameters[p_idx(term.variable)]
+                param_new = model.updated_parameters[term.variable]
                 aux = param_new - param_old
-                objective_constant += j.coefficient * aux
+                objective_constant += term.coefficient * aux
             end
         end
         if objective_constant != zero(Float64)
@@ -160,28 +170,28 @@ end
 function update_parameter_in_quadratic_constraints_pp!(model::Optimizer)
     for (ci, fparam) in model.quadratic_constraint_cache_pp
         param_constant = zero(Float64)
-        for j in fparam
-            if haskey(model.updated_parameters, j.variable_1) &&
-               haskey(model.updated_parameters, j.variable_2)
-                param_new_1 = model.updated_parameters[j.variable_1]
-                param_new_2 = model.updated_parameters[j.variable_2]
-                param_old_1 = model.parameters[j.variable_1]
-                param_old_2 = model.parameters[j.variable_2]
+        for term in fparam
+            if haskey(model.updated_parameters, term.variable_1) &&
+               haskey(model.updated_parameters, term.variable_2)
+                param_new_1 = model.updated_parameters[term.variable_1]
+                param_new_2 = model.updated_parameters[term.variable_2]
+                param_old_1 = model.parameters[p_idx(term.variable_1)]
+                param_old_2 = model.parameters[p_idx(term.variable_2)]
                 param_constant +=
-                    j.coefficient *
+                    term.coefficient *
                     ((param_new_1 * param_new_2) - (param_old_1 * param_old_2))
-            elseif haskey(model.updated_parameters, j.variable_1)
-                param_new_1 = model.updated_parameters[j.variable_1]
-                param_old_1 = model.parameters[j.variable_1]
-                param_old_2 = model.parameters[j.variable_2]
+            elseif haskey(model.updated_parameters, term.variable_1)
+                param_new_1 = model.updated_parameters[term.variable_1]
+                param_old_1 = model.parameters[p_idx(term.variable_1)]
+                param_old_2 = model.parameters[p_idx(term.variable_2)]
                 param_constant +=
-                    j.coefficient * param_old_2 * (param_new_1 - param_old_1)
-            elseif haskey(model.updated_parameters, j.variable_2)
-                param_new_2 = model.updated_parameters[j.variable_2]
-                param_old_1 = model.parameters[j.variable_1]
-                param_old_2 = model.parameters[j.variable_2]
+                    term.coefficient * param_old_2 * (param_new_1 - param_old_1)
+            elseif haskey(model.updated_parameters, term.variable_2)
+                param_new_2 = model.updated_parameters[term.variable_2]
+                param_old_1 = model.parameters[p_idx(term.variable_1)]
+                param_old_2 = model.parameters[p_idx(term.variable_2)]
                 param_constant +=
-                    j.coefficient * param_old_1 * (param_new_2 - param_old_2)
+                    term.coefficient * param_old_1 * (param_new_2 - param_old_2)
             end
         end
         if param_constant != zero(Float64)
@@ -204,28 +214,28 @@ end
 function update_parameter_in_quadratic_objective_pp!(model::Optimizer)
     if !isempty(model.quadratic_objective_cache_pp)
         objective_constant = zero(Float64)
-        for j in model.quadratic_objective_cache_pp
-            if haskey(model.updated_parameters, j.variable_1) &&
-               haskey(model.updated_parameters, j.variable_2)
-                param_new_1 = model.updated_parameters[j.variable_1]
-                param_new_2 = model.updated_parameters[j.variable_2]
-                param_old_1 = model.parameters[j.variable_1]
-                param_old_2 = model.parameters[j.variable_2]
+        for term in model.quadratic_objective_cache_pp
+            if haskey(model.updated_parameters, term.variable_1) &&
+               haskey(model.updated_parameters, term.variable_2)
+                param_new_1 = model.updated_parameters[term.variable_1]
+                param_new_2 = model.updated_parameters[term.variable_2]
+                param_old_1 = model.parameters[p_idx(term.variable_1)]
+                param_old_2 = model.parameters[p_idx(term.variable_2)]
                 objective_constant +=
-                    j.coefficient *
+                    term.coefficient *
                     ((param_new_1 * param_new_2) - (param_old_1 * param_old_2))
-            elseif haskey(model.updated_parameters, j.variable_1)
-                param_new_1 = model.updated_parameters[j.variable_1]
-                param_old_1 = model.parameters[j.variable_1]
-                param_old_2 = model.parameters[j.variable_2]
+            elseif haskey(model.updated_parameters, term.variable_1)
+                param_new_1 = model.updated_parameters[term.variable_1]
+                param_old_1 = model.parameters[p_idx(term.variable_1)]
+                param_old_2 = model.parameters[p_idx(term.variable_2)]
                 objective_constant +=
-                    j.coefficient * param_old_2 * (param_new_1 - param_old_1)
-            elseif haskey(model.updated_parameters, j.variable_2)
-                param_new_2 = model.updated_parameters[j.variable_2]
-                param_old_1 = model.parameters[j.variable_1]
-                param_old_2 = model.parameters[j.variable_2]
+                    term.coefficient * param_old_2 * (param_new_1 - param_old_1)
+            elseif haskey(model.updated_parameters, term.variable_2)
+                param_new_2 = model.updated_parameters[term.variable_2]
+                param_old_1 = model.parameters[p_idx(term.variable_1)]
+                param_old_2 = model.parameters[p_idx(term.variable_2)]
                 objective_constant +=
-                    j.coefficient * param_old_1 * (param_new_2 - param_old_2)
+                    term.coefficient * param_old_1 * (param_new_2 - param_old_2)
             end
         end
         if objective_constant != zero(Float64)
@@ -351,7 +361,12 @@ end
 
 function update_parameter_in_vector_affine_constraints!(
     optimizer::OT,
-    parameters::Dict{MOI.VariableIndex,T},
+    parameters::MOI.Utilities.CleverDicts.CleverDict{
+        ParameterIndex,
+        T,
+        typeof(MOI.Utilities.CleverDicts.key_to_index),
+        typeof(MOI.Utilities.CleverDicts.index_to_key),
+    },
     updated_parameters::Dict{MOI.VariableIndex,T},
     vector_constraint_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{
         F,
@@ -376,7 +391,12 @@ function update_parameter_in_vector_affine_constraints!(
     optimizer::OT,
     ci::CI,
     param_array::Vector{MOI.VectorAffineTerm{T}},
-    parameters::Dict{MOI.VariableIndex,T},
+    parameters::MOI.Utilities.CleverDicts.CleverDict{
+        ParameterIndex,
+        T,
+        typeof(MOI.Utilities.CleverDicts.key_to_index),
+        typeof(MOI.Utilities.CleverDicts.index_to_key),
+    },
     updated_parameters::Dict{MOI.VariableIndex,T},
 ) where {OT,T,CI}
     cf = MOI.get(optimizer, MOI.ConstraintFunction(), ci)
@@ -390,7 +410,7 @@ function update_parameter_in_vector_affine_constraints!(
         if haskey(updated_parameters, vi) # TODO This haskey can be slow
             param_constants[term.output_index] =
                 term.scalar_term.coefficient *
-                (updated_parameters[vi] - parameters[vi])
+                (updated_parameters[vi] - parameters[p_idx(vi)])
         end
     end
 
@@ -417,8 +437,8 @@ function update_parameters!(model::Optimizer)
     update_parameter_in_vector_affine_constraints!(model)
 
     # Update parameters
-    for (i, val) in model.updated_parameters
-        model.parameters[i] = val
+    for (vi, val) in model.updated_parameters
+        model.parameters[p_idx(vi)] = val
     end
     empty!(model.updated_parameters)
 

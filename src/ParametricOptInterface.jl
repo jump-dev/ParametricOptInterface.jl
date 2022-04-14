@@ -27,6 +27,19 @@ struct Parameter <: MOI.AbstractScalarSet
     val::Float64
 end
 
+# Utilities for using a CleverDict in Parameters
+struct ParameterIndex
+    index::Int
+end
+function MOI.Utilities.CleverDicts.index_to_key(::Type{ParameterIndex}, index::Int64)
+    return ParameterIndex(index)
+end
+function MOI.Utilities.CleverDicts.key_to_index(key::ParameterIndex)
+    return key.index
+end
+p_idx(vi::MOI.VariableIndex) = ParameterIndex(vi.value - PARAMETER_INDEX_THRESHOLD)
+
+
 """
     Optimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimizer
 
@@ -42,7 +55,12 @@ ParametricOptInterface.Optimizer{Float64,GLPK.Optimizer}
 """
 mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     optimizer::OT
-    parameters::Dict{MOI.VariableIndex,T}
+    parameters::MOI.Utilities.CleverDicts.CleverDict{
+        ParameterIndex,
+        T,
+        typeof(MOI.Utilities.CleverDicts.key_to_index),
+        typeof(MOI.Utilities.CleverDicts.index_to_key),
+    }
     parameters_name::Dict{MOI.VariableIndex,String}
     updated_parameters::Dict{MOI.VariableIndex,T}
     variables::MOI.Utilities.CleverDicts.CleverDict{
@@ -102,7 +120,13 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     function Optimizer(optimizer::OT; evaluate_duals::Bool = true) where {OT}
         return new{Float64,OT}(
             optimizer,
-            Dict{MOI.VariableIndex,Float64}(),
+            MOI.Utilities.CleverDicts.CleverDict{
+                ParameterIndex,
+                Float64,
+            }(
+                MOI.Utilities.CleverDicts.key_to_index,
+                MOI.Utilities.CleverDicts.index_to_key,
+            ),
             Dict{MOI.VariableIndex,String}(),
             Dict{MOI.VariableIndex,Float64}(),
             MOI.Utilities.CleverDicts.CleverDict{
@@ -631,7 +655,7 @@ end
 function MOI.add_constrained_variable(model::Optimizer, set::Parameter)
     next_parameter_index!(model)
     p = MOI.VariableIndex(model.last_parameter_index_added)
-    model.parameters[p] = set.val
+    MOI.Utilities.CleverDicts.add_item(model.parameters, set.val)
     cp = MOI.ConstraintIndex{MOI.VariableIndex,Parameter}(
         model.last_parameter_index_added,
     )
@@ -686,7 +710,7 @@ function MOI.get(
     v::MOI.VariableIndex,
 )
     if is_parameter_in_model(model, v)
-        return model.parameters[v]
+        return model.parameters[p_idx(v)]
     elseif is_variable_in_model(model, v)
         return MOI.get(model.optimizer, attr, model.variables[v])
     else
