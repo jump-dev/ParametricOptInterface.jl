@@ -282,8 +282,10 @@ function poi_add_saf_variables_and_parameters_obj_parameter_update(N::Int, M::In
                 )
             )
     end
-    MOI.set.(model, POI.ParameterValue(), y, 0.5)
-    POI.update_parameters!(model)
+    for _ in 1:M
+        MOI.set.(model, POI.ParameterValue(), y, 0.5)
+        POI.update_parameters!(model)
+    end
     return nothing
 end
 
@@ -354,8 +356,10 @@ function poi_add_sqf_variables_parameters_obj_parameter_update(N::Int, M::Int)
                 )
             )
     end
-    MOI.set.(model, POI.ParameterValue(), y, 0.5)
-    POI.update_parameters!(model)
+    for _ in 1:M
+        MOI.set.(model, POI.ParameterValue(), y, 0.5)
+        POI.update_parameters!(model)
+    end
     return nothing
 end
 
@@ -392,8 +396,10 @@ function poi_add_sqf_parameters_parameters_obj_parameter_update(N::Int, M::Int)
                 )
             )
     end
-    MOI.set.(model, POI.ParameterValue(), y, 0.5)
-    POI.update_parameters!(model)
+    for _ in 1:M
+        MOI.set.(model, POI.ParameterValue(), y, 0.5)
+        POI.update_parameters!(model)
+    end
     return nothing
 end
 
