@@ -1,3 +1,5 @@
+push!(LOAD_PATH, "../src")
+
 using MathOptInterface
 using ParametricOptInterface
 using BenchmarkTools
@@ -103,9 +105,9 @@ function poi_add_saf_variables_and_parameters_ctr_parameter_update(N::Int, M::In
                 ),
                 MOI.GreaterThan(1.0),
             )
-        MOI.set.(model, MOI.ConstraintSet(), cy, POI.Parameter.(0.5))
-        POI.update_parameters!(model)
     end
+    MOI.set.(model, MOI.ConstraintSet(), cy, POI.Parameter.(0.5))
+    POI.update_parameters!(model)
     return nothing
 end
 
@@ -177,9 +179,9 @@ function poi_add_sqf_variables_parameters_ctr_parameter_update(N::Int, M::Int)
                 ),
                 MOI.GreaterThan(1.0),
             )
-        MOI.set.(model, MOI.ConstraintSet(), cy, POI.Parameter.(0.5))
-        POI.update_parameters!(model)
     end
+    MOI.set.(model, MOI.ConstraintSet(), cy, POI.Parameter.(0.5))
+    POI.update_parameters!(model)
     return nothing
 end
 
@@ -217,9 +219,9 @@ function poi_add_sqf_parameters_parameters_ctr_parameter_update(N::Int, M::Int)
                 ),
                 MOI.GreaterThan(1.0),
             )
-        MOI.set.(model, MOI.ConstraintSet(), cy, POI.Parameter.(0.5))
-        POI.update_parameters!(model)
     end
+    MOI.set.(model, MOI.ConstraintSet(), cy, POI.Parameter.(0.5))
+    POI.update_parameters!(model)
     return nothing
 end
 
@@ -287,9 +289,9 @@ function poi_add_saf_variables_and_parameters_obj_parameter_update(N::Int, M::In
                     0.0,
                 )
             )
-        MOI.set.(model, MOI.ConstraintSet(), cy, POI.Parameter.(0.5))
-        POI.update_parameters!(model)
     end
+    MOI.set.(model, MOI.ConstraintSet(), cy, POI.Parameter.(0.5))
+    POI.update_parameters!(model)
     return nothing
 end
 
@@ -361,9 +363,9 @@ function poi_add_sqf_variables_parameters_obj_parameter_update(N::Int, M::Int)
                     0.0,
                 )
             )
-        MOI.set.(model, MOI.ConstraintSet(), cy, POI.Parameter.(0.5))
-        POI.update_parameters!(model)
     end
+    MOI.set.(model, MOI.ConstraintSet(), cy, POI.Parameter.(0.5))
+    POI.update_parameters!(model)
     return nothing
 end
 
@@ -401,9 +403,9 @@ function poi_add_sqf_parameters_parameters_obj_parameter_update(N::Int, M::Int)
                     0.0,
                 )
             )
-        MOI.set.(model, MOI.ConstraintSet(), cy, POI.Parameter.(0.5))
-        POI.update_parameters!(model)
     end
+    MOI.set.(model, MOI.ConstraintSet(), cy, POI.Parameter.(0.5))
+    POI.update_parameters!(model)
     return nothing
 end
 
@@ -469,20 +471,20 @@ function run_benchmarks(N::Int, M::Int)
     println("SQF objective with product of parameters on a POI.Optimizer.")
     @btime poi_add_sqf_parameters_parameters_obj($N, $M)
     GC.gc()
-    println("Update parameters in SAF constraint with parameters on a POI.Optimizer.")
+    println("Update parameters in SAF constraint with variables and parameters on a POI.Optimizer.")
     @btime poi_add_saf_variables_and_parameters_ctr_parameter_update($N, $M)
     GC.gc()
-    println("Update parameters in SAF objective with parameters on a POI.Optimizer.")
+    println("Update parameters in SAF objective with variables and parameters on a POI.Optimizer.")
     @btime poi_add_saf_variables_and_parameters_obj_parameter_update($N, $M)
     GC.gc()
-    println("Update parameters in SQF constraint with product of variables and parameters on a POI.Optimizer. M = 10")
-    @btime poi_add_sqf_variables_parameters_ctr_parameter_update($N, 10)
+    println("Update parameters in SQF constraint with product of variables and parameters on a POI.Optimizer.")
+    @btime poi_add_sqf_variables_parameters_ctr_parameter_update($N, $M)
     GC.gc()
     println("Update parameters in SQF constraint with product of parameters on a POI.Optimizer.")
     @btime poi_add_sqf_parameters_parameters_ctr_parameter_update($N, $M)
     GC.gc()
-    println("Update parameters in SQF objective with product of variables and parameters on a POI.Optimizer. M = 10")
-    @btime poi_add_sqf_variables_parameters_obj_parameter_update($N, 10)
+    println("Update parameters in SQF objective with product of variables and parameters on a POI.Optimizer.")
+    @btime poi_add_sqf_variables_parameters_obj_parameter_update($N, $M)
     GC.gc()
     println("Update parameters in SQF objective with product of parameters on a POI.Optimizer.")
     @btime poi_add_sqf_parameters_parameters_obj_parameter_update($N, $M)
