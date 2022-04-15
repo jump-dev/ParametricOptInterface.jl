@@ -137,7 +137,8 @@ function separate_possible_terms_and_calculate_parameter_constant(
             i_vars += 1
         elseif is_parameter_in_model(model, term.variable)
             params[i_params] = term
-            param_constant += term.coefficient * model.parameters[p_idx(term.variable)]
+            param_constant +=
+                term.coefficient * model.parameters[p_idx(term.variable)]
             i_params += 1
         else
             error("Constraint uses a variable that is not in the model")
@@ -178,7 +179,8 @@ function separate_possible_terms_and_calculate_parameter_constant(
             i_vars += 1
         elseif is_parameter_in_model(model, term.variable)
             params[i_params] = term
-            param_constant += term.coefficient * model.parameters[p_idx(term.variable)]
+            param_constant +=
+                term.coefficient * model.parameters[p_idx(term.variable)]
             i_params += 1
         else
             error("Constraint uses a variable that is not in the model")

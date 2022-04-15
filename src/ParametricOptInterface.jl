@@ -31,14 +31,18 @@ end
 struct ParameterIndex
     index::Int
 end
-function MOI.Utilities.CleverDicts.index_to_key(::Type{ParameterIndex}, index::Int64)
+function MOI.Utilities.CleverDicts.index_to_key(
+    ::Type{ParameterIndex},
+    index::Int64,
+)
     return ParameterIndex(index)
 end
 function MOI.Utilities.CleverDicts.key_to_index(key::ParameterIndex)
     return key.index
 end
-p_idx(vi::MOI.VariableIndex) = ParameterIndex(vi.value - PARAMETER_INDEX_THRESHOLD)
-
+function p_idx(vi::MOI.VariableIndex)
+    return ParameterIndex(vi.value - PARAMETER_INDEX_THRESHOLD)
+end
 
 """
     Optimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimizer
@@ -128,18 +132,12 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     function Optimizer(optimizer::OT; evaluate_duals::Bool = true) where {OT}
         return new{Float64,OT}(
             optimizer,
-            MOI.Utilities.CleverDicts.CleverDict{
-                ParameterIndex,
-                Float64,
-            }(
+            MOI.Utilities.CleverDicts.CleverDict{ParameterIndex,Float64}(
                 MOI.Utilities.CleverDicts.key_to_index,
                 MOI.Utilities.CleverDicts.index_to_key,
             ),
             Dict{MOI.VariableIndex,String}(),
-            MOI.Utilities.CleverDicts.CleverDict{
-                ParameterIndex,
-                Float64,
-            }(
+            MOI.Utilities.CleverDicts.CleverDict{ParameterIndex,Float64}(
                 MOI.Utilities.CleverDicts.key_to_index,
                 MOI.Utilities.CleverDicts.index_to_key,
             ),
@@ -733,6 +731,18 @@ function MOI.get(
     end
 end
 
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.VariableBasisStatus,
+    v::MOI.VariableIndex,
+)
+    if is_variable_in_model(model, v)
+        return MOI.get(model.optimizer, attr, model.variables[v])
+    else
+        error("VariableBasisStatus is not supported for parameters.")
+    end
+end
+
 function MOI.set(
     model::Optimizer,
     ::MOI.ConstraintSet,
@@ -824,16 +834,12 @@ function MOI.set(
     attr::MOI.ObjectiveFunction,
     v::MOI.VariableIndex,
 )
-    if haskey(model.parameters, v)
+    if !is_parameter_in_model(model.parameters, v)
         error("Cannot use a parameter as objective function alone")
-    elseif !haskey(model.variables, v)
+    elseif !is_variable_in_model(model.variables, v)
         error("Variable not in the model")
     end
-    return MOI.set(
-        model.optimizer,
-        attr,
-        MOI.VariableIndex(model.variables[v.variable]),
-    )
+    return MOI.set(model.optimizer, attr, model.variables[v])
 end
 
 function MOI.set(
@@ -864,7 +870,9 @@ function MOI.get(
     model::Optimizer,
     attr::T,
     c::MOI.ConstraintIndex,
-) where {T<:Union{MOI.ConstraintPrimal,MOI.ConstraintDual}}
+) where {
+    T<:Union{MOI.ConstraintPrimal,MOI.ConstraintDual,MOI.ConstraintBasisStatus},
+}
     return MOI.get(model.optimizer, attr, c)
 end
 
@@ -876,6 +884,10 @@ end
 function MOI.get(model::Optimizer, ::MOI.SolverName)
     name = MOI.get(model.optimizer, MOI.SolverName())
     return "Parametric Optimizer with $(name) attached"
+end
+
+function MOI.get(model::Optimizer, ::MOI.SolverVersion)
+    return MOI.get(model.optimizer, MOI.SolverVersion())
 end
 
 function MOI.add_constraint(

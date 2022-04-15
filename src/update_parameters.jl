@@ -80,8 +80,10 @@ function update_parameter_in_affine_constraints!(
     for term in param_array
         if !isnan(updated_parameters[p_idx(term.variable)])
             param_constant +=
-                term.coefficient *
-                (updated_parameters[p_idx(term.variable)] - parameters[p_idx(term.variable)])
+                term.coefficient * (
+                    updated_parameters[p_idx(term.variable)] -
+                    parameters[p_idx(term.variable)]
+                )
         end
     end
     if param_constant != zero(Float64)
@@ -103,14 +105,14 @@ function update_parameter_in_affine_objective!(model::Optimizer)
                 objective_constant += term.coefficient * aux
             end
         end
-        if objective_constant != zero(Float64)
+        if !iszero(objective_constant)
             F = MOI.get(model.optimizer, MOI.ObjectiveFunctionType())
             f = MOI.get(model.optimizer, MOI.ObjectiveFunction{F}())
-            fvar = MOI.ScalarAffineFunction(
-                f.terms,
-                f.constant + objective_constant,
+            MOI.modify(
+                model.optimizer,
+                MOI.ObjectiveFunction{F}(),
+                MOI.ScalarConstantChange(f.constant + objective_constant),
             )
-            MOI.set(model.optimizer, MOI.ObjectiveFunction{F}(), fvar)
         end
     end
     return model
@@ -121,10 +123,11 @@ function update_parameter_in_quadratic_constraints_pc!(model::Optimizer)
         param_constant = zero(Float64)
         for term in fparam
             if !isnan(model.updated_parameters[p_idx(term.variable)])
-                param_old = model.parameters[p_idx(term.variable)]
-                param_new = model.updated_parameters[p_idx(term.variable)]
-                aux = param_new - param_old
-                param_constant += term.coefficient * aux
+                param_constant +=
+                    term.coefficient * (
+                        model.updated_parameters[p_idx(term.variable)] -
+                        model.parameters[p_idx(term.variable)]
+                    )
             end
         end
         if param_constant != zero(Float64)
@@ -155,23 +158,14 @@ function update_parameter_in_quadratic_objective_pc!(model::Optimizer)
                 objective_constant += term.coefficient * aux
             end
         end
-        if objective_constant != zero(Float64)
+        if !iszero(objective_constant)
             F = MOI.get(model.optimizer, MOI.ObjectiveFunctionType())
             f = MOI.get(model.optimizer, MOI.ObjectiveFunction{F}())
-
-            # TODO
-            # Is there another way to verify the Type of F without expliciting {Float64}?
-            # Something like isa(F, MOI.ScalarAffineFunction)
-            fvar = if F == MathOptInterface.ScalarAffineFunction{Float64}
-                MOI.ScalarAffineFunction(f.terms, f.constant + objective_constant)
-            else
-                MOI.ScalarQuadraticFunction(
-                    f.quadratic_terms,
-                    f.affine_terms,
-                    f.constant + objective_constant,
-                )
-            end
-            MOI.set(model.optimizer, MOI.ObjectiveFunction{F}(), fvar)
+            MOI.modify(
+                model.optimizer,
+                MOI.ObjectiveFunction{F}(),
+                MOI.ScalarConstantChange(f.constant + objective_constant),
+            )
         end
     end
     return model
@@ -183,19 +177,33 @@ function update_parameter_in_quadratic_constraints_pp!(model::Optimizer)
         for term in fparam
             if !isnan(model.updated_parameters[p_idx(term.variable_1)]) &&
                !isnan(model.updated_parameters[p_idx(term.variable_2)])
-                param_constant += term.coefficient *
-                         (
-                             (model.updated_parameters[p_idx(term.variable_1)] * model.updated_parameters[p_idx(term.variable_2)]) - 
-                             (model.parameters[p_idx(term.variable_1)] * model.parameters[p_idx(term.variable_2)])
-                         )
-             elseif !isnan(model.updated_parameters[p_idx(term.variable_1)])
-                param_constant += term.coefficient * 
-                         model.parameters[p_idx(term.variable_2)] * 
-                         (model.updated_parameters[p_idx(term.variable_1)] - model.parameters[p_idx(term.variable_1)])
-             elseif !isnan(model.updated_parameters[p_idx(term.variable_2)])
                 param_constant +=
-                     term.coefficient * model.parameters[p_idx(term.variable_1)] * (model.updated_parameters[p_idx(term.variable_2)] - model.parameters[p_idx(term.variable_2)])
-             end
+                    term.coefficient * (
+                        (
+                            model.updated_parameters[p_idx(term.variable_1)] *
+                            model.updated_parameters[p_idx(term.variable_2)]
+                        ) - (
+                            model.parameters[p_idx(term.variable_1)] *
+                            model.parameters[p_idx(term.variable_2)]
+                        )
+                    )
+            elseif !isnan(model.updated_parameters[p_idx(term.variable_1)])
+                param_constant +=
+                    term.coefficient *
+                    model.parameters[p_idx(term.variable_2)] *
+                    (
+                        model.updated_parameters[p_idx(term.variable_1)] -
+                        model.parameters[p_idx(term.variable_1)]
+                    )
+            elseif !isnan(model.updated_parameters[p_idx(term.variable_2)])
+                param_constant +=
+                    term.coefficient *
+                    model.parameters[p_idx(term.variable_1)] *
+                    (
+                        model.updated_parameters[p_idx(term.variable_2)] -
+                        model.parameters[p_idx(term.variable_2)]
+                    )
+            end
         end
         if param_constant != zero(Float64)
             set = MOI.get(
@@ -220,37 +228,42 @@ function update_parameter_in_quadratic_objective_pp!(model::Optimizer)
         for term in model.quadratic_objective_cache_pp
             if !isnan(model.updated_parameters[p_idx(term.variable_1)]) &&
                !isnan(model.updated_parameters[p_idx(term.variable_2)])
-                objective_constant += term.coefficient *
+                objective_constant +=
+                    term.coefficient * (
                         (
-                            (model.updated_parameters[p_idx(term.variable_1)] * model.updated_parameters[p_idx(term.variable_2)]) - 
-                            (model.parameters[p_idx(term.variable_1)] * model.parameters[p_idx(term.variable_2)])
+                            model.updated_parameters[p_idx(term.variable_1)] *
+                            model.updated_parameters[p_idx(term.variable_2)]
+                        ) - (
+                            model.parameters[p_idx(term.variable_1)] *
+                            model.parameters[p_idx(term.variable_2)]
                         )
+                    )
             elseif !isnan(model.updated_parameters[p_idx(term.variable_1)])
-                objective_constant += term.coefficient * 
-                        model.parameters[p_idx(term.variable_2)] * 
-                        (model.updated_parameters[p_idx(term.variable_1)] - model.parameters[p_idx(term.variable_1)])
+                objective_constant +=
+                    term.coefficient *
+                    model.parameters[p_idx(term.variable_2)] *
+                    (
+                        model.updated_parameters[p_idx(term.variable_1)] -
+                        model.parameters[p_idx(term.variable_1)]
+                    )
             elseif !isnan(model.updated_parameters[p_idx(term.variable_2)])
                 objective_constant +=
-                    term.coefficient * model.parameters[p_idx(term.variable_1)] * (model.updated_parameters[p_idx(term.variable_2)] - model.parameters[p_idx(term.variable_2)])
+                    term.coefficient *
+                    model.parameters[p_idx(term.variable_1)] *
+                    (
+                        model.updated_parameters[p_idx(term.variable_2)] -
+                        model.parameters[p_idx(term.variable_2)]
+                    )
             end
         end
         if objective_constant != zero(Float64)
             F = MOI.get(model.optimizer, MOI.ObjectiveFunctionType())
             f = MOI.get(model.optimizer, MOI.ObjectiveFunction{F}())
-
-            # TODO
-            # Is there another way to verify the Type of F without expliciting {Float64}?
-            # Something like isa(F, MOI.ScalarAffineFunction)
-            fvar = if F == MathOptInterface.ScalarAffineFunction{Float64}
-                MOI.ScalarAffineFunction(f.terms, f.constant + objective_constant)
-            else
-                MOI.ScalarQuadraticFunction(
-                    f.quadratic_terms,
-                    f.affine_terms,
-                    f.constant + objective_constant,
-                )
-            end
-            MOI.set(model.optimizer, MOI.ObjectiveFunction{F}(), fvar)
+            MOI.modify(
+                model.optimizer,
+                MOI.ObjectiveFunction{F}(),
+                MOI.ScalarConstantChange(f.constant + objective_constant),
+            )
         end
     end
 end
@@ -444,7 +457,7 @@ function update_parameters!(model::Optimizer)
 
     # Update parameters and put NaN to indicate that the parameter has been updated
     for (parameter_index, val) in model.updated_parameters
-        if !isnan(val) 
+        if !isnan(val)
             model.parameters[parameter_index] = val
             model.updated_parameters[parameter_index] = NaN
         end
