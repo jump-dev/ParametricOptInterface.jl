@@ -29,7 +29,7 @@ end
 
 # Utilities for using a CleverDict in Parameters
 struct ParameterIndex
-    index::Int
+    index::Int64
 end
 function MOI.Utilities.CleverDicts.index_to_key(
     ::Type{ParameterIndex},
