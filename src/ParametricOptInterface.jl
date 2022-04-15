@@ -62,7 +62,15 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
         typeof(MOI.Utilities.CleverDicts.index_to_key),
     }
     parameters_name::Dict{MOI.VariableIndex,String}
-    updated_parameters::Dict{MOI.VariableIndex,T}
+    # The updated_parameters dictionary has the same dimension of the 
+    # parameters dictionary and if the value stored is a NaN is means
+    # that the parameter has not been updated.
+    updated_parameters::MOI.Utilities.CleverDicts.CleverDict{
+        ParameterIndex,
+        T,
+        typeof(MOI.Utilities.CleverDicts.key_to_index),
+        typeof(MOI.Utilities.CleverDicts.index_to_key),
+    }
     variables::MOI.Utilities.CleverDicts.CleverDict{
         MOI.VariableIndex,
         MOI.VariableIndex,
@@ -128,7 +136,13 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
                 MOI.Utilities.CleverDicts.index_to_key,
             ),
             Dict{MOI.VariableIndex,String}(),
-            Dict{MOI.VariableIndex,Float64}(),
+            MOI.Utilities.CleverDicts.CleverDict{
+                ParameterIndex,
+                Float64,
+            }(
+                MOI.Utilities.CleverDicts.key_to_index,
+                MOI.Utilities.CleverDicts.index_to_key,
+            ),
             MOI.Utilities.CleverDicts.CleverDict{
                 MOI.VariableIndex,
                 MOI.VariableIndex,
@@ -659,6 +673,7 @@ function MOI.add_constrained_variable(model::Optimizer, set::Parameter)
     cp = MOI.ConstraintIndex{MOI.VariableIndex,Parameter}(
         model.last_parameter_index_added,
     )
+    MOI.Utilities.CleverDicts.add_item(model.updated_parameters, NaN)
     update_number_of_parameters!(model)
     return p, cp
 end
@@ -728,7 +743,7 @@ function MOI.set(
     if !is_parameter_in_model(model, p)
         error("Parameter not in the model")
     end
-    return model.updated_parameters[p] = set.val
+    return model.updated_parameters[p_idx(p)] = set.val
 end
 
 struct ParameterValue <: MOI.AbstractVariableAttribute end
@@ -759,7 +774,7 @@ function MOI.set(
     if !is_parameter_in_model(model, vi)
         error("Parameter not in the model")
     end
-    return model.updated_parameters[vi] = val
+    return model.updated_parameters[p_idx(vi)] = val
 end
 
 function MOI.set(
