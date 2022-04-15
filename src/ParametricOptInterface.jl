@@ -289,6 +289,9 @@ end
 function MOI.get(model::Optimizer, ::MOI.ListOfVariableAttributesSet)
     return MOI.get(model.optimizer, MOI.ListOfVariableAttributesSet())
 end
+# (guilherme bodin) TODO This is certainly wrong because the original attr 
+# is MOI.ListOfConstraintAttributesSet{F, S} and since we may make modifications to the 
+# Function this is invalid
 function MOI.get(model::Optimizer, ::MOI.ListOfConstraintAttributesSet)
     return MOI.get(model.optimizer, MOI.ListOfConstraintAttributesSet())
 end
@@ -497,6 +500,8 @@ function MOI.get(model::Optimizer, ::MOI.RawStatusString)
     return MOI.get(model.optimizer, MOI.RawStatusString())
 end
 
+# (guilherme bodin) TODO This is certainly wrong because we may make modifications to the 
+# Function this is invalid
 function MOI.get(model::Optimizer, ::MOI.NumberOfConstraints{F,S}) where {F,S}
     return length(MOI.get(model, MOI.ListOfConstraintIndices{F,S}()))
 end
