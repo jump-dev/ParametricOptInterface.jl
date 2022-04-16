@@ -839,9 +839,9 @@ function MOI.set(
     attr::MOI.ObjectiveFunction,
     v::MOI.VariableIndex,
 )
-    if !is_parameter_in_model(model.parameters, v)
+    if is_parameter_in_model(model, v)
         error("Cannot use a parameter as objective function alone")
-    elseif !is_variable_in_model(model.variables, v)
+    elseif !is_variable_in_model(model, v)
         error("Variable not in the model")
     end
     return MOI.set(model.optimizer, attr, model.variables[v])
