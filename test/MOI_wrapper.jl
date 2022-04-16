@@ -22,7 +22,7 @@ const CONFIG = MOIT.Config()
             # Needs a proper ListOfConstraintAttributesSet to work
             "test_model_ListOfConstraintAttributesSet",
             "test_model_ModelFilter_ListOfConstraintIndices",
-            "test_model_ModelFilter_ListOfConstraintTypesPresent", 
+            "test_model_ModelFilter_ListOfConstraintTypesPresent",
         ],
     )
 end
