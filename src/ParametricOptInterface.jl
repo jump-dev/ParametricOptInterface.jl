@@ -500,8 +500,6 @@ function MOI.get(model::Optimizer, ::MOI.RawStatusString)
     return MOI.get(model.optimizer, MOI.RawStatusString())
 end
 
-# (guilherme bodin) TODO This is certainly wrong because we may make modifications to the 
-# Function this is invalid
 function MOI.get(model::Optimizer, ::MOI.NumberOfConstraints{F,S}) where {F,S}
     return length(MOI.get(model, MOI.ListOfConstraintIndices{F,S}()))
 end
