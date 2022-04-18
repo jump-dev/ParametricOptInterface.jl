@@ -6,11 +6,20 @@ using DataStructures: OrderedDict
 const MOI = MathOptInterface
 
 const PARAMETER_INDEX_THRESHOLD = 1_000_000_000_000_000_000
-const SUPPORTED_SETS =
-    (MOI.LessThan{Float64}, MOI.EqualTo{Float64}, MOI.GreaterThan{Float64},
-    MOI.Integer, MOI.ZeroOne)
-const SUPPORTED_VECTOR_SETS = (MOI.Nonpositives,MOI.Nonnegatives, MOI.SecondOrderCone,
-        MOI.RotatedSecondOrderCone, MOI.PositiveSemidefiniteConeSquare)
+const SUPPORTED_SETS = (
+    MOI.LessThan{Float64},
+    MOI.EqualTo{Float64},
+    MOI.GreaterThan{Float64},
+    MOI.Integer,
+    MOI.ZeroOne,
+)
+const SUPPORTED_VECTOR_SETS = (
+    MOI.Nonpositives,
+    MOI.Nonnegatives,
+    MOI.SecondOrderCone,
+    MOI.RotatedSecondOrderCone,
+    MOI.PositiveSemidefiniteConeSquare,
+)
 
 """
     Parameter(::Float64)

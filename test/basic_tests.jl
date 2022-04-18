@@ -8,7 +8,7 @@
             x* = {2-y,0}
             obj = 2
     """
-    
+
     optimizer = POI.Optimizer(GLPK.Optimizer())
 
     MOI.set(optimizer, MOI.Silent(), true)

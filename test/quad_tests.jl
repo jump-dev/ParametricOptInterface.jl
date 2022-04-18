@@ -850,7 +850,6 @@ end
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 15.0, atol = ATOL)
 end
 
-
 @testset "JuMP direct model - Vector Constraints - RSOC - Parameter in quadratic part" begin
     """
         Problem RSOC
@@ -893,14 +892,13 @@ end
     @objective(model, Min, 1.0 * x)
     optimize!(model)
 
-    @test objective_value(model) ≈ 1/4 atol = ATOL
-    @test value(x) ≈ 1/4 atol = ATOL
+    @test objective_value(model) ≈ 1 / 4 atol = ATOL
+    @test value(x) ≈ 1 / 4 atol = ATOL
     @test value(y) ≈ 1 / √2 atol = ATOL
     @test value(t) ≈ 1 atol = ATOL
 
     MOI.set(model, POI.ParameterValue(), p, 2)
     optimize!(model)
-
 
     @test objective_value(model) ≈ 0.0 atol = ATOL
     @test value(x) ≈ 0.0 atol = ATOL

@@ -184,7 +184,7 @@ end
     @variable(model, x)
     @variable(model, y)
     @variable(model, t in POI.Parameter(5))
-    @constraint(model, [(- x + t - 1), (-y + t - 2)...] in MOI.Nonpositives(2))
+    @constraint(model, [(-x + t - 1), (-y + t - 2)...] in MOI.Nonpositives(2))
     @objective(model, Min, x + y)
     optimize!(model)
 
