@@ -22,9 +22,8 @@ function update_duals_with_affine_constraint_cache!(
     param_dual_cum_sum::Vector{Float64},
     model::Optimizer,
 )
-    for S in SUPPORTED_SETS
-        affine_constraint_cache_inner =
-            model.affine_constraint_cache[MOI.ScalarAffineFunction{Float64}, S]
+    for (F, S) in keys(model.affine_constraint_cache.dict)
+        affine_constraint_cache_inner = model.affine_constraint_cache[F, S]
         if !isempty(affine_constraint_cache_inner)
             update_duals_with_affine_constraint_cache!(
                 param_dual_cum_sum,
@@ -60,12 +59,8 @@ function update_duals_with_quadratic_constraint_cache!(
     param_dual_cum_sum::Vector{Float64},
     model::Optimizer,
 )
-    for S in SUPPORTED_SETS
-        quadratic_constraint_cache_pc_inner =
-            model.quadratic_constraint_cache_pc[
-                MOI.ScalarQuadraticFunction{Float64},
-                S,
-            ]
+    for (F, S) in keys(model.quadratic_constraint_cache_pc.dict)
+        quadratic_constraint_cache_pc_inner = model.quadratic_constraint_cache_pc[F, S]
         if !isempty(quadratic_constraint_cache_pc_inner)
             update_duals_with_quadratic_constraint_cache!(
                 param_dual_cum_sum,

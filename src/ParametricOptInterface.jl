@@ -6,8 +6,6 @@ using DataStructures: OrderedDict
 const MOI = MathOptInterface
 
 const PARAMETER_INDEX_THRESHOLD = 1_000_000_000_000_000_000
-const SUPPORTED_SETS =
-    (MOI.LessThan{Float64}, MOI.EqualTo{Float64}, MOI.GreaterThan{Float64})
 const SUPPORTED_VECTOR_SETS = (MOI.Nonnegatives, MOI.SecondOrderCone)
 
 """
