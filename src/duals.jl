@@ -60,7 +60,8 @@ function update_duals_with_quadratic_constraint_cache!(
     model::Optimizer,
 )
     for (F, S) in keys(model.quadratic_constraint_cache_pc.dict)
-        quadratic_constraint_cache_pc_inner = model.quadratic_constraint_cache_pc[F, S]
+        quadratic_constraint_cache_pc_inner =
+            model.quadratic_constraint_cache_pc[F, S]
         if !isempty(quadratic_constraint_cache_pc_inner)
             update_duals_with_quadratic_constraint_cache!(
                 param_dual_cum_sum,
