@@ -6,8 +6,12 @@ function update_constant!(s::MOI.GreaterThan{T}, val::T) where {T}
     return MOI.GreaterThan{T}(s.lower - val)
 end
 
-;function update_constant!(s::MOI.EqualTo{T}, val::T) where {T}
+function update_constant!(s::MOI.EqualTo{T}, val::T) where {T}
     return MOI.EqualTo{T}(s.value - val)
+end
+
+function update_constant!(s::MOI.Interval{T}, val::T) where {T}
+    return MOI.Interval{T}(s.lower - val, s.upper - val)
 end
 
 # Affine
