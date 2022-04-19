@@ -4,6 +4,8 @@ using MathOptInterface
 using GLPK
 using Ipopt
 using ECOS
+using SCS
+using LinearAlgebra
 using JuMP
 
 const POI = ParametricOptInterface
@@ -16,5 +18,6 @@ include("production_problem_test.jl")
 include("MOI_wrapper.jl")
 include("basic_tests.jl")
 include("quad_tests.jl")
+include("sdp_tests.jl")
 include("vector_affine_tests.jl")
 include("jump_tests.jl")

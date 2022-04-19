@@ -1,4 +1,14 @@
 @testset "Basic tests" begin
+    """
+        min x₁ + y
+            x₁ + y = 2
+            x₁,x₂ ≥ 0
+
+        opt
+            x* = {2-y,0}
+            obj = 2
+    """
+
     optimizer = POI.Optimizer(GLPK.Optimizer())
 
     MOI.set(optimizer, MOI.Silent(), true)
@@ -68,6 +78,16 @@
     @test MOI.get(optimizer, MOI.ObjectiveValue()) == 2
 
     @test MOI.get(optimizer, MOI.VariablePrimal(), x[1]) == 1
+
+    """
+        min x₁ + x₂
+            x₁ + y = 2
+            x₁,x₂ ≥ 0
+
+        opt
+            x* = {2-y,0}
+            obj = 2-y
+    """
 
     new_obj_func = MOI.ScalarAffineFunction(
         MOI.ScalarAffineTerm.([1.0, 1.0], [x[1], x[2]]),

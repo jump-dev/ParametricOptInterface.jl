@@ -1,20 +1,23 @@
-function update_constant!(s::MOI.LessThan{T}, val) where {T}
+function update_constant!(s::MOI.LessThan{T}, val::T) where {T}
     return MOI.LessThan{T}(s.upper - val)
 end
 
-function update_constant!(s::MOI.GreaterThan{T}, val) where {T}
+function update_constant!(s::MOI.GreaterThan{T}, val::T) where {T}
     return MOI.GreaterThan{T}(s.lower - val)
 end
 
-function update_constant!(s::MOI.EqualTo{T}, val) where {T}
+function update_constant!(s::MOI.EqualTo{T}, val::T) where {T}
     return MOI.EqualTo{T}(s.value - val)
+end
+
+function update_constant!(s::MOI.Interval{T}, val::T) where {T}
+    return MOI.Interval{T}(s.lower - val, s.upper - val)
 end
 
 # Affine
 function update_parameter_in_affine_constraints!(model::Optimizer)
-    for S in SUPPORTED_SETS
-        affine_constraint_cache_inner =
-            model.affine_constraint_cache[MOI.ScalarAffineFunction{Float64}, S]
+    for (F, S) in keys(model.affine_constraint_cache.dict)
+        affine_constraint_cache_inner = model.affine_constraint_cache[F, S]
         if !isempty(affine_constraint_cache_inner)
             update_parameter_in_affine_constraints!(
                 model.optimizer,
@@ -353,9 +356,8 @@ end
 
 # Vector Affine
 function update_parameter_in_vector_affine_constraints!(model::Optimizer)
-    for S in SUPPORTED_VECTOR_SETS
-        vector_constraint_cache_inner =
-            model.vector_constraint_cache[MOI.VectorAffineFunction{Float64}, S]
+    for (F, S) in keys(model.vector_constraint_cache.dict)
+        vector_constraint_cache_inner = model.vector_constraint_cache[F, S]
         if !isempty(vector_constraint_cache_inner)
             update_parameter_in_vector_affine_constraints!(
                 model.optimizer,

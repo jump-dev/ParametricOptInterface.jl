@@ -850,6 +850,61 @@ end
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 15.0, atol = ATOL)
 end
 
+@testset "JuMP direct model - Vector Constraints - RSOC - Parameter in quadratic part" begin
+    """
+        Problem RSOC
+
+        min  x
+        s.t. y ≥ 1/√2
+            x² + (y-p)² ≤ 1
+
+        in conic form:
+
+        min  x
+        s.t.  -1/√2 + y ∈ R₊
+            1 - t ∈ {0}
+            (t, x ,y-p) ∈ RSOC
+
+        opt
+            x* = 1/2*(max{1/√2,p}-p)^2
+            y* = max{1/√2,p}
+    """
+
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOIU.CachingOptimizer(
+            MOIU.UniversalFallback(MOIU.Model{Float64}()),
+            ECOS.Optimizer(),
+        ),
+        Float64,
+    )
+    optimizer = POI.Optimizer(cached)
+
+    model = direct_model(optimizer)
+
+    @variable(model, x)
+    @variable(model, y)
+    @variable(model, t)
+    @variable(model, p in POI.Parameter(0))
+
+    @constraint(model, [y - 1 / √2] in MOI.Nonnegatives(1))
+    @constraint(model, [t - 1] in MOI.Zeros(1))
+    @constraint(model, [t, x, y - p] in RotatedSecondOrderCone())
+    @objective(model, Min, 1.0 * x)
+    optimize!(model)
+
+    @test objective_value(model) ≈ 1 / 4 atol = ATOL
+    @test value(x) ≈ 1 / 4 atol = ATOL
+    @test value(y) ≈ 1 / √2 atol = ATOL
+    @test value(t) ≈ 1 atol = ATOL
+
+    MOI.set(model, POI.ParameterValue(), p, 2)
+    optimize!(model)
+
+    @test objective_value(model) ≈ 0.0 atol = ATOL
+    @test value(x) ≈ 0.0 atol = ATOL
+    @test value(y) ≈ 2 atol = ATOL
+end
+
 @testset "ListOfConstraintTypesPresent" begin
     N = 10
     ipopt = Ipopt.Optimizer()
