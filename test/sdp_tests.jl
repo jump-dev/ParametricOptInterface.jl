@@ -1,5 +1,4 @@
 @testset "SDP - scalar parameter" begin
-    
     cached = MOI.Bridges.full_bridge_optimizer(
         MOIU.CachingOptimizer(
             MOIU.UniversalFallback(MOIU.Model{Float64}()),
@@ -27,7 +26,6 @@
 end
 
 @testset "SDP - Matrix parameter" begin
-    
     cached = MOI.Bridges.full_bridge_optimizer(
         MOIU.CachingOptimizer(
             MOIU.UniversalFallback(MOIU.Model{Float64}()),

@@ -356,9 +356,8 @@ end
 
 # Vector Affine
 function update_parameter_in_vector_affine_constraints!(model::Optimizer)
-    for (F,S) in keys(model.vector_constraint_cache.dict)
-        vector_constraint_cache_inner =
-            model.vector_constraint_cache[F, S]
+    for (F, S) in keys(model.vector_constraint_cache.dict)
+        vector_constraint_cache_inner = model.vector_constraint_cache[F, S]
         if !isempty(vector_constraint_cache_inner)
             update_parameter_in_vector_affine_constraints!(
                 model.optimizer,
