@@ -1,5 +1,5 @@
 function update_constant!(s::MOI.LessThan{T}, val::T) where {T}
-    return MOI.LessThan{T}(s.upper - val::T)
+    return MOI.LessThan{T}(s.upper - val)
 end
 
 function update_constant!(s::MOI.GreaterThan{T}, val::T) where {T}
