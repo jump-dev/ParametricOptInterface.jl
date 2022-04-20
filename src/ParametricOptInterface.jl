@@ -285,11 +285,16 @@ end
 function MOI.get(model::Optimizer, ::MOI.ListOfVariableAttributesSet)
     return MOI.get(model.optimizer, MOI.ListOfVariableAttributesSet())
 end
-function MOI.get(model::Optimizer, ::MOI.ListOfConstraintAttributesSet{F, S}) where {F, S}
+function MOI.get(
+    model::Optimizer,
+    ::MOI.ListOfConstraintAttributesSet{F,S},
+) where {F,S}
     if F === MOI.ScalarQuadraticFunction
-        error("MOI.ListOfConstraintAttributesSet is not implemented for ScalarQuadraticFunction.")
+        error(
+            "MOI.ListOfConstraintAttributesSet is not implemented for ScalarQuadraticFunction.",
+        )
     end
-    return MOI.get(model.optimizer, MOI.ListOfConstraintAttributesSet{F, S}())
+    return MOI.get(model.optimizer, MOI.ListOfConstraintAttributesSet{F,S}())
 end
 function MOI.set(
     model::Optimizer,

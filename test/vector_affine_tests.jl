@@ -267,10 +267,12 @@ end
     )
     csoc = MOI.add_constraint(model, f, MOI.SecondOrderCone(3))
 
-    f_error = MOI.VectorOfVariables(
-        [t, p, y]
+    f_error = MOI.VectorOfVariables([t, p, y])
+    @test_throws ErrorException MOI.add_constraint(
+        model,
+        f_error,
+        MOI.SecondOrderCone(3),
     )
-    @test_throws ErrorException MOI.add_constraint(model, f_error, MOI.SecondOrderCone(3))
 
     MOI.optimize!(model)
 
@@ -341,9 +343,7 @@ end
         MOI.Zeros(1),
     )
 
-    f = MOI.VectorOfVariables(
-        [t, x, y]
-    )
+    f = MOI.VectorOfVariables([t, x, y])
     csoc = MOI.add_constraint(model, f, MOI.SecondOrderCone(3))
 
     MOI.optimize!(model)
