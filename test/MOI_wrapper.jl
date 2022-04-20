@@ -19,10 +19,6 @@ const CONFIG = MOIT.Config()
             # Upstream issue: https://github.com/jump-dev/MathOptInterface.jl/issues/1431
             "test_model_LowerBoundAlreadySet",
             "test_model_UpperBoundAlreadySet",
-            # Needs a proper ListOfConstraintAttributesSet to work
-            "test_model_ListOfConstraintAttributesSet",
-            "test_model_ModelFilter_ListOfConstraintIndices",
-            "test_model_ModelFilter_ListOfConstraintTypesPresent",
         ],
     )
 end

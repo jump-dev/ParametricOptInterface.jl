@@ -1,7 +1,6 @@
 module ParametricOptInterface
 
 using MathOptInterface
-using DataStructures: OrderedDict
 
 const MOI = MathOptInterface
 
@@ -109,7 +108,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     }
     # Store the map for SQFs that were transformed into SAF
     # for instance p*p + var -> ScalarAffine(var)
-    quadratic_added_cache::OrderedDict{MOI.ConstraintIndex,MOI.ConstraintIndex}
+    quadratic_added_cache::Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}
     last_quad_add_added::Int64
     vector_constraint_cache::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.VectorAffineTerm{Float64}},
@@ -162,7 +161,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.ScalarAffineTerm{Float64}},
             }(),
-            OrderedDict{MOI.ConstraintIndex,MOI.ConstraintIndex}(),
+            Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}(),
             0,
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.VectorAffineTerm{Float64}},
@@ -286,11 +285,16 @@ end
 function MOI.get(model::Optimizer, ::MOI.ListOfVariableAttributesSet)
     return MOI.get(model.optimizer, MOI.ListOfVariableAttributesSet())
 end
-# (guilherme bodin) TODO This is certainly wrong because the original attr 
-# is MOI.ListOfConstraintAttributesSet{F, S} and since we may make modifications to the 
-# Function this is invalid
-function MOI.get(model::Optimizer, ::MOI.ListOfConstraintAttributesSet)
-    return MOI.get(model.optimizer, MOI.ListOfConstraintAttributesSet())
+function MOI.get(
+    model::Optimizer,
+    ::MOI.ListOfConstraintAttributesSet{F,S},
+) where {F,S}
+    if F === MOI.ScalarQuadraticFunction
+        error(
+            "MOI.ListOfConstraintAttributesSet is not implemented for ScalarQuadraticFunction.",
+        )
+    end
+    return MOI.get(model.optimizer, MOI.ListOfConstraintAttributesSet{F,S}())
 end
 function MOI.set(
     model::Optimizer,
