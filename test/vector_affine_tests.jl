@@ -267,6 +267,11 @@ end
     )
     csoc = MOI.add_constraint(model, f, MOI.SecondOrderCone(3))
 
+    f_error = MOI.VectorOfVariables(
+        [t, p, y]
+    )
+    @test_throws ErrorException MOI.add_constraint(model, f_error, MOI.SecondOrderCone(3))
+
     MOI.optimize!(model)
 
     @test MOI.get(model, MOI.ObjectiveValue()) ≈ -1 / √2 atol = ATOL
@@ -279,6 +284,74 @@ end
 
     @test MOI.get(model, MOI.ObjectiveValue()) ≈ 1 - 1 / √2 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1 - 1 / √2 atol = ATOL
+end
+
+@testset "Vector Constraints - SOC - No parameters" begin
+    """
+        Problem SOC2 from MOI
+
+        min  x
+        s.t. y ≥ 1/√2
+            x² + y² ≤ 1
+
+        in conic form:
+
+        min  x
+        s.t.  -1/√2 + y ∈ R₊
+            1 - t ∈ {0}
+            (t, x ,y) ∈ SOC₃
+
+        opt
+            x* = 1/√2
+            y* = 1/√2
+    """
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOIU.CachingOptimizer(
+            MOIU.UniversalFallback(MOIU.Model{Float64}()),
+            ECOS.Optimizer(),
+        ),
+        Float64,
+    )
+    model = POI.Optimizer(cached)
+
+    x, y, t = MOI.add_variables(model, 3)
+
+    MOI.set(
+        model,
+        MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
+        MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(1.0, x)], 0.0),
+    )
+    MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+
+    cnon = MOI.add_constraint(
+        model,
+        MOI.VectorAffineFunction(
+            [MOI.VectorAffineTerm(1, MOI.ScalarAffineTerm(1.0, y))],
+            [-1 / √2],
+        ),
+        MOI.Nonnegatives(1),
+    )
+
+    ceq = MOI.add_constraint(
+        model,
+        MOI.VectorAffineFunction(
+            [MOI.VectorAffineTerm(1, MOI.ScalarAffineTerm(-1.0, t))],
+            [1.0],
+        ),
+        MOI.Zeros(1),
+    )
+
+    f = MOI.VectorOfVariables(
+        [t, x, y]
+    )
+    csoc = MOI.add_constraint(model, f, MOI.SecondOrderCone(3))
+
+    MOI.optimize!(model)
+
+    @test MOI.get(model, MOI.ObjectiveValue()) ≈ -1 / √2 atol = ATOL
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ -1 / √2 atol = ATOL
+    @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 1 / √2 atol = ATOL
+    @test MOI.get(model, MOI.VariablePrimal(), t) ≈ 1 atol = ATOL
 end
 
 @testset "JuMP direct model - Vector Constraints - SOC - Parameter in affine part" begin
