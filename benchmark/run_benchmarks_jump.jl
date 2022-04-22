@@ -1,38 +1,70 @@
-using MathOptInterface
 using ParametricOptInterface
 using BenchmarkTools
 using JuMP
-const MOI = MathOptInterface
+using LinearAlgebra
 const POI = ParametricOptInterface
 import Pkg
 
 function moi_add_variables(N::Int)
-    model = direct_model(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}()))
-    @variable(model, x[i=1:N])
+    model = direct_model(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            MOI.Utilities.AUTOMATIC,
+        ),
+    )
+    @variable(model, x[i = 1:N])
     return nothing
 end
 
 function poi_add_variables(N::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    @variable(model, x[i=1:N])
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    @variable(model, x[i = 1:N])
     return nothing
 end
 
 function poi_add_parameters(N::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    @variable(model, x[i=1:N] in POI.Parameter(1))
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    @variable(model, x[i = 1:N] in POI.Parameter(1))
     return nothing
 end
 
 function poi_add_parameters_and_variables(N::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    @variable(model, x[i=1:N] in POI.Parameter(1))
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    @variable(model, x[i = 1:N] in POI.Parameter(1))
     return nothing
 end
 
 function poi_add_parameters_and_variables_alternating(N::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    for i in 1:Int(N/2)
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    for i in 1:Int(N / 2)
         @variable(model)
         @variable(model, set = POI.Parameter(1))
     end
@@ -40,97 +72,178 @@ function poi_add_parameters_and_variables_alternating(N::Int)
 end
 
 function moi_add_saf_ctr(N::Int, M::Int)
-    model = direct_model(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}()))
-    @variable(model, x[i=1:N])
-    @constraint(model, cons[i=1:M], sum(x) >= 1)
+    model = direct_model(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            MOI.Utilities.AUTOMATIC,
+        ),
+    )
+    @variable(model, x[i = 1:N])
+    @constraint(model, cons[i = 1:M], sum(x) >= 1)
     return nothing
 end
 
 function poi_add_saf_ctr(N::Int, M::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    @variable(model, x[i=1:N])
-    @constraint(model, cons[i=1:M], sum(x) >= 1)
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    @variable(model, x[i = 1:N])
+    @constraint(model, cons[i = 1:M], sum(x) >= 1)
     return nothing
 end
 
 function poi_add_saf_variables_and_parameters_ctr(N::Int, M::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in POI.Parameter.(0))
-    @constraint(model, con[i=1:M], sum(x) + sum(p) >= 1)
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    @variable(model, x[i = 1:Int(N / 2)])
+    @variable(model, p[i = 1:Int(N / 2)] in POI.Parameter.(0))
+    @constraint(model, con[i = 1:M], sum(x) + sum(p) >= 1)
     return nothing
 end
 
-function poi_add_saf_variables_and_parameters_ctr_parameter_update(N::Int, M::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in POI.Parameter.(0))
-    @constraint(model, con[i=1:M], sum(x) + sum(p) >= 1)
+function poi_add_saf_variables_and_parameters_ctr_parameter_update(
+    N::Int,
+    M::Int,
+)
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    @variable(model, x[i = 1:Int(N / 2)])
+    @variable(model, p[i = 1:Int(N / 2)] in POI.Parameter.(0))
+    @constraint(model, con[i = 1:M], sum(x) + sum(p) >= 1)
     MOI.set.(model, POI.ParameterValue(), p, 0.5)
-    POI.update_parameters!(model.moi_backend)
+    POI.update_parameters!(backend(model))
     return nothing
 end
 
 function moi_add_sqf_variables_ctr(N::Int, M::Int)
-    model = direct_model(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}()))
-    @variable(model, x[i=1:N])
-    @constraint(model, con[i=1:M], sum(x.^2) >= 1)
+    model = direct_model(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            MOI.Utilities.AUTOMATIC,
+        ),
+    )
+    @variable(model, x[i = 1:N])
+    @constraint(model, con[i = 1:M], dot(x , x) >= 1)
     return nothing
 end
 
 function poi_add_sqf_variables_ctr(N::Int, M::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    @variable(model, x[i=1:N])
-    @constraint(model, con[i=1:M], sum(x.^2) >= 1)
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    @variable(model, x[i = 1:N])
+    @constraint(model, con[i = 1:M], dot(x, x) >= 1)
     return nothing
 end
 
 function poi_add_sqf_variables_parameters_ctr(N::Int, M::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in POI.Parameter.(1))
-    @constraint(model, con[i=1:M], sum(x.*p) >= 1)
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    @variable(model, x[i = 1:Int(N / 2)])
+    @variable(model, p[i = 1:Int(N / 2)] in POI.Parameter.(1))
+    @constraint(model, con[i = 1:M], dot(x , p) >= 1)
     return nothing
 end
 
 function poi_add_sqf_variables_parameters_ctr_parameter_update(N::Int, M::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in POI.Parameter.(1))
-    @constraint(model, con[i=1:M], sum(x.*p) >= 1)
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    @variable(model, x[i = 1:Int(N / 2)])
+    @variable(model, p[i = 1:Int(N / 2)] in POI.Parameter.(1))
+    @constraint(model, con[i = 1:M], dot(x , p) >= 1)
     MOI.set.(model, POI.ParameterValue(), p, 0.5)
-    POI.update_parameters!(model.moi_backend)
+    POI.update_parameters!(backend(model))
     return nothing
 end
 
 function poi_add_sqf_parameters_parameters_ctr(N::Int, M::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in POI.Parameter.(1))
-    @constraint(model, con[i=1:M], sum(p.^2) >= 1)
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    @variable(model, x[i = 1:Int(N / 2)])
+    @variable(model, p[i = 1:Int(N / 2)] in POI.Parameter.(1))
+    @constraint(model, con[i = 1:M], dot(p , p) >= 1)
     return nothing
 end
 
 function poi_add_sqf_parameters_parameters_ctr_parameter_update(N::Int, M::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in POI.Parameter.(1))
-    @constraint(model, con[i=1:M], sum(p.^2) >= 1)
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    @variable(model, x[i = 1:Int(N / 2)])
+    @variable(model, p[i = 1:Int(N / 2)] in POI.Parameter.(1))
+    @constraint(model, con[i = 1:M], dot(p , p) >= 1)
     MOI.set.(model, POI.ParameterValue(), p, 0.5)
-    POI.update_parameters!(model.moi_backend)
+    POI.update_parameters!(backend(model))
     return nothing
 end
 
 function moi_add_saf_obj(N::Int, M::Int)
-    model = direct_model(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}()))
-    @variable(model, x[i=1:N])
+    model = direct_model(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            MOI.Utilities.AUTOMATIC,
+        ),
+    )
+    @variable(model, x[i = 1:N])
     @objective(model, Min, sum(x))
     return nothing
 end
 
 function poi_add_saf_obj(N::Int, M::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    @variable(model, x[i=1:N])
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    @variable(model, x[i = 1:N])
     for _ in 1:M
         @objective(model, Min, sum(x))
     end
@@ -138,91 +251,148 @@ function poi_add_saf_obj(N::Int, M::Int)
 end
 
 function poi_add_saf_variables_and_parameters_obj(N::Int, M::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in POI.Parameter.(1))
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    @variable(model, x[i = 1:Int(N / 2)])
+    @variable(model, p[i = 1:Int(N / 2)] in POI.Parameter.(1))
     for _ in 1:M
-        @objective(model, Min, sum(x)+sum(p))
+        @objective(model, Min, sum(x) + sum(p))
     end
     return nothing
 end
 
-function poi_add_saf_variables_and_parameters_obj_parameter_update(N::Int, M::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in POI.Parameter.(1))
+function poi_add_saf_variables_and_parameters_obj_parameter_update(
+    N::Int,
+    M::Int,
+)
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    @variable(model, x[i = 1:Int(N / 2)])
+    @variable(model, p[i = 1:Int(N / 2)] in POI.Parameter.(1))
     for _ in 1:M
-        @objective(model, Min, sum(x)+sum(p))
+        @objective(model, Min, sum(x) + sum(p))
     end
     for _ in 1:M
         MOI.set.(model, POI.ParameterValue(), p, 0.5)
-        POI.update_parameters!(model.moi_backend)
+        POI.update_parameters!(backend(model))
     end
     return nothing
 end
 
 function moi_add_sqf_variables_obj(N::Int, M::Int)
-    model = direct_model(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}()))
-    @variable(model, x[i=1:N])
+    model = direct_model(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            MOI.Utilities.AUTOMATIC,
+        ),
+    )
+    @variable(model, x[i = 1:N])
     for _ in 1:M
-        @objective(model, Min, sum(x.^2))
+        @objective(model, Min, dot(x , x))
     end
     return nothing
 end
 
 function poi_add_sqf_variables_obj(N::Int, M::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    @variable(model, x[i=1:N])
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    @variable(model, x[i = 1:N])
     for _ in 1:M
-        @objective(model, Min, sum(x.^2))
+        @objective(model, Min, dot(x , x))
     end
     return nothing
 end
 
 function poi_add_sqf_variables_parameters_obj(N::Int, M::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in POI.Parameter.(1))
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    @variable(model, x[i = 1:Int(N / 2)])
+    @variable(model, p[i = 1:Int(N / 2)] in POI.Parameter.(1))
     for _ in 1:M
-        @objective(model, Min, sum(x.*p))
+        @objective(model, Min, dot(x , p))
     end
     return nothing
 end
 
 function poi_add_sqf_variables_parameters_obj_parameter_update(N::Int, M::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in POI.Parameter.(1))
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    @variable(model, x[i = 1:Int(N / 2)])
+    @variable(model, p[i = 1:Int(N / 2)] in POI.Parameter.(1))
     for _ in 1:M
-        @objective(model, Min, sum(x.*p))
+        @objective(model, Min, dot(x , p))
     end
     for _ in 1:M
         MOI.set.(model, POI.ParameterValue(), p, 0.5)
-        POI.update_parameters!(model.moi_backend)
+        POI.update_parameters!(backend(model))
     end
     return nothing
 end
 
 function poi_add_sqf_parameters_parameters_obj(N::Int, M::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in POI.Parameter.(1))
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    @variable(model, x[i = 1:Int(N / 2)])
+    @variable(model, p[i = 1:Int(N / 2)] in POI.Parameter.(1))
     for _ in 1:M
-        @objective(model, Min, sum(p.^2))
+        @objective(model, Min, dot(p , p))
     end
     return nothing
 end
 
 function poi_add_sqf_parameters_parameters_obj_parameter_update(N::Int, M::Int)
-    model = direct_model(POI.Optimizer(MOIU.MockOptimizer(MOI.Utilities.Model{Float64}())))
-    @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in POI.Parameter.(1))
+    model = direct_model(
+        POI.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    )
+    @variable(model, x[i = 1:Int(N / 2)])
+    @variable(model, p[i = 1:Int(N / 2)] in POI.Parameter.(1))
     for _ in 1:M
-        @objective(model, Min, sum(p.^2))
+        @objective(model, Min, dot(p , p))
     end
     for _ in 1:M
         MOI.set.(model, POI.ParameterValue(), p, 0.5)
-        POI.update_parameters!(model.moi_backend)
+        POI.update_parameters!(backend(model))
     end
     return nothing
 end
