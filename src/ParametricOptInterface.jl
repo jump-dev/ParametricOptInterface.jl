@@ -79,6 +79,11 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     }
     last_variable_index_added::Int64
     last_parameter_index_added::Int64
+    # Store the function and set passed to POI by MOI
+    original_constraint_function_and_set_cache::Dict{
+        MOI.ConstraintIndex, 
+        Tuple{MOI.AbstractFunction, MOI.AbstractSet}
+    }
     # Store reference to parameters of affine constraints with parameters: v + p
     affine_constraint_cache::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.ScalarAffineTerm{Float64}},
@@ -146,6 +151,10 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             ),
             0,
             PARAMETER_INDEX_THRESHOLD,
+            Dict{
+                MOI.ConstraintIndex, 
+                Tuple{MOI.AbstractFunction, MOI.AbstractSet}
+            }(),
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.ScalarAffineTerm{Float64}},
             }(),
@@ -197,6 +206,7 @@ function MOI.is_empty(model::Optimizer)
            isempty(model.variables) &&
            model.last_variable_index_added == 0 &&
            model.last_parameter_index_added == PARAMETER_INDEX_THRESHOLD &&
+           isempty(model.original_constraint_function_and_set_cache) &&
            isempty(model.affine_constraint_cache) &&
            isempty(model.quadratic_constraint_cache_pv) &&
            isempty(model.quadratic_constraint_cache_pp) &&
@@ -347,6 +357,7 @@ function MOI.empty!(model::Optimizer{T}) where {T}
     empty!(model.variables)
     model.last_variable_index_added = 0
     model.last_parameter_index_added = PARAMETER_INDEX_THRESHOLD
+    empty!(model.original_constraint_function_and_set_cache)
     empty!(model.affine_constraint_cache)
     empty!(model.quadratic_constraint_cache_pv)
     empty!(model.quadratic_constraint_cache_pp)
@@ -438,8 +449,8 @@ function MOI.get(
     attr::MOI.ConstraintFunction,
     ci::MOI.ConstraintIndex{F,S},
 ) where {F,S}
-    if haskey(model.quadratic_added_cache, ci)
-        return MOI.get(model.optimizer, attr, model.quadratic_added_cache[ci])
+    if haskey(model.original_constraint_function_and_set_cache, ci)
+        return model.original_constraint_function_and_set_cache[ci][1]
     else
         return MOI.get(model.optimizer, attr, ci)
     end
@@ -506,23 +517,12 @@ function MOI.get(
     attr::MOI.ConstraintSet,
     ci::MOI.ConstraintIndex{F,S},
 ) where {F,S}
-    if haskey(model.quadratic_added_cache, ci)
-        return MOI.get(model.optimizer, attr, model.quadratic_added_cache[ci])
+    if haskey(model.original_constraint_function_and_set_cache, ci)
+        return model.original_constraint_function_and_set_cache[ci][2]
     else
         MOI.throw_if_not_valid(model, ci)
         return MOI.get(model.optimizer, attr, ci)
     end
-end
-
-function MOI.get(
-    model::Optimizer,
-    attr::MOI.ConstraintSet,
-    ci::MOI.ConstraintIndex{F,S},
-) where {
-    F<:Union{MOI.VariableIndex,MOI.VectorOfVariables,MOI.VectorAffineFunction},
-    S<:MOI.AbstractSet,
-}
-    return MOI.get(model.optimizer, attr, ci)
 end
 
 function MOI.get(model::Optimizer, attr::MOI.ObjectiveSense)
@@ -706,6 +706,7 @@ function add_constraint_with_parameters_on_function(
         set,
     )
     model.affine_constraint_cache[ci] = params
+    model.original_constraint_function_and_set_cache[ci] = (f, set)
     return ci
 end
 
@@ -930,6 +931,7 @@ function add_constraint_with_parameters_on_function(
         set,
     )
     model.vector_constraint_cache[ci] = params
+    model.original_constraint_function_and_set_cache[ci] = (f, set)
     return ci
 end
 
@@ -978,6 +980,7 @@ function add_constraint_with_parameters_on_function(
         model.last_quad_add_added,
     )
     model.quadratic_added_cache[new_ci] = ci
+    model.original_constraint_function_and_set_cache[new_ci] = (f, set)
     fill_quadratic_constraint_caches!(
         model,
         new_ci,

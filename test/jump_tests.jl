@@ -117,3 +117,42 @@ end
     @test isapprox.(value(x[2]), 2.0, atol = ATOL)
     @test isapprox.(value(y), 2.0, atol = ATOL)
 end
+
+@testset "JuMP prints" begin
+    model = direct_model(
+        ParametricOptInterface.Optimizer(
+            MOI.Utilities.CachingOptimizer(
+                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+                MOI.Utilities.AUTOMATIC,
+            ),
+        ),
+    );
+
+    vx = @variable(model, x[i = 1:5])
+    vp = @variable(model, p[i = 1:5] in ParametricOptInterface.Parameter.(-1))
+    c1 = @constraint(model, con, sum(x) + sum(p) >= 1)
+    c2 = @constraint(model, conq, sum(x.*p) >= 1)
+    c3 = @constraint(model, conqa, sum(x.*p) + x[1] * x[1] >= 1)
+
+    o1 = @objective(model, Min, sum(x) + sum(p) + 1)
+    o2 = @objective(model, Min, sum(x.*p) + 1)
+    o3 = @objective(model, Min, sum(x.*p) + x[1] * x[1] + 3)
+
+    println("Printing variables:")
+    show(vx)
+    println("\nPrinting parameters:")
+    show(vp)
+    println("\nPrinting saf:")
+    show(c1)
+    println("\nPrinting sqf1:")
+    show(c2)
+    println("\nPrinting sqf2:")
+    show(c3)
+    println("\nPrinting safobj:")
+    show(o1)
+    println("\nPrinting sqf1obj:")
+    show(o2)
+    println("\nPrinting sqf2obj:")
+    show(o3)
+    print("\n")
+end
