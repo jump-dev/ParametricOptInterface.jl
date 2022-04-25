@@ -17,21 +17,10 @@ const POI = ParametricOptInterface
 optimizer = POI.Optimizer(HiGHS.Optimizer())
 ```
 
-Then, we declare the constants that will be used in this model, for ease of reference:
-
-```julia
-c = [4.0, 3.0]
-A1 = [2.0, 1.0, 3.0]
-A2 = [1.0, 2.0, 0.5]
-b1 = 4.0
-b2 = 4.0
-```
-
 We declare the variable `x` as in a typical `MOI` model, and we add a non-negativity constraint:
 
 ```julia
-x = MOI.add_variables(optimizer, length(c))
-
+x = MOI.add_variables(optimizer, 2)
 for x_i in x
     MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
 end
@@ -45,22 +34,19 @@ y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
 z, cz = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
 ```
 
-Now, let's add the constraints. Notice that we treat parameters and variables in the same way when building the functions that will be placed in some set to create a constraint (`Function-in-Set`):
+Let's add the constraints. Notice that we treat parameters and variables in the same way when building the functions that will be placed in some set to create a constraint (`Function-in-Set`):
 
 ```julia
-cons1 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(A1, [x[1], x[2], y]), 0.0)
-ci1 = MOI.add_constraint(optimizer, cons1, MOI.LessThan(b1))
-```
-
-```julia
-cons2 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(A2, [x[1], x[2], z]), 0.0)
-ci2 = MOI.add_constraint(optimizer, cons2, MOI.LessThan(b2))
+cons1 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([2.0, 1.0, 3.0], [x[1], x[2], y]), 0.0)
+ci1 = MOI.add_constraint(optimizer, cons1, MOI.LessThan(4.0))
+cons2 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 2.0, 0.5], [x[1], x[2], z]), 0.0)
+ci2 = MOI.add_constraint(optimizer, cons2, MOI.LessThan(4.0))
 ```
 
 Finally, we declare and add the objective function, with its respective sense:
 
 ```julia
-obj_func = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([c[1], c[2], 2.0], [x[1], x[2], w]), 0.0)
+obj_func = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([4.0, 3.0, 2.0], [x[1], x[2], w]), 0.0)
 MOI.set(optimizer, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(), obj_func)
 MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
 ```
