@@ -6,8 +6,7 @@ A typical optimization model built using `MathOptInterface.jl` (`MOI`for short) 
 1. Variables
 2. Constants
 
-Using these basic elements, one can create functions and sets that, together, form the desired optimization model. THE GOAL OF `POI` is the implementation of a third
-type, parameters, which
+Using these basic elements, one can create functions and sets that, together, form the desired optimization model. The goal of `POI` is the implementation of a third type, parameters, which
 * are declared similar to a variable, and inherits some functionalities (e.g. dual calculation)
 * acts like a constant, in the sense that it has a fixed value that will remain the same unless explicitely changed by the user
 
@@ -15,12 +14,13 @@ A main concern is to efficiently implement this new type, as one typical usage i
 
 ## How it works
 
-The main idea applied in POI is that the interaction between the solver, e.g. `GLPK`, and the optimization model will be handled by `MOI` as usual. Because of that, `POI` is a higher level
-wrapper around `MOI`, responsible for receiving variables, constants and parameters, and forwarding to the lower level model only variables and constants.
+The main idea applied in POI is that the interaction between the solver, e.g. `GLPK`, and the optimization model will be handled by `MOI` as usual. Because of that, `POI` is a higher level wrapper around `MOI`, responsible for receiving variables, constants and parameters, and forwarding to the lower level model only variables and constants.
 
 As `POI` receives parameters, it must analyze and decide how they should be handled on the lower level optimization model (the `MOI` model).
 
 ## Usage
+
+In this manual we describe how to interact with the optimization model at the MOI level. In the [Examples](@ref) section you can find some tutorials with the JuMP usage.
 
 ### Supported constraints
 
@@ -67,15 +67,15 @@ y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
 
 ### Changing the parameter value
 
-To change a given parameter's value, access its `ConstraintIndex` and set it to the new value using the `Parameter` structure.
+To change a given parameter's value, access its `VariableIndex` and set it to the new value using the `Parameter` structure.
 
 ```julia
-MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(2.0))
+MOI.set(optimizer, POI.ParameterValue(), y, POI.Parameter(2.0))
 ```
 
 ### Retrieving the dual of a parameter
 
-Given an optimized model, one can calculate the dual associated to a parameters, **as long as it is an additive term in the constraints or objective**.
+Given an optimized model, one can calculate the dual associated to a parameter, **as long as it is an additive term in the constraints or objective**.
 One can do so by getting the `MOI.ConstraintDual` attribute of the paraameter's `MOI.ConstraintIndex`:
 
 ```julia
