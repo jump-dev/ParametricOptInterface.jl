@@ -4,17 +4,17 @@
 
 Lets write a setep-by-step example of `POI` usage at the MOI level.
 
-First, we declare a `Optimizer` on top of a `MOI` optimizer. In the example, we consider `GLPK` as the underlying solver:
+First, we declare a `Optimizer` on top of a `MOI` optimizer. In the example, we consider `HiGHS` as the underlying solver:
 
 ```julia
-using GLPK
+using HiGHS
 using MathOptInterface
 using ParametricOptInterface
 
 const MOI = MathOptInterface
 const POI = ParametricOptInterface
 
-optimizer = POI.Optimizer(GLPK.Optimizer())
+optimizer = POI.Optimizer(HiGHS.Optimizer())
 ```
 
 Then, we declare the constants that will be used in this model, for ease of reference:
@@ -142,48 +142,105 @@ MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]
 
 Lets write a setep-by-step example of `POI` usage at the JuMP level.
 
-First, we declare a `Optimizer` on top of a `MOI` optimizer. In the example, we consider `GLPK` as the underlying solver:
+First, we declare a `Model` on top of a `Optimizer` of an underlying solver. In the example, we consider `HiGHS` as the underlying solver:
 
 ```julia
-using GLPK
+using HiGHS
 using JuMP
-using ParametricOptInterface
 
+using ParametricOptInterface
 const POI = ParametricOptInterface
 
-model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
-
-@variable(model, x[i = 1:2] >= 0)
-@variable(model, y in POI.Parameter(0))
-@variable(model, z in POI.Parameter(0))
-@variable(model, w in POI.Parameter(0))
-
-@constraint(model, c1, 2x[1] + x[2] + 3y <= 4)
-@constraint(model, c2, x[1] + 2x[2] + 0.5z <= 4)
-
-@objective(model, Max, 4x[1] + 3x[2] + 2w)
-
-optimize!(model)
-
-MOI.get(model, POI.ParameterDual(), MOI.VariableIndex())
-
-value.(x)
-
-objective_value(model)
-
-MOI.set(model, POI.ParameterValue(), y, 1)
-MOI.set(model, POI.ParameterValue(), z, 1)
-
-optimize!(model)
-
-value.(x)
-
-MOI.set(model, POI.ParameterValue(), w, 2)
-
-optimize!(model)
-
-objective_value(model)
+model = Model(() -> ParametricOptInterface.Optimizer(HiGHS.Optimizer()))
 ```
 
+We declare the variable `x` as in a typical `JuMP` model:
 
+```julia
+@variable(model, x[i = 1:2] >= 0)
+```
 
+Now, let's consider 3 parameters. Two of them, `y`, `z`, will be placed in the constraints and one, `w`, in the objective function. We'll start all three of them with a value equal to `0`:
+
+```julia
+@variable(model, y in ParametricOptInterface.Parameter(0))
+@variable(model, z in ParametricOptInterface.Parameter(0))
+@variable(model, w in ParametricOptInterface.Parameter(0))
+```
+
+let's add the constraints. Notice that we treat parameters the same way we treat variables when writing the model:
+
+```julia
+@constraint(model, c1, 2x[1] + x[2] + 3y <= 4)
+@constraint(model, c2, x[1] + 2x[2] + 0.5z <= 4)
+```
+
+Finally, we declare and add the objective function, with its respective sense:
+
+```julia
+@objective(model, Max, 4x[1] + 3x[2] + 2w)
+```
+
+We can optimize the model and assess its termination and primal status:
+
+```julia
+optimize!(model)
+termination_status(model)
+primal_status(model)
+```
+
+Given the optimized solution, we check that its value is, as expected, equal to `28/3`, and the solution vector `x` is `[4/3, 4/3]`:
+
+```julia
+isapprox(objective_value(model), 28/3)
+isapprox(value.(x), [4/3, 4/3])
+```
+
+We can also retrieve the dual values associated to each parameter, **as they are all additive**:
+
+```julia
+MOI.get(model, POI.ParameterDual(), y)
+MOI.get(model, POI.ParameterDual(), z)
+MOI.get(model, POI.ParameterDual(), w)
+```
+
+Notice the direct relationship in this case between the parameters' duals and the associated constraints' duals. The `y` parameter, for example, only appears in the `c1`. If we compare their duals, we can check that the dual of `y` is equal to its coefficient in `c1` multiplied by the constraint's dual itself, as expected:
+
+```julia
+dual_of_y = MOI.get(model, POI.ParameterDual(), y)
+isapprox(dual_of_y, 3 * dual(c1))
+```
+
+The same is valid for the remaining parameters. In case a parameter appears in more than one constraint, or both some constraints and in the objective function, its dual will be equal to the linear combination of the functions' duals multiplied by the respective coefficientes.
+
+So far, we only added some parameters that had no influence at first in solving the model. Let's change the values associated to each parameter to assess its implications.
+First, we set the value of parameters `y` and `z` to `1.0`. Notice that we are changing the feasible set of the decision variables:
+
+```julia
+MOI.set(model, POI.ParameterValue(), y, 1)
+MOI.set(model, POI.ParameterValue(), z, 1)
+```
+
+To apply the parameters' changes, the model must be optimized again:
+
+```julia
+optimize!(model)
+```
+
+The `optimize!` function handles the necessary updates, properly fowarding the new outer model (`POI` model) additions to the inner model (`MOI` model) which will be handled by the solver. Now we can assess the updated optimized information:
+
+```julia
+isapprox(objective_value(model), 3)
+isapprox(value.(x), [0, 1])
+```
+
+If we update the parameter `w`, associated to the objective function, we are simply adding a constant to it. Notice how the new objective function is precisely equal to the previous one plus the new value of `w`. In addition, as we didn't update the feasible set, the optimized decision variables remain the same.
+
+```julia
+MOI.set(model, POI.ParameterValue(), w, 2)
+# Once again, the model must be optimized to incorporate the changes
+optimize!(model)
+# Only the objective function value changes
+isapprox(objective_value(model), 7)
+isapprox(value.(x), [0, 1])
+```

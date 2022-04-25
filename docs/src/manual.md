@@ -42,24 +42,24 @@ a function that is not listed here, it will return an unsupported error.
 
 ### Declare a Optimizer
 
-In order to use parameters, the user needs to declare a `Optimizer` on top of a `MOI` optimizer, such as `GLPK.Optimizer()`.
+In order to use parameters, the user needs to declare a [`ParametricOptInterface.Optimizer`](@ref) on top of a `MOI` optimizer, such as `HiGHS.Optimizer()`.
 
 ```julia
-using ParametricOptInterface, MathOptInterface, GLPK
+using ParametricOptInterface, MathOptInterface, HiGHS
 # Rename ParametricOptInterface and MathOptInterface to simplify the code
 const POI = ParametricOptInterface
 const MOI = MathOptInterface
 # Define a Optimizer on top of the MOI optimizer
-optimizer = POI.Optimizer(GLPK.Optimizer())
+optimizer = POI.Optimizer(HiGHS.Optimizer())
 ```
 
 ### Parameters
 
-A `Parameter` is a variable with a fixed value that can be changed by the user.
+A [`ParametricOptInterface.Parameter`](@ref) is a variable with a fixed value that can be changed by the user.
 
 ### Adding a new parameter to a model
 
-To add a parameter to a model, we must use the `MOI.add_constrained_variable()` function, passing as its arguments the model and a `Parameter` with its given value:
+To add a parameter to a model, we must use the `MOI.add_constrained_variable()` function, passing as its arguments the model and a [`ParametricOptInterface.Parameter`](@ref) with its given value:
 
 ```julia
 y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
@@ -67,7 +67,7 @@ y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
 
 ### Changing the parameter value
 
-To change a given parameter's value, access its `VariableIndex` and set it to the new value using the `Parameter` structure.
+To change a given parameter's value, access its `VariableIndex` and set it to the new value using the [`ParametricOptInterface.Parameter`](@ref) structure.
 
 ```julia
 MOI.set(optimizer, POI.ParameterValue(), y, POI.Parameter(2.0))
@@ -79,5 +79,5 @@ Given an optimized model, one can calculate the dual associated to a parameter, 
 One can do so by getting the `MOI.ConstraintDual` attribute of the paraameter's `MOI.ConstraintIndex`:
 
 ```julia
-MOI.get(optimizer, MOI.ConstraintDual, cy)
+MOI.get(optimizer, POI.ParameterDual(), y)
 ```
