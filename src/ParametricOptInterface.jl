@@ -81,8 +81,8 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     last_parameter_index_added::Int64
     # Store the function and set passed to POI by MOI
     original_constraint_function_and_set_cache::Dict{
-        MOI.ConstraintIndex, 
-        Tuple{MOI.AbstractFunction, MOI.AbstractSet}
+        MOI.ConstraintIndex,
+        Tuple{MOI.AbstractFunction,MOI.AbstractSet},
     }
     # Store reference to parameters of affine constraints with parameters: v + p
     affine_constraint_cache::MOI.Utilities.DoubleDicts.DoubleDict{
@@ -152,8 +152,8 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             0,
             PARAMETER_INDEX_THRESHOLD,
             Dict{
-                MOI.ConstraintIndex, 
-                Tuple{MOI.AbstractFunction, MOI.AbstractSet}
+                MOI.ConstraintIndex,
+                Tuple{MOI.AbstractFunction,MOI.AbstractSet},
             }(),
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.ScalarAffineTerm{Float64}},

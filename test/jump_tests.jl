@@ -126,17 +126,17 @@ end
                 MOI.Utilities.AUTOMATIC,
             ),
         ),
-    );
+    )
 
     vx = @variable(model, x[i = 1:5])
     vp = @variable(model, p[i = 1:5] in ParametricOptInterface.Parameter.(-1))
     c1 = @constraint(model, con, sum(x) + sum(p) >= 1)
-    c2 = @constraint(model, conq, sum(x.*p) >= 1)
-    c3 = @constraint(model, conqa, sum(x.*p) + x[1] * x[1] >= 1)
+    c2 = @constraint(model, conq, sum(x .* p) >= 1)
+    c3 = @constraint(model, conqa, sum(x .* p) + x[1] * x[1] >= 1)
 
     o1 = @objective(model, Min, sum(x) + sum(p) + 1)
-    o2 = @objective(model, Min, sum(x.*p) + 1)
-    o3 = @objective(model, Min, sum(x.*p) + x[1] * x[1] + 3)
+    o2 = @objective(model, Min, sum(x .* p) + 1)
+    o3 = @objective(model, Min, sum(x .* p) + x[1] * x[1] + 3)
 
     println("Printing variables:")
     show(vx)
