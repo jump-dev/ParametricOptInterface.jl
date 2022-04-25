@@ -7,7 +7,7 @@ const MOI = MathOptInterface
 const PARAMETER_INDEX_THRESHOLD = 1_000_000_000_000_000_000
 
 """
-    Parameter(::Float64)
+    Parameter(val::Float64)
 
 The `Parameter` structure stores the numerical value associated to a given
 parameter.
