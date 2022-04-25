@@ -4,7 +4,7 @@
 
 Lets write a setep-by-step example of `POI` usage at the MOI level.
 
-First, we declare a `Optimizer` on top of a `MOI` optimizer. In the example, we consider `HiGHS` as the underlying solver:
+First, we declare a [`ParametricOptInterface.Optimizer`](@ref) on top of a `MOI` optimizer. In the example, we consider `HiGHS` as the underlying solver:
 
 ```julia
 using HiGHS
@@ -33,8 +33,8 @@ We declare the variable `x` as in a typical `MOI` model, and we add a non-negati
 x = MOI.add_variables(optimizer, length(c))
 
 for x_i in x
-            MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
-        end
+    MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
+end
 ```
 
 Now, let's consider 3 parameters. Two of them, `y`, `z`, will be placed in the constraints and one, `w`, in the objective function. We'll start all three of them with a value equal to `0`:
