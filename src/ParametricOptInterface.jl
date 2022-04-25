@@ -79,7 +79,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     }
     last_variable_index_added::Int64
     last_parameter_index_added::Int64
-    # Store reference to affine constraints with parameters: v + p
+    # Store reference to parameters of affine constraints with parameters: v + p
     affine_constraint_cache::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.ScalarAffineTerm{Float64}},
     }
@@ -438,12 +438,8 @@ function MOI.get(
     attr::MOI.ConstraintFunction,
     ci::MOI.ConstraintIndex{F,S},
 ) where {F,S}
-    # Check if the index was cached as Affine expression
-    if haskey(model.affine_constraint_cache, ci)
-        return model.affine_constraint_cache[ci]
-        # Check if the index was cached as a Quadratic
-    elseif haskey(model.quadratic_added_cache, ci)
-        return model.quadratic_added_cache[ci]
+    if haskey(model.quadratic_added_cache, ci)
+        return MOI.get(model.optimizer, attr, model.quadratic_added_cache[ci])
     else
         return MOI.get(model.optimizer, attr, ci)
     end
@@ -510,8 +506,12 @@ function MOI.get(
     attr::MOI.ConstraintSet,
     ci::MOI.ConstraintIndex{F,S},
 ) where {F,S}
-    MOI.throw_if_not_valid(model, ci)
-    return MOI.get(model.optimizer, attr, ci)
+    if haskey(model.quadratic_added_cache, ci)
+        return MOI.get(model.optimizer, attr, model.quadratic_added_cache[ci])
+    else
+        MOI.throw_if_not_valid(model, ci)
+        return MOI.get(model.optimizer, attr, ci)
+    end
 end
 
 function MOI.get(
@@ -1043,13 +1043,6 @@ function MOI.is_valid(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
 ) where {F<:MOI.ScalarAffineFunction,S<:MOI.AbstractSet}
-    if haskey(model.affine_constraint_cache, c)
-        # TODO: how to check the cached constraint is valid (?)
-        return function_has_parameters(
-            model,
-            model.affine_constraint_cache[c],
-        ) && MOI.is_valid(model.optimizer, c)
-    end
     return MOI.is_valid(model.optimizer, c)
 end
 
