@@ -1,4 +1,6 @@
-using Documenter, ParametricOptInterface
+using Documenter
+using ParametricOptInterface
+
 
 makedocs(
     modules = [ParametricOptInterface],
@@ -16,8 +18,11 @@ makedocs(
         "Home" => "index.md",
         "manual.md",
         "example.md",
-        # "reference.md"
+        "reference.md"
     ],
 )
 
-deploydocs(repo = "github.com/jump-dev/ParametricOptInterface.jl.git")
+deploydocs(
+    repo = "github.com/jump-dev/ParametricOptInterface.jl.git",
+    push_preview = true
+)
