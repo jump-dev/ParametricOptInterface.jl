@@ -791,11 +791,7 @@ function MOI.set(
     return model.updated_parameters[p_idx(vi)] = val
 end
 
-function MOI.get(
-    model::Optimizer,
-    ::ParameterValue,
-    vi::MOI.VariableIndex
-)
+function MOI.get(model::Optimizer, ::ParameterValue, vi::MOI.VariableIndex)
     if !is_parameter_in_model(model, vi)
         error("Parameter not in the model")
     end
