@@ -202,7 +202,7 @@ end
 
     F = MOI.get(model, MOI.ObjectiveFunctionType())
     @test MOI.get(model, MOI.ObjectiveFunction{F}()) ≈
-        MOI.ScalarAffineFunction{Float64}(
+          MOI.ScalarAffineFunction{Float64}(
         [
             MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(1)),
             MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(2)),
@@ -221,7 +221,7 @@ end
     o2 = @objective(model, Min, sum(x .* p) + 2)
 
     F = MOI.get(model, MOI.ObjectiveFunctionType())
-    @test MOI.get(model, MOI.ObjectiveFunction{F}())  ≈
+    @test MOI.get(model, MOI.ObjectiveFunction{F}()) ≈
           MOI.ScalarQuadraticFunction{Float64}(
         [
             MOI.ScalarQuadraticTerm{Float64}(
@@ -270,5 +270,4 @@ end
         ],
         0.0,
     )
-
 end
