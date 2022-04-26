@@ -118,9 +118,9 @@ end
     @test isapprox.(value(y), 2.0, atol = ATOL)
 end
 
-@testset "JuMP prints" begin
+@testset "JuMP ConstraintFunction getters" begin
     model = direct_model(
-        ParametricOptInterface.Optimizer(
+        POI.Optimizer(
             MOI.Utilities.CachingOptimizer(
                 MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
                 MOI.Utilities.AUTOMATIC,
@@ -128,31 +128,73 @@ end
         ),
     )
 
-    vx = @variable(model, x[i = 1:5])
-    vp = @variable(model, p[i = 1:5] in ParametricOptInterface.Parameter.(-1))
+    vx = @variable(model, x[i = 1:2])
+    vp = @variable(model, p[i = 1:2] in POI.Parameter.(-1))
     c1 = @constraint(model, con, sum(x) + sum(p) >= 1)
     c2 = @constraint(model, conq, sum(x .* p) >= 1)
-    c3 = @constraint(model, conqa, sum(x .* p) + x[1] * x[1] >= 1)
+    c3 = @constraint(model, conqa, sum(x .* p) + x[1]^2 + x[1] + p[1] >= 1)
 
-    o1 = @objective(model, Min, sum(x) + sum(p) + 1)
-    o2 = @objective(model, Min, sum(x .* p) + 1)
-    o3 = @objective(model, Min, sum(x .* p) + x[1] * x[1] + 3)
+    @test MOI.get(model, MOI.ConstraintFunction(), c1) ≈
+          MOI.ScalarAffineFunction{Float64}(
+        [
+            MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(1)),
+            MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(2)),
+            MOI.ScalarAffineTerm{Float64}(
+                1.0,
+                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+            ),
+            MOI.ScalarAffineTerm{Float64}(
+                1.0,
+                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 2),
+            ),
+        ],
+        0.0,
+    )
 
-    println("Printing variables:")
-    show(vx)
-    println("\nPrinting parameters:")
-    show(vp)
-    println("\nPrinting saf:")
-    show(c1)
-    println("\nPrinting sqf1:")
-    show(c2)
-    println("\nPrinting sqf2:")
-    show(c3)
-    println("\nPrinting safobj:")
-    show(o1)
-    println("\nPrinting sqf1obj:")
-    show(o2)
-    println("\nPrinting sqf2obj:")
-    show(o3)
-    print("\n")
+    @test MOI.get(model, MOI.ConstraintFunction(), c2) ≈
+          MOI.ScalarQuadraticFunction{Float64}(
+        [
+            MOI.ScalarQuadraticTerm{Float64}(
+                1.0,
+                MOI.VariableIndex(1),
+                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+            ),
+            MOI.ScalarQuadraticTerm{Float64}(
+                1.0,
+                MOI.VariableIndex(2),
+                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 2),
+            ),
+        ],
+        [],
+        0.0,
+    )
+
+    @test MOI.get(model, MOI.ConstraintFunction(), c3) ≈
+          MOI.ScalarQuadraticFunction{Float64}(
+        [
+            MOI.ScalarQuadraticTerm{Float64}(
+                1.0,
+                MOI.VariableIndex(1),
+                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+            ),
+            MOI.ScalarQuadraticTerm{Float64}(
+                1.0,
+                MOI.VariableIndex(2),
+                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 2),
+            ),
+            MOI.ScalarQuadraticTerm{Float64}(
+                2.0,
+                MOI.VariableIndex(1),
+                MOI.VariableIndex(1),
+            ),
+        ],
+        [
+            MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(1)),
+            MOI.ScalarAffineTerm{Float64}(
+                1.0,
+                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+            ),
+        ],
+        0.0,
+    )
 end
