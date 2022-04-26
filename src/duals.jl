@@ -143,6 +143,17 @@ function empty_and_feed_duals_to_model(
     return
 end
 
+"""
+    ParameterDual <: MOI.AbstractVariableAttribute
+
+Attribute defined to get the dual values associated to parameters
+
+# Example
+
+```julia
+MOI.get(model, POI.ParameterValue(), p)
+```
+"""
 struct ParameterDual <: MOI.AbstractVariableAttribute end
 
 MOI.is_set_by_optimize(::ParametricOptInterface.ParameterDual) = true

@@ -1,4 +1,6 @@
-using Documenter, ParametricOptInterface
+using Documenter
+using ParametricOptInterface
+
 
 makedocs(
     modules = [ParametricOptInterface],

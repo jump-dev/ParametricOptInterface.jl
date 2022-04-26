@@ -765,25 +765,20 @@ function MOI.set(
     return model.updated_parameters[p_idx(p)] = set.val
 end
 
-struct ParameterValue <: MOI.AbstractVariableAttribute end
-
 """
-    MOI.set(
-        model::Optimizer,
-        ::ParameterValue,
-        x::MOI.VariableIndex,
-        value::Float64,
-    )
+    ParameterValue <: MOI.AbstractVariableAttribute
 
-Sets the parameter to a given value, using its `MOI.VariableIndex` as reference.
+Attribute defined to set and get parameter values
 
 # Example
 
-```julia-repl
-julia> MOI.set(model, ParameterValue(), w, 2.0)
-2.0
+```julia
+MOI.set(model, POI.ParameterValue(), p, 2.0)
+MOI.get(model, POI.ParameterValue(), p)
 ```
 """
+struct ParameterValue <: MOI.AbstractVariableAttribute end
+
 function MOI.set(
     model::Optimizer,
     ::ParameterValue,
@@ -794,6 +789,17 @@ function MOI.set(
         error("Parameter not in the model")
     end
     return model.updated_parameters[p_idx(vi)] = val
+end
+
+function MOI.get(
+    model::Optimizer,
+    ::ParameterValue,
+    vi::MOI.VariableIndex
+)
+    if !is_parameter_in_model(model, vi)
+        error("Parameter not in the model")
+    end
+    return model.updated_parameters[p_idx(vi)]
 end
 
 function MOI.set(
