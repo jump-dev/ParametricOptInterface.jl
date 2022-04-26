@@ -118,7 +118,7 @@ end
     @test isapprox.(value(y), 2.0, atol = ATOL)
 end
 
-@testset "JuMP ConstraintFunction getters" begin
+@testset "JuMP ConstraintFunction and ObjectiveFunction getters" begin
     model = direct_model(
         POI.Optimizer(
             MOI.Utilities.CachingOptimizer(
@@ -197,4 +197,78 @@ end
         ],
         0.0,
     )
+
+    o1 = @objective(model, Min, sum(x) + sum(p))
+
+    F = MOI.get(model, MOI.ObjectiveFunctionType())
+    @test MOI.get(model, MOI.ObjectiveFunction{F}()) ≈
+        MOI.ScalarAffineFunction{Float64}(
+        [
+            MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(1)),
+            MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(2)),
+            MOI.ScalarAffineTerm{Float64}(
+                1.0,
+                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+            ),
+            MOI.ScalarAffineTerm{Float64}(
+                1.0,
+                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 2),
+            ),
+        ],
+        0.0,
+    )
+
+    o2 = @objective(model, Min, sum(x .* p) + 2)
+
+    F = MOI.get(model, MOI.ObjectiveFunctionType())
+    @test MOI.get(model, MOI.ObjectiveFunction{F}())  ≈
+          MOI.ScalarQuadraticFunction{Float64}(
+        [
+            MOI.ScalarQuadraticTerm{Float64}(
+                1.0,
+                MOI.VariableIndex(1),
+                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+            ),
+            MOI.ScalarQuadraticTerm{Float64}(
+                1.0,
+                MOI.VariableIndex(2),
+                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 2),
+            ),
+        ],
+        [],
+        2.0,
+    )
+
+    o3 = @objective(model, Min, sum(x .* p) + x[1]^2 + x[1] + p[1])
+
+    F = MOI.get(model, MOI.ObjectiveFunctionType())
+    @test MOI.get(model, MOI.ObjectiveFunction{F}()) ≈
+          MOI.ScalarQuadraticFunction{Float64}(
+        [
+            MOI.ScalarQuadraticTerm{Float64}(
+                1.0,
+                MOI.VariableIndex(1),
+                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+            ),
+            MOI.ScalarQuadraticTerm{Float64}(
+                1.0,
+                MOI.VariableIndex(2),
+                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 2),
+            ),
+            MOI.ScalarQuadraticTerm{Float64}(
+                2.0,
+                MOI.VariableIndex(1),
+                MOI.VariableIndex(1),
+            ),
+        ],
+        [
+            MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(1)),
+            MOI.ScalarAffineTerm{Float64}(
+                1.0,
+                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+            ),
+        ],
+        0.0,
+    )
+
 end

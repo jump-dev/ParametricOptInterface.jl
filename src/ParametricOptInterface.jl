@@ -79,7 +79,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     }
     last_variable_index_added::Int64
     last_parameter_index_added::Int64
-    # Store the function and set passed to POI by MOI
+    # Store the constraint function and set passed to POI by MOI
     original_constraint_function_and_set_cache::Dict{
         MOI.ConstraintIndex,
         Tuple{MOI.AbstractFunction,MOI.AbstractSet},
@@ -119,6 +119,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
         Vector{MOI.VectorAffineTerm{Float64}},
     }
     # Ditto from the constraint caches but for the objective function
+    original_objective_function::MOI.AbstractFunction
     affine_objective_cache::Vector{MOI.ScalarAffineTerm{T}}
     quadratic_objective_cache_pv::Vector{MOI.ScalarQuadraticTerm{T}}
     quadratic_objective_cache_pp::Vector{MOI.ScalarQuadraticTerm{T}}
@@ -175,6 +176,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.VectorAffineTerm{Float64}},
             }(),
+            MOI.VariableIndex(-1),
             Vector{MOI.ScalarAffineTerm{Float64}}(),
             Vector{MOI.ScalarQuadraticTerm{Float64}}(),
             Vector{MOI.ScalarQuadraticTerm{Float64}}(),
@@ -216,6 +218,7 @@ function MOI.is_empty(model::Optimizer)
            ) &&
            isempty(model.quadratic_added_cache) &&
            model.last_quad_add_added == 0 &&
+           model.original_objective_function == MOI.VariableIndex(-1) &&
            isempty(model.affine_objective_cache) &&
            isempty(model.quadratic_objective_cache_pv) &&
            isempty(model.quadratic_objective_cache_pp) &&
@@ -365,6 +368,7 @@ function MOI.empty!(model::Optimizer{T}) where {T}
     empty!(model.quadratic_constraint_variables_associated_to_parameters_cache)
     empty!(model.quadratic_added_cache)
     model.last_quad_add_added = 0
+    model.original_objective_function = MOI.VariableIndex(-1)
     empty!(model.vector_constraint_cache)
     empty!(model.affine_objective_cache)
     empty!(model.quadratic_objective_cache_pv)
@@ -530,11 +534,7 @@ function MOI.get(model::Optimizer, attr::MOI.ObjectiveSense)
 end
 
 function MOI.get(model::Optimizer, attr::MOI.ObjectiveFunctionType)
-    if !isempty(model.quadratic_constraint_cache_pv) ||
-       !isempty(model.quadratic_constraint_cache_pc)
-        return MOI.ScalarQuadraticFunction{Float64}
-    end
-    return MOI.get(model.optimizer, attr)
+    return typeof(model.original_objective_function)
 end
 
 function MOI.get(
@@ -548,18 +548,10 @@ function MOI.get(
     },
 } where {T}
 
-    # Check if the index was cached as Affine expression
-    if !isempty(model.affine_objective_cache)
-        return model.affine_objective_cache
-        # Check if the index was cached as a Quadratic
-    elseif !isempty(model.quadratic_objective_cache_pv)
-        return model.quadratic_objective_cache_pv
-    elseif !isempty(model.quadratic_objective_cache_pp)
-        return model.quadratic_objective_cache_pp
-    elseif !isempty(model.quadratic_objective_cache_pc)
-        return model.quadratic_objective_cache_pc
-    else
+    if model.original_objective_function == MOI.VariableIndex(-1)
         return MOI.get(model.optimizer, attr)
+    else
+        return model.original_objective_function
     end
 end
 
@@ -831,6 +823,7 @@ function MOI.set(
         )
         model.affine_objective_cache = params
     end
+    model.original_objective_function = f
     return
 end
 
@@ -844,6 +837,7 @@ function MOI.set(
     elseif !is_variable_in_model(model, v)
         error("Variable not in the model")
     end
+    model.original_objective_function = v
     return MOI.set(model.optimizer, attr, model.variables[v])
 end
 
@@ -1113,6 +1107,7 @@ function MOI.set(
         )
     end
 
+    model.original_objective_function = f
     model.quadratic_objective_cache_pv = quad_aff_vars
     model.quadratic_objective_cache_pp = quad_params
     model.quadratic_objective_cache_pc = aff_params
