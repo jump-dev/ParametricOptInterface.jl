@@ -547,10 +547,14 @@ function MOI.get(
         MOI.ScalarQuadraticFunction{T},
     },
 } where {T}
-    if model.original_objective_function == MOI.VariableIndex(-1)
+    if !function_has_parameters(model, model.original_objective_function)
         return MOI.get(model.optimizer, attr)
     else
-        return model.original_objective_function
+        if F === typeof(model.original_objective_function)
+            return model.original_objective_function
+        else
+            throw(InexactError)
+        end
     end
 end
 
