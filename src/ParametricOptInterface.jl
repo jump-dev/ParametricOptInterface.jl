@@ -195,11 +195,6 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     end
 end
 
-function ParametricOptimizer(args...; kwargs...)
-    @warn("ParametricOptimizer is deprecated. Use `POI.Optimizer` instead.")
-    return Optimizer(args...; kwargs...)
-end
-
 include("utils.jl")
 include("duals.jl")
 include("update_parameters.jl")
