@@ -30,7 +30,7 @@ function update_duals_with_affine_constraint_cache!(
                 param_dual_cum_sum,
                 model.optimizer,
                 affine_constraint_cache_inner,
-                affine_added_cache_inner
+                affine_added_cache_inner,
             )
         end
     end
@@ -45,11 +45,7 @@ function update_duals_with_affine_constraint_cache!(
         S,
         V1,
     },
-    affine_added_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{
-        F,
-        S,
-        V2,
-    },
+    affine_added_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{F,S,V2},
 ) where {OT,F,S,V1,V2}
     for (ci, param_array) in affine_constraint_cache_inner
         calculate_parameters_in_ci!(

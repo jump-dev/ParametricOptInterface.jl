@@ -283,17 +283,18 @@ end
 
     @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) == [
         (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
-        (MOI.VariableIndex, POI.Parameter)
+        (MOI.VariableIndex, POI.Parameter),
     ]
 
-    @test MOI.get(backend(model).optimizer.model.optimizer, MOI.ListOfConstraintTypesPresent()) == [
-        (MOI.VariableIndex, MOI.GreaterThan{Float64})
-    ]
+    @test MOI.get(
+        backend(model).optimizer.model.optimizer,
+        MOI.ListOfConstraintTypesPresent(),
+    ) == [(MOI.VariableIndex, MOI.GreaterThan{Float64})]
 
     @test objective_value(model) == -2
 
     MOI.set(model, POI.ParameterValue(), p[1], 4.0)
-    
+
     optimize!(model)
     @test objective_value(model) == 3
 
@@ -307,17 +308,18 @@ end
 
     @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) == [
         (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
-        (MOI.VariableIndex, POI.Parameter)
+        (MOI.VariableIndex, POI.Parameter),
     ]
 
-    @test MOI.get(backend(model).optimizer.model.optimizer, MOI.ListOfConstraintTypesPresent()) == [
-        (MOI.VariableIndex, MOI.GreaterThan{Float64})
-    ]
+    @test MOI.get(
+        backend(model).optimizer.model.optimizer,
+        MOI.ListOfConstraintTypesPresent(),
+    ) == [(MOI.VariableIndex, MOI.GreaterThan{Float64})]
 
     @test objective_value(model) == -4
 
     MOI.set(model, POI.ParameterValue(), p[1], 4.0)
-    
+
     optimize!(model)
     @test objective_value(model) == 11.0
 
@@ -329,18 +331,18 @@ end
     @objective(model, Min, sum(x))
     optimize!(model)
 
-    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) == [
-        (MOI.VariableIndex, MOI.GreaterThan{Float64})
-    ]
+    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
+          [(MOI.VariableIndex, MOI.GreaterThan{Float64})]
 
-    @test MOI.get(backend(model).optimizer, MOI.ListOfConstraintTypesPresent()) == [
-        (MOI.VariableIndex, MOI.GreaterThan{Float64})
-    ]
+    @test MOI.get(
+        backend(model).optimizer,
+        MOI.ListOfConstraintTypesPresent(),
+    ) == [(MOI.VariableIndex, MOI.GreaterThan{Float64})]
 
     @test objective_value(model) == -2
 
     MOI.set(model, POI.ParameterValue(), p[1], 4.0)
-    
+
     optimize!(model)
     @test objective_value(model) == 3
 end

@@ -145,7 +145,11 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     evaluate_duals::Bool
     number_of_parameters_in_model::Int64
     interpret_as_bound_if_possible::Bool
-    function Optimizer(optimizer::OT; evaluate_duals::Bool = true, interpret_as_bound_if_possible::Bool = true) where {OT}
+    function Optimizer(
+        optimizer::OT;
+        evaluate_duals::Bool = true,
+        interpret_as_bound_if_possible::Bool = true,
+    ) where {OT}
         return new{Float64,OT}(
             optimizer,
             MOI.Utilities.CleverDicts.CleverDict{ParameterIndex,Float64}(
@@ -170,9 +174,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
                 MOI.ConstraintIndex,
                 Tuple{MOI.AbstractFunction,MOI.AbstractSet},
             }(),
-            MOI.Utilities.DoubleDicts.DoubleDict{
-                MOI.ConstraintIndex,
-            }(),
+            MOI.Utilities.DoubleDicts.DoubleDict{MOI.ConstraintIndex}(),
             0,
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.ScalarAffineTerm{Float64}},
@@ -204,7 +206,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             Vector{Float64}(),
             evaluate_duals,
             0,
-            interpret_as_bound_if_possible
+            interpret_as_bound_if_possible,
         )
     end
 end
@@ -710,11 +712,13 @@ function add_constraint_with_parameters_on_function(
     model::Optimizer,
     f::MOI.ScalarAffineFunction{T},
     set::S,
-) where {T, S}
+) where {T,S}
     vars, params, param_constant =
         separate_possible_terms_and_calculate_parameter_constant(model, f.terms)
     model.last_affine_added += 1
-    if model.interpret_as_bound_if_possible && (length(vars) == 1) && isone(MOI.coefficient(vars[1]))
+    if model.interpret_as_bound_if_possible &&
+       (length(vars) == 1) &&
+       isone(MOI.coefficient(vars[1]))
         moi_ci = MOI.Utilities.normalize_and_add_constraint(
             model.optimizer,
             MOI.VariableIndex(vars[1].variable.value),
@@ -919,11 +923,15 @@ end
 function MOI.get(
     model::Optimizer,
     attr::AT,
-    c::MOI.ConstraintIndex{MOI.ScalarAffineFunction{T}, S},
+    c::MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S},
 ) where {
-    AT<:Union{MOI.ConstraintPrimal,MOI.ConstraintDual,MOI.ConstraintBasisStatus},
+    AT<:Union{
+        MOI.ConstraintPrimal,
+        MOI.ConstraintDual,
+        MOI.ConstraintBasisStatus,
+    },
     T,
-    S <: MOI.AbstractScalarSet
+    S<:MOI.AbstractScalarSet,
 }
     moi_ci = get(model.affine_added_cache, c, c)
     return MOI.get(model.optimizer, attr, moi_ci)
