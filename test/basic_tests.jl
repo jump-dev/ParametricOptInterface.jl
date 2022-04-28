@@ -9,7 +9,7 @@
             obj = 2
     """
 
-    optimizer = POI.Optimizer(GLPK.Optimizer())
+    optimizer = POI.Optimizer(GLPK.Optimizer(); interpret_as_bound_if_possible=false)
 
     MOI.set(optimizer, MOI.Silent(), true)
 

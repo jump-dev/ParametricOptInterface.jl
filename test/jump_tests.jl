@@ -271,3 +271,76 @@ end
         0.0,
     )
 end
+
+@testset "JuMP Interpret parametric bounds" begin
+    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+
+    @variable(model, x[i = 1:2])
+    @variable(model, p[i = 1:2] in POI.Parameter.(-1))
+    @constraint(model, [i in 1:2], x[i] >= p[i])
+    @objective(model, Min, sum(x))
+    optimize!(model)
+
+    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) == [
+        (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
+        (MOI.VariableIndex, POI.Parameter)
+    ]
+
+    @test MOI.get(backend(model).optimizer.model.optimizer, MOI.ListOfConstraintTypesPresent()) == [
+        (MOI.VariableIndex, MOI.GreaterThan{Float64})
+    ]
+
+    @test objective_value(model) == -2
+
+    MOI.set(model, POI.ParameterValue(), p[1], 4.0)
+    
+    optimize!(model)
+    @test objective_value(model) == 3
+
+    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+
+    @variable(model, x[i = 1:2])
+    @variable(model, p[i = 1:2] in POI.Parameter.(-1))
+    @constraint(model, [i in 1:2], x[i] >= p[i] + p[1])
+    @objective(model, Min, sum(x))
+    optimize!(model)
+
+    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) == [
+        (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
+        (MOI.VariableIndex, POI.Parameter)
+    ]
+
+    @test MOI.get(backend(model).optimizer.model.optimizer, MOI.ListOfConstraintTypesPresent()) == [
+        (MOI.VariableIndex, MOI.GreaterThan{Float64})
+    ]
+
+    @test objective_value(model) == -4
+
+    MOI.set(model, POI.ParameterValue(), p[1], 4.0)
+    
+    optimize!(model)
+    @test objective_value(model) == 11.0
+
+    model = direct_model(POI.Optimizer(GLPK.Optimizer()))
+
+    @variable(model, x[i = 1:2])
+    @variable(model, p[i = 1:2] in POI.Parameter.(-1))
+    @constraint(model, [i in 1:2], x[i] >= p[i])
+    @objective(model, Min, sum(x))
+    optimize!(model)
+
+    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) == [
+        (MOI.VariableIndex, MOI.GreaterThan{Float64})
+    ]
+
+    @test MOI.get(backend(model).optimizer, MOI.ListOfConstraintTypesPresent()) == [
+        (MOI.VariableIndex, MOI.GreaterThan{Float64})
+    ]
+
+    @test objective_value(model) == -2
+
+    MOI.set(model, POI.ParameterValue(), p[1], 4.0)
+    
+    optimize!(model)
+    @test objective_value(model) == 3
+end

@@ -89,6 +89,11 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
         MOI.ConstraintIndex,
         Tuple{MOI.AbstractFunction,MOI.AbstractSet},
     }
+    # Store the map for SAFs that might be transformed into VI
+    affine_added_cache::MOI.Utilities.DoubleDicts.DoubleDict{
+        MOI.ConstraintIndex,
+    }
+    last_affine_added::Int64
     # Store reference to parameters of affine constraints with parameters: v + p
     affine_constraint_cache::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.ScalarAffineTerm{Float64}},
@@ -116,7 +121,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     quadratic_constraint_variables_associated_to_parameters_cache::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.ScalarAffineTerm{T}},
     }
-    # Store the map for SQFs that were transformed into SAF
+    # Store the map for SQFs that might be transformed into SAF
     # for instance p*p + var -> ScalarAffine(var)
     quadratic_added_cache::Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}
     last_quad_add_added::Int64
@@ -136,7 +141,8 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     dual_value_of_parameters::Vector{Float64}
     evaluate_duals::Bool
     number_of_parameters_in_model::Int64
-    function Optimizer(optimizer::OT; evaluate_duals::Bool = true) where {OT}
+    interpret_as_bound_if_possible::Bool
+    function Optimizer(optimizer::OT; evaluate_duals::Bool = true, interpret_as_bound_if_possible::Bool = true) where {OT}
         return new{Float64,OT}(
             optimizer,
             MOI.Utilities.CleverDicts.CleverDict{ParameterIndex,Float64}(
@@ -161,6 +167,10 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
                 MOI.ConstraintIndex,
                 Tuple{MOI.AbstractFunction,MOI.AbstractSet},
             }(),
+            MOI.Utilities.DoubleDicts.DoubleDict{
+                MOI.ConstraintIndex,
+            }(),
+            0,
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.ScalarAffineTerm{Float64}},
             }(),
@@ -191,6 +201,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             Vector{Float64}(),
             evaluate_duals,
             0,
+            interpret_as_bound_if_possible
         )
     end
 end
@@ -209,6 +220,8 @@ function MOI.is_empty(model::Optimizer)
            model.last_variable_index_added == 0 &&
            model.last_parameter_index_added == PARAMETER_INDEX_THRESHOLD &&
            isempty(model.original_constraint_function_and_set_cache) &&
+           isempty(model.affine_added_cache) &&
+           model.last_affine_added == 0 &&
            isempty(model.affine_constraint_cache) &&
            isempty(model.quadratic_constraint_cache_pv) &&
            isempty(model.quadratic_constraint_cache_pp) &&
@@ -361,6 +374,8 @@ function MOI.empty!(model::Optimizer{T}) where {T}
     model.last_variable_index_added = 0
     model.last_parameter_index_added = PARAMETER_INDEX_THRESHOLD
     empty!(model.original_constraint_function_and_set_cache)
+    empty!(model.affine_added_cache)
+    model.last_affine_added = 0
     empty!(model.affine_constraint_cache)
     empty!(model.quadratic_constraint_cache_pv)
     empty!(model.quadratic_constraint_cache_pp)
@@ -691,18 +706,36 @@ end
 function add_constraint_with_parameters_on_function(
     model::Optimizer,
     f::MOI.ScalarAffineFunction{T},
-    set::MOI.AbstractScalarSet,
-) where {T}
+    set::S,
+) where {T, S}
     vars, params, param_constant =
         separate_possible_terms_and_calculate_parameter_constant(model, f.terms)
-    ci = MOI.Utilities.normalize_and_add_constraint(
-        model.optimizer,
-        MOI.ScalarAffineFunction(vars, f.constant + param_constant),
-        set,
-    )
-    model.affine_constraint_cache[ci] = params
-    model.original_constraint_function_and_set_cache[ci] = (f, set)
-    return ci
+    model.last_affine_added += 1
+    if model.interpret_as_bound_if_possible && (length(vars) == 1) && isone(MOI.coefficient(vars[1]))
+        moi_ci = MOI.Utilities.normalize_and_add_constraint(
+            model.optimizer,
+            MOI.VariableIndex(vars[1].variable.value),
+            update_constant!(set, f.constant + param_constant),
+        )
+        poi_ci = MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S}(
+            model.last_affine_added,
+        )
+        model.affine_constraint_cache[poi_ci] = params
+        model.affine_added_cache[poi_ci] = moi_ci
+    else
+        moi_ci = MOI.Utilities.normalize_and_add_constraint(
+            model.optimizer,
+            MOI.ScalarAffineFunction(vars, f.constant + param_constant),
+            set,
+        )
+        poi_ci = MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S}(
+            model.last_affine_added,
+        )
+        model.affine_constraint_cache[poi_ci] = params
+        model.affine_added_cache[poi_ci] = moi_ci
+    end
+    model.original_constraint_function_and_set_cache[poi_ci] = (f, set)
+    return poi_ci
 end
 
 function MOI.add_constraint(
@@ -878,6 +911,19 @@ function MOI.get(
     T<:Union{MOI.ConstraintPrimal,MOI.ConstraintDual,MOI.ConstraintBasisStatus},
 }
     return MOI.get(model.optimizer, attr, c)
+end
+
+function MOI.get(
+    model::Optimizer,
+    attr::AT,
+    c::MOI.ConstraintIndex{MOI.ScalarAffineFunction{T}, S},
+) where {
+    AT<:Union{MOI.ConstraintPrimal,MOI.ConstraintDual,MOI.ConstraintBasisStatus},
+    T,
+    S <: MOI.AbstractScalarSet
+}
+    moi_ci = get(model.affine_added_cache, c, c)
+    return MOI.get(model.optimizer, attr, moi_ci)
 end
 
 function MOI.set(model::Optimizer, attr::MOI.RawOptimizerAttribute, val::Any)

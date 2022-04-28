@@ -24,11 +24,13 @@ function update_duals_with_affine_constraint_cache!(
 )
     for (F, S) in keys(model.affine_constraint_cache.dict)
         affine_constraint_cache_inner = model.affine_constraint_cache[F, S]
+        affine_added_cache_inner = model.affine_added_cache[F, S]
         if !isempty(affine_constraint_cache_inner)
             update_duals_with_affine_constraint_cache!(
                 param_dual_cum_sum,
                 model.optimizer,
                 affine_constraint_cache_inner,
+                affine_added_cache_inner
             )
         end
     end
@@ -41,15 +43,20 @@ function update_duals_with_affine_constraint_cache!(
     affine_constraint_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{
         F,
         S,
-        V,
+        V1,
     },
-) where {OT,F,S,V}
+    affine_added_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{
+        F,
+        S,
+        V2,
+    },
+) where {OT,F,S,V1,V2}
     for (ci, param_array) in affine_constraint_cache_inner
         calculate_parameters_in_ci!(
             param_dual_cum_sum,
             optimizer,
             param_array,
-            ci,
+            affine_added_cache_inner[ci],
         )
     end
     return
@@ -177,14 +184,6 @@ function MOI.get(
         error("Cannot calculate the dual of a multiplicative parameter")
     end
     return model.dual_value_of_parameters[cp.value-PARAMETER_INDEX_THRESHOLD]
-end
-
-function MOI.get(
-    model::Optimizer,
-    attr::MOI.ConstraintDual,
-    ci::MOI.ConstraintIndex,
-)
-    return MOI.get(model.optimizer, attr, ci)
 end
 
 function is_additive(model::Optimizer, cp::MOI.ConstraintIndex)
