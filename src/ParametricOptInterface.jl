@@ -50,6 +50,9 @@ optimization model.
 
 - `evaluate_duals::Bool`: If `true`, evaluates the dual of parameters. Users might want to set it to false 
   to increase performance when the duals of parameters are not necessary. Defaults to `true`.
+  
+- `interpret_as_bound_if_possible::Bool`: If `true`, constraints such `@constraint(model, x >= p1 + p2)` are
+  interpreted a variable bound (`MOI.VariableIndex-in-MOI.GreaterThan`) instead of (`MOI.ScalarAffineFunction-in-MOI.GreaterThan`)
 
 ## Example
 
