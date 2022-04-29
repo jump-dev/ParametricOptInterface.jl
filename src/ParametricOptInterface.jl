@@ -6,6 +6,8 @@ const MOI = MathOptInterface
 
 const PARAMETER_INDEX_THRESHOLD = 1_000_000_000_000_000_000
 
+@enum ConstraintsInterpretationCode OnlyBounds OnlyConstraints BoundsAndConstraints
+
 """
     Parameter(val::Float64)
 
@@ -50,9 +52,9 @@ optimization model.
 
 - `evaluate_duals::Bool`: If `true`, evaluates the dual of parameters. Users might want to set it to false 
   to increase performance when the duals of parameters are not necessary. Defaults to `true`.
-  
-- `interpret_as_bound_if_possible::Bool`: If `true`, constraints such `@constraint(model, x >= p1 + p2)` are
-  interpreted a variable bound (`MOI.VariableIndex-in-MOI.GreaterThan`) instead of (`MOI.ScalarAffineFunction-in-MOI.GreaterThan`)
+- `constraints_interpretation`: Decides how to interpret constraints with `ScalarAffineFunctions`. More details
+  are in [`POI.ConstraintsInterpretation`](@ref) and [JuMP Example - Dealing with parametric expressions as variable bounds](@ref).
+  Defaults to `OnlyConstraints`.
 
 ## Example
 
@@ -144,11 +146,10 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     dual_value_of_parameters::Vector{Float64}
     evaluate_duals::Bool
     number_of_parameters_in_model::Int64
-    interpret_as_bound_if_possible::Bool
+    constraints_interpretation::ConstraintsInterpretationCode
     function Optimizer(
         optimizer::OT;
         evaluate_duals::Bool = true,
-        interpret_as_bound_if_possible::Bool = true,
     ) where {OT}
         return new{Float64,OT}(
             optimizer,
@@ -206,7 +207,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             Vector{Float64}(),
             evaluate_duals,
             0,
-            interpret_as_bound_if_possible,
+            OnlyConstraints,
         )
     end
 end
@@ -454,6 +455,15 @@ function MOI.get(
     c::MOI.ConstraintIndex,
 )
     return MOI.get(model.optimizer, attr, c)
+end
+
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.ConstraintName,
+    c::MOI.ConstraintIndex{MOI.ScalarAffineFunction{T}, S},
+) where {T, S}
+    moi_ci = get(model.affine_added_cache, c, c)
+    return MOI.get(model.optimizer, attr, moi_ci)
 end
 
 function MOI.get(model::Optimizer, ::MOI.NumberOfVariables)
@@ -716,32 +726,51 @@ function add_constraint_with_parameters_on_function(
     vars, params, param_constant =
         separate_possible_terms_and_calculate_parameter_constant(model, f.terms)
     model.last_affine_added += 1
-    if model.interpret_as_bound_if_possible &&
-       (length(vars) == 1) &&
-       isone(MOI.coefficient(vars[1]))
-        moi_ci = MOI.Utilities.normalize_and_add_constraint(
-            model.optimizer,
-            MOI.VariableIndex(vars[1].variable.value),
-            update_constant!(set, f.constant + param_constant),
-        )
-        poi_ci = MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S}(
-            model.last_affine_added,
-        )
-        model.affine_constraint_cache[poi_ci] = params
-        model.affine_added_cache[poi_ci] = moi_ci
-    else
-        moi_ci = MOI.Utilities.normalize_and_add_constraint(
-            model.optimizer,
-            MOI.ScalarAffineFunction(vars, f.constant + param_constant),
-            set,
-        )
-        poi_ci = MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S}(
-            model.last_affine_added,
-        )
-        model.affine_constraint_cache[poi_ci] = params
-        model.affine_added_cache[poi_ci] = moi_ci
+    if model.constraints_interpretation == OnlyBounds
+        if (length(vars) == 1) && isone(MOI.coefficient(vars[1]))
+            poi_ci = add_vi_constraint(model, vars, params, param_constant, f, set)
+        else
+            error("It was not possible to interpret this constraint as a variable bound.")
+        end
+    elseif model.constraints_interpretation == OnlyConstraints
+        poi_ci = add_saf_constraint(model, vars, params,param_constant, f, set)
+    elseif model.constraints_interpretation == BoundsAndConstraints
+        if (length(vars) == 1) && isone(MOI.coefficient(vars[1]))
+            poi_ci = add_vi_constraint(model, vars, params, param_constant, f, set)
+        else
+            poi_ci = add_saf_constraint(model, vars, params,param_constant, f, set)
+        end
     end
     model.original_constraint_function_and_set_cache[poi_ci] = (f, set)
+    return poi_ci
+end
+
+function add_saf_constraint(model::Optimizer, vars::Vector{MOI.ScalarAffineTerm{T}}, params::Vector{MOI.ScalarAffineTerm{T}}, param_constant::T, f::MOI.ScalarAffineFunction{T}, set::S) where {T, S}
+    moi_ci = MOI.Utilities.normalize_and_add_constraint(
+        model.optimizer,
+        MOI.ScalarAffineFunction(vars, f.constant + param_constant),
+        set,
+    )
+    poi_ci = create_new_poi_ci_and_save_affine_caches(model, params, moi_ci)
+    return poi_ci
+end
+
+function add_vi_constraint(model::Optimizer, vars::Vector{MOI.ScalarAffineTerm{T}}, params::Vector{MOI.ScalarAffineTerm{T}}, param_constant::T, f::MOI.ScalarAffineFunction{T}, set::S) where {T, S}
+    moi_ci = MOI.Utilities.normalize_and_add_constraint(
+        model.optimizer,
+        MOI.VariableIndex(vars[1].variable.value),
+        update_constant!(set, f.constant + param_constant),
+    )
+    poi_ci = create_new_poi_ci_and_save_affine_caches(model, params, moi_ci)
+    return poi_ci
+end
+
+function create_new_poi_ci_and_save_affine_caches(model::Optimizer, params::Vector{MOI.ScalarAffineTerm{T}}, moi_ci::MOI.ConstraintIndex{F, S}) where {T, F, S}
+    poi_ci = MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S}(
+        model.last_affine_added,
+    )
+    model.affine_constraint_cache[poi_ci] = params
+    model.affine_added_cache[poi_ci] = moi_ci
     return poi_ci
 end
 
@@ -836,6 +865,40 @@ function MOI.set(
     val::Real,
 )
     return MOI.set(model, ParameterValue(), vi, convert(Float64, val))
+end
+
+"""
+    ConstraintsInterpretation <: MOI.AbstractOptimizerAttribute
+
+Attribute to define how `POI.Optimizer` should interpret constraints.
+
+- `POI.OnlyBounds`: Only interpret `ScalarAffineFunction` constraints as a variable bound
+  This is valid for constraints such as `x >= p` or `x >= p1 + p2`. If a constraint `x1 + x2 >= p` appears,
+  which is not a valid variable bound it will throw an error.
+  
+- `POI.OnlyConstraints`: Only interpret `ScalarAffineFunction` constraints as linear constraints
+  If an expression such as `x >= p1 + p2` appears it will be trated like a new constraint.
+
+- `POI.BoundsAndConstraints`: Interpret `ScalarAffineFunction` constraints as a variable bound if they 
+  are a valid variable bound, i.e., `x >= p` or `x >= p1 + p2` and interpret them as linear constraints 
+  otherwise.
+
+# Example
+
+```julia
+MOI.set(model, POI.InterpretConstraintsAsBounds(), POI.OnlyBounds)
+MOI.set(model, POI.InterpretConstraintsAsBounds(), POI.OnlyConstraints)
+MOI.set(model, POI.InterpretConstraintsAsBounds(), POI.BoundsAndConstraints)
+```
+"""
+struct ConstraintsInterpretation <: MOI.AbstractOptimizerAttribute end
+
+function MOI.set(
+    model::Optimizer,
+    ::ConstraintsInterpretation,
+    value::ConstraintsInterpretationCode
+)
+    return model.constraints_interpretation = value
 end
 
 function empty_objective_function_caches!(model::Optimizer)

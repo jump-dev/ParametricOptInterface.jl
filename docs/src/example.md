@@ -1,6 +1,6 @@
 # Examples
 
-## MOI example
+## MOI example - step by step usage
 
 Lets write a setep-by-step example of `POI` usage at the MOI level.
 
@@ -26,7 +26,7 @@ for x_i in x
 end
 ```
 
-Now, let's consider 3 parameters. Two of them, `y`, `z`, will be placed in the constraints and one, `w`, in the objective function. We'll start all three of them with a value equal to `0`:
+Now, let's consider 3 [`ParametricOptInterface.Parameter`](@ref). Two of them, `y`, `z`, will be placed in the constraints and one, `w`, in the objective function. We'll start all three of them with a value equal to `0`:
 
 ```@example moi1
 w, cw = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
@@ -124,7 +124,7 @@ isapprox.(MOI.get(optimizer, MOI.ObjectiveValue()), 7.0, atol = 1e-4)
 MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]
 ```
 
-## JuMP Example
+## JuMP Example - step by step usage
 
 Lets write a setep-by-step example of `POI` usage at the JuMP level.
 
@@ -146,7 +146,7 @@ We declare the variable `x` as in a typical `JuMP` model:
 @variable(model, x[i = 1:2] >= 0)
 ```
 
-Now, let's consider 3 parameters. Two of them, `y`, `z`, will be placed in the constraints and one, `w`, in the objective function. We'll start all three of them with a value equal to `0`:
+Now, let's consider 3 [`ParametricOptInterface.Parameter`](@ref). Two of them, `y`, `z`, will be placed in the constraints and one, `w`, in the objective function. We'll start all three of them with a value equal to `0`:
 
 ```@example jump1
 @variable(model, y in ParametricOptInterface.Parameter(0))
@@ -234,7 +234,7 @@ isapprox(objective_value(model), 7)
 isapprox(value.(x), [0, 1])
 ```
 
-## JuMP Example with a vector of parameters
+## JuMP Example - Declaring vectors of parameters
 
 Many times it is useful to declare a vector of parameters just like we declare a vector of variables, the JuMP syntax for variables works with parameters too:
 
@@ -251,3 +251,78 @@ model = Model(() -> ParametricOptInterface.Optimizer(HiGHS.Optimizer()))
 @variable(model, p2[i = 1:3] in ParametricOptInterface.Parameter.([1, 10, 45]))
 @variable(model, p3[i = 1:3] in ParametricOptInterface.Parameter.(ones(3)))
 ```
+
+## JuMP Example - Dealing with parametric expressions as variable bounds
+
+A very common pattern that appears when using ParametricOptInterface is to add variable and later 
+add some expression with parameters that represent the variable bound. The following code illustrates
+the pattern:
+
+```@example jump3
+using HiGHS
+using JuMP
+using ParametricOptInterface
+const POI = ParametricOptInterface
+
+model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
+@variable(model, x)
+@variable(model, p in POI.Parameter(0.0))
+@constraint(model, x >= p)
+```
+
+Since parameters are treated like variables JuMP lowers this to MathOptInterface as `x - p >= 0` which 
+is not a variable bound but a linear constraint. This means that the current representation of this problem
+at the solver level is:
+
+```math
+\begin{align}
+    & \min_{x} & 0
+    \\
+    & \;\;\text{s.t.} & x & \in \mathbb{R}
+    &   & x - p & \geq 0
+\end{align}
+```
+
+This behaviour might be undesirable because it creates extra rows in your problem. Users can 
+set the [`ParametricOptInterface.ConstraintsInterpretation`](@ref) to control how the linear 
+constraints should be interpreted. The pattern advised for users seeking the most performance 
+out of ParametricOptInterface should use the followig pattern:
+
+```@example jump3
+using HiGHS
+using JuMP
+using ParametricOptInterface
+const POI = ParametricOptInterface
+
+model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
+@variable(model, x)
+@variable(model, p in POI.Parameter(0.0))
+
+# Indicate that all the new constraints will be valid variable bounds
+MOI.set(model, POI.ConstraintsInterpretation(), POI.OnlyBounds)
+@constraint(model, x >= p);
+# It has a `;` because the prints don't work for this case.
+# It tries to print a ConstraintName of a linear constraint
+# but the constraint was transformed in `MOI.VariableIndex-in-MOI.GreaterThan`
+# and these kinds of constraints don't allow names.
+
+# Indicate that all the new constraints will not be variable bounds
+MOI.set(model, POI.ConstraintsInterpretation(), POI.OnlyConstraints)
+# @constraint(model, ...)
+```
+
+This way the mathematical representation of the problem will be:
+
+```math
+\begin{align}
+    & \min_{x} & 0
+    \\
+    & \;\;\text{s.t.} & x & \geq p
+\end{align}
+```
+
+which might lead to faster solves.
+
+Users that just want everything to work can use the default value `POI.OnlyConstraints` or try to use
+`POI.BoundsAndConstraints` and leave it to ParametricOptInterface to interpret the constraints as bounds 
+when applicable and linear constraints otherwise.

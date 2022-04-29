@@ -10,7 +10,7 @@
     """
 
     optimizer =
-        POI.Optimizer(GLPK.Optimizer(); interpret_as_bound_if_possible = false)
+        POI.Optimizer(GLPK.Optimizer())
 
     MOI.set(optimizer, MOI.Silent(), true)
 

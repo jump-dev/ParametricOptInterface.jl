@@ -272,8 +272,9 @@ end
     )
 end
 
-@testset "JuMP Interpret parametric bounds" begin
+@testset "JuMP Interpret parametric bounds simple example" begin
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.OnlyBounds)
 
     @variable(model, x[i = 1:2])
     @variable(model, p[i = 1:2] in POI.Parameter.(-1))
@@ -298,7 +299,11 @@ end
     optimize!(model)
     @test objective_value(model) == 3
 
+end
+
+@testset "JuMP Interpret parametric bounds parametric expression" begin
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.OnlyBounds)
 
     @variable(model, x[i = 1:2])
     @variable(model, p[i = 1:2] in POI.Parameter.(-1))
@@ -322,8 +327,11 @@ end
 
     optimize!(model)
     @test objective_value(model) == 11.0
+end
 
+@testset "JuMP Interpret parametric bounds direct model" begin
     model = direct_model(POI.Optimizer(GLPK.Optimizer()))
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.OnlyBounds)
 
     @variable(model, x[i = 1:2])
     @variable(model, p[i = 1:2] in POI.Parameter.(-1))
@@ -345,4 +353,93 @@ end
 
     optimize!(model)
     @test objective_value(model) == 3
+end
+
+@testset "JuMP Interpret parametric bounds direct model no interpretation" begin
+    model = direct_model(POI.Optimizer(GLPK.Optimizer()))
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.OnlyConstraints)
+
+    @variable(model, x[i = 1:2])
+    @variable(model, p[i = 1:2] in POI.Parameter.(-1))
+    @constraint(model, [i in 1:2], x[i] >= p[i])
+    @objective(model, Min, sum(x))
+    optimize!(model)
+
+    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
+          [(MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64})]
+
+    @test MOI.get(
+        backend(model).optimizer,
+        MOI.ListOfConstraintTypesPresent(),
+    ) == [(MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64})]
+
+    @test objective_value(model) == -2
+
+    MOI.set(model, POI.ParameterValue(), p[1], 4.0)
+
+    optimize!(model)
+    @test objective_value(model) == 3
+end
+
+@testset "JuMP Interpret parametric bounds direct model change interpretation" begin
+    model = direct_model(POI.Optimizer(GLPK.Optimizer()))
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.OnlyBounds)
+    @variable(model, x[i = 1:2])
+    @variable(model, p[i = 1:2] in POI.Parameter.(-1))
+    @constraint(model, [i in 1:2], x[i] >= p[i])
+    @test_throws ErrorException @constraint(model, [i in 1:2], 2x[i] >= p[i])
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.OnlyConstraints)
+    @constraint(model, [i in 1:2], 2x[i] >= p[i])
+    @objective(model, Min, sum(x))
+    optimize!(model)
+
+    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
+          [(MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}), (MOI.VariableIndex, MOI.GreaterThan{Float64})]
+
+    @test MOI.get(
+        backend(model).optimizer,
+        MOI.ListOfConstraintTypesPresent(),
+    ) == [(MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}), (MOI.VariableIndex, MOI.GreaterThan{Float64})]
+
+    @test objective_value(model) == -1
+
+    MOI.set(model, POI.ParameterValue(), p[1], 4.0)
+
+    optimize!(model)
+    @test objective_value(model) == 3.5
+end
+
+@testset "JuMP Interpret parametric bounds direct model both interpretations" begin
+    model = direct_model(POI.Optimizer(GLPK.Optimizer()))
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.BoundsAndConstraints)
+    @variable(model, x[i = 1:2])
+    @variable(model, p[i = 1:2] in POI.Parameter.(-1))
+    @constraint(model, [i in 1:2], x[i] >= p[i])
+    @constraint(model, [i in 1:2], 2x[i] >= p[i])
+    @objective(model, Min, sum(x))
+    optimize!(model)
+
+    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
+          [(MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}), (MOI.VariableIndex, MOI.GreaterThan{Float64})]
+
+    @test MOI.get(
+        backend(model).optimizer,
+        MOI.ListOfConstraintTypesPresent(),
+    ) == [(MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}), (MOI.VariableIndex, MOI.GreaterThan{Float64})]
+
+    @test objective_value(model) == -1
+
+    MOI.set(model, POI.ParameterValue(), p[1], 4.0)
+
+    optimize!(model)
+    @test objective_value(model) == 3.5
+end
+
+@testset "JuMP Interpret parametric bounds parametric not a valid bound" begin
+    model = direct_model(POI.Optimizer(GLPK.Optimizer()))
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.OnlyBounds)
+
+    @variable(model, x[i = 1:2])
+    @variable(model, p[i = 1:2] in POI.Parameter.(-1))
+    @test_throws ErrorException @constraint(model, [i in 1:2], 2x[i] >= p[i] + p[1])
 end
