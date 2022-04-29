@@ -199,8 +199,7 @@ isapprox(dual_of_y, 3 * dual(c1))
 
 The same is valid for the remaining parameters. In case a parameter appears in more than one constraint, or both some constraints and in the objective function, its dual will be equal to the linear combination of the functions' duals multiplied by the respective coefficientes.
 
-So far, we only added some parameters that had no influence at first in solving the model. Let's change the values associated to each parameter to assess its implications.
-First, we set the value of parameters `y` and `z` to `1.0`. Notice that we are changing the feasible set of the decision variables:
+So far, we only added some parameters that had no influence at first in solving the model. Let's change the values associated to each parameter to assess its implications. First, we set the value of parameters `y` and `z` to `1.0`. Notice that we are changing the feasible set of the decision variables:
 
 ```@example jump1
 MOI.set(model, POI.ParameterValue(), y, 1)
@@ -254,9 +253,7 @@ model = Model(() -> ParametricOptInterface.Optimizer(HiGHS.Optimizer()))
 
 ## JuMP Example - Dealing with parametric expressions as variable bounds
 
-A very common pattern that appears when using ParametricOptInterface is to add variable and later 
-add some expression with parameters that represent the variable bound. The following code illustrates
-the pattern:
+A very common pattern that appears when using ParametricOptInterface is to add variable and later add some expression with parameters that represent the variable bound. The following code illustrates the pattern:
 
 ```@example jump3
 using HiGHS
@@ -270,23 +267,18 @@ model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
 @constraint(model, x >= p)
 ```
 
-Since parameters are treated like variables JuMP lowers this to MathOptInterface as `x - p >= 0` which 
-is not a variable bound but a linear constraint. This means that the current representation of this problem
-at the solver level is:
+Since parameters are treated like variables JuMP lowers this to MathOptInterface as `x - p >= 0` which is not a variable bound but a linear constraint.This means that the current representation of this problem at the solver level is:
 
 ```math
 \begin{align}
     & \min_{x} & 0
     \\
-    & \;\;\text{s.t.} & x & \in \mathbb{R}
+    & \;\;\text{s.t.} & x & \in \mathbb{R} \\
     &   & x - p & \geq 0
 \end{align}
 ```
 
-This behaviour might be undesirable because it creates extra rows in your problem. Users can 
-set the [`ParametricOptInterface.ConstraintsInterpretation`](@ref) to control how the linear 
-constraints should be interpreted. The pattern advised for users seeking the most performance 
-out of ParametricOptInterface should use the followig pattern:
+This behaviour might be undesirable because it creates extra rows in your problem. Users can set the [`ParametricOptInterface.ConstraintsInterpretation`](@ref) to control how the linear constraints should be interpreted. The pattern advised for users seeking the most performance out of ParametricOptInterface should use the followig pattern:
 
 ```@example jump3
 using HiGHS
@@ -323,6 +315,4 @@ This way the mathematical representation of the problem will be:
 
 which might lead to faster solves.
 
-Users that just want everything to work can use the default value `POI.OnlyConstraints` or try to use
-`POI.BoundsAndConstraints` and leave it to ParametricOptInterface to interpret the constraints as bounds 
-when applicable and linear constraints otherwise.
+Users that just want everything to work can use the default value `POI.OnlyConstraints` or try to use `POI.BoundsAndConstraints` and leave it to ParametricOptInterface to interpret the constraints as bounds when applicable and linear constraints otherwise.

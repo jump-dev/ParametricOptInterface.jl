@@ -1,7 +1,7 @@
 # Reference
 
 ```@docs
-ParametricOptInterface.ConstraintInterpretation
+ParametricOptInterface.ConstraintsInterpretation
 ParametricOptInterface.Optimizer
 ParametricOptInterface.Parameter
 ParametricOptInterface.ParameterDual
