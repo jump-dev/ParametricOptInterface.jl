@@ -298,7 +298,6 @@ end
 
     optimize!(model)
     @test objective_value(model) == 3
-
 end
 
 @testset "JuMP Interpret parametric bounds parametric expression" begin
@@ -393,13 +392,18 @@ end
     @objective(model, Min, sum(x))
     optimize!(model)
 
-    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
-          [(MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}), (MOI.VariableIndex, MOI.GreaterThan{Float64})]
+    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) == [
+        (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
+        (MOI.VariableIndex, MOI.GreaterThan{Float64}),
+    ]
 
     @test MOI.get(
         backend(model).optimizer,
         MOI.ListOfConstraintTypesPresent(),
-    ) == [(MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}), (MOI.VariableIndex, MOI.GreaterThan{Float64})]
+    ) == [
+        (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
+        (MOI.VariableIndex, MOI.GreaterThan{Float64}),
+    ]
 
     @test objective_value(model) == -1
 
@@ -419,13 +423,18 @@ end
     @objective(model, Min, sum(x))
     optimize!(model)
 
-    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
-          [(MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}), (MOI.VariableIndex, MOI.GreaterThan{Float64})]
+    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) == [
+        (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
+        (MOI.VariableIndex, MOI.GreaterThan{Float64}),
+    ]
 
     @test MOI.get(
         backend(model).optimizer,
         MOI.ListOfConstraintTypesPresent(),
-    ) == [(MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}), (MOI.VariableIndex, MOI.GreaterThan{Float64})]
+    ) == [
+        (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
+        (MOI.VariableIndex, MOI.GreaterThan{Float64}),
+    ]
 
     @test objective_value(model) == -1
 
@@ -441,5 +450,9 @@ end
 
     @variable(model, x[i = 1:2])
     @variable(model, p[i = 1:2] in POI.Parameter.(-1))
-    @test_throws ErrorException @constraint(model, [i in 1:2], 2x[i] >= p[i] + p[1])
+    @test_throws ErrorException @constraint(
+        model,
+        [i in 1:2],
+        2x[i] >= p[i] + p[1]
+    )
 end

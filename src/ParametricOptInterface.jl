@@ -147,10 +147,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     evaluate_duals::Bool
     number_of_parameters_in_model::Int64
     constraints_interpretation::ConstraintsInterpretationCode
-    function Optimizer(
-        optimizer::OT;
-        evaluate_duals::Bool = true,
-    ) where {OT}
+    function Optimizer(optimizer::OT; evaluate_duals::Bool = true) where {OT}
         return new{Float64,OT}(
             optimizer,
             MOI.Utilities.CleverDicts.CleverDict{ParameterIndex,Float64}(
@@ -460,8 +457,8 @@ end
 function MOI.get(
     model::Optimizer,
     attr::MOI.ConstraintName,
-    c::MOI.ConstraintIndex{MOI.ScalarAffineFunction{T}, S},
-) where {T, S}
+    c::MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S},
+) where {T,S}
     moi_ci = get(model.affine_added_cache, c, c)
     return MOI.get(model.optimizer, attr, moi_ci)
 end
@@ -728,24 +725,36 @@ function add_constraint_with_parameters_on_function(
     model.last_affine_added += 1
     if model.constraints_interpretation == OnlyBounds
         if (length(vars) == 1) && isone(MOI.coefficient(vars[1]))
-            poi_ci = add_vi_constraint(model, vars, params, param_constant, f, set)
+            poi_ci =
+                add_vi_constraint(model, vars, params, param_constant, f, set)
         else
-            error("It was not possible to interpret this constraint as a variable bound.")
+            error(
+                "It was not possible to interpret this constraint as a variable bound.",
+            )
         end
     elseif model.constraints_interpretation == OnlyConstraints
-        poi_ci = add_saf_constraint(model, vars, params,param_constant, f, set)
+        poi_ci = add_saf_constraint(model, vars, params, param_constant, f, set)
     elseif model.constraints_interpretation == BoundsAndConstraints
         if (length(vars) == 1) && isone(MOI.coefficient(vars[1]))
-            poi_ci = add_vi_constraint(model, vars, params, param_constant, f, set)
+            poi_ci =
+                add_vi_constraint(model, vars, params, param_constant, f, set)
         else
-            poi_ci = add_saf_constraint(model, vars, params,param_constant, f, set)
+            poi_ci =
+                add_saf_constraint(model, vars, params, param_constant, f, set)
         end
     end
     model.original_constraint_function_and_set_cache[poi_ci] = (f, set)
     return poi_ci
 end
 
-function add_saf_constraint(model::Optimizer, vars::Vector{MOI.ScalarAffineTerm{T}}, params::Vector{MOI.ScalarAffineTerm{T}}, param_constant::T, f::MOI.ScalarAffineFunction{T}, set::S) where {T, S}
+function add_saf_constraint(
+    model::Optimizer,
+    vars::Vector{MOI.ScalarAffineTerm{T}},
+    params::Vector{MOI.ScalarAffineTerm{T}},
+    param_constant::T,
+    f::MOI.ScalarAffineFunction{T},
+    set::S,
+) where {T,S}
     moi_ci = MOI.Utilities.normalize_and_add_constraint(
         model.optimizer,
         MOI.ScalarAffineFunction(vars, f.constant + param_constant),
@@ -755,7 +764,14 @@ function add_saf_constraint(model::Optimizer, vars::Vector{MOI.ScalarAffineTerm{
     return poi_ci
 end
 
-function add_vi_constraint(model::Optimizer, vars::Vector{MOI.ScalarAffineTerm{T}}, params::Vector{MOI.ScalarAffineTerm{T}}, param_constant::T, f::MOI.ScalarAffineFunction{T}, set::S) where {T, S}
+function add_vi_constraint(
+    model::Optimizer,
+    vars::Vector{MOI.ScalarAffineTerm{T}},
+    params::Vector{MOI.ScalarAffineTerm{T}},
+    param_constant::T,
+    f::MOI.ScalarAffineFunction{T},
+    set::S,
+) where {T,S}
     moi_ci = MOI.Utilities.normalize_and_add_constraint(
         model.optimizer,
         MOI.VariableIndex(vars[1].variable.value),
@@ -765,7 +781,11 @@ function add_vi_constraint(model::Optimizer, vars::Vector{MOI.ScalarAffineTerm{T
     return poi_ci
 end
 
-function create_new_poi_ci_and_save_affine_caches(model::Optimizer, params::Vector{MOI.ScalarAffineTerm{T}}, moi_ci::MOI.ConstraintIndex{F, S}) where {T, F, S}
+function create_new_poi_ci_and_save_affine_caches(
+    model::Optimizer,
+    params::Vector{MOI.ScalarAffineTerm{T}},
+    moi_ci::MOI.ConstraintIndex{F,S},
+) where {T,F,S}
     poi_ci = MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S}(
         model.last_affine_added,
     )
@@ -896,7 +916,7 @@ struct ConstraintsInterpretation <: MOI.AbstractOptimizerAttribute end
 function MOI.set(
     model::Optimizer,
     ::ConstraintsInterpretation,
-    value::ConstraintsInterpretationCode
+    value::ConstraintsInterpretationCode,
 )
     return model.constraints_interpretation = value
 end
