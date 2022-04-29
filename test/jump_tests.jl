@@ -402,16 +402,16 @@ end
 
     @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
           Tuple{Type,Type}[
-        (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
         (MOI.VariableIndex, MOI.GreaterThan{Float64}),
+        (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
     ]
 
     @test MOI.get(
         backend(model).optimizer,
         MOI.ListOfConstraintTypesPresent(),
     ) == Tuple{Type,Type}[
-        (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
         (MOI.VariableIndex, MOI.GreaterThan{Float64}),
+        (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
     ]
 
     @test objective_value(model) == -1
@@ -434,16 +434,16 @@ end
 
     @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
           Tuple{Type,Type}[
-        (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
         (MOI.VariableIndex, MOI.GreaterThan{Float64}),
+        (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
     ]
 
     @test MOI.get(
         backend(model).optimizer,
         MOI.ListOfConstraintTypesPresent(),
     ) == Tuple{Type,Type}[
-        (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
         (MOI.VariableIndex, MOI.GreaterThan{Float64}),
+        (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
     ]
 
     @test objective_value(model) == -1
