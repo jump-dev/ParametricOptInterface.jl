@@ -1,6 +1,6 @@
 # ParametricOptInterface.jl Documentation
 
-ParametricOptInterface.jl (POI for short) is a package written on top of MathOptInterface.jl that allows users to add parameters to a MOI/JuMP problem explicitely.
+ParametricOptInterface.jl (POI for short) is a package written on top of MathOptInterface.jl that allows users to add parameters to a MOI/JuMP problem explicitly.
 
 ## Installation
 
