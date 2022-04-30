@@ -2,7 +2,7 @@
 
 ## MOI example
 
-Lets write a setep-by-step example of `POI` usage at the MOI level.
+Let's write a step-by-step example of `POI` usage at the MOI level.
 
 First, we declare a [`ParametricOptInterface.Optimizer`](@ref) on top of a `MOI` optimizer. In the example, we consider `HiGHS` as the underlying solver:
 
@@ -82,7 +82,7 @@ The  `y` parameter, for example, only appears in the `cons1`. If we compare thei
 isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cy), 3*MOI.get(optimizer, MOI.ConstraintDual(), ci1), atol = 1e-4)
 ```
 
-The same is valid for the remaining parameters. In case a parameter appears in more than one constraint, or both some constraints and in the objective function, its dual will be equal to the linear combination of the functions' duals multiplied by the respective coefficientes.
+The same is valid for the remaining parameters. In case a parameter appears in more than one constraint, or both some constraints and in the objective function, its dual will be equal to the linear combination of the functions' duals multiplied by the respective coefficients.
 
 So far, we only added some parameters that had no influence at first in solving the model. Let's change the values associated to each parameter to assess its implications.
 First, we set the value of parameters `y` and `z` to `1.0`. Notice that we are changing the feasible set of the decision variables:
@@ -126,7 +126,7 @@ MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]
 
 ## JuMP Example
 
-Lets write a setep-by-step example of `POI` usage at the JuMP level.
+Let's write a step-by-step example of `POI` usage at the JuMP level.
 
 First, we declare a `Model` on top of a `Optimizer` of an underlying solver. In the example, we consider `HiGHS` as the underlying solver:
 
@@ -154,7 +154,7 @@ Now, let's consider 3 parameters. Two of them, `y`, `z`, will be placed in the c
 @variable(model, w in ParametricOptInterface.Parameter(0))
 ```
 
-let's add the constraints. Notice that we treat parameters the same way we treat variables when writing the model:
+Let's add the constraints. Notice that we treat parameters the same way we treat variables when writing the model:
 
 ```@example jump1
 @constraint(model, c1, 2x[1] + x[2] + 3y <= 4)
@@ -197,7 +197,7 @@ dual_of_y = MOI.get(model, POI.ParameterDual(), y)
 isapprox(dual_of_y, 3 * dual(c1))
 ```
 
-The same is valid for the remaining parameters. In case a parameter appears in more than one constraint, or both some constraints and in the objective function, its dual will be equal to the linear combination of the functions' duals multiplied by the respective coefficientes.
+The same is valid for the remaining parameters. In case a parameter appears in more than one constraint, or both some constraints and in the objective function, its dual will be equal to the linear combination of the functions' duals multiplied by the respective coefficients.
 
 So far, we only added some parameters that had no influence at first in solving the model. Let's change the values associated to each parameter to assess its implications.
 First, we set the value of parameters `y` and `z` to `1.0`. Notice that we are changing the feasible set of the decision variables:

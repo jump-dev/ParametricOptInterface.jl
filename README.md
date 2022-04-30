@@ -22,10 +22,10 @@ Repository with implementation allowing parameters in MathOptInterface.jl proble
 ## Benchmarking
 
 In the development of ParametricOptInterface.jl it is useful to benchmark the MOI wrapper code performance.
-To perform benchmark we recommend you compare the performance of the master branch aggaints your 
+To perform benchmark we recommend you compare the performance of the master branch against your 
 implementation. Here we leave an example on how to perform the benchmarks the correct way.
 
-1. before starting your implementation run a baseline benchmark aggainst the branch `master`.
+1. Before starting your implementation run a baseline benchmark against the branch `master`.
 ```
 git checkout master
 julia --project=benchmark benchmark/benchmark.jl --new bench

@@ -76,7 +76,7 @@ MOI.set(optimizer, POI.ParameterValue(), y, POI.Parameter(2.0))
 ### Retrieving the dual of a parameter
 
 Given an optimized model, one can calculate the dual associated to a parameter, **as long as it is an additive term in the constraints or objective**.
-One can do so by getting the `MOI.ConstraintDual` attribute of the paraameter's `MOI.ConstraintIndex`:
+One can do so by getting the `MOI.ConstraintDual` attribute of the parameter's `MOI.ConstraintIndex`:
 
 ```julia
 MOI.get(optimizer, POI.ParameterDual(), y)
