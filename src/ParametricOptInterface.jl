@@ -6,7 +6,7 @@ const MOI = MathOptInterface
 
 const PARAMETER_INDEX_THRESHOLD = 1_000_000_000_000_000_000
 
-@enum ConstraintsInterpretationCode OnlyBounds OnlyConstraints BoundsAndConstraints
+@enum ConstraintsInterpretationCode ONLY_CONSTRAINTS ONLY_BOUNDS BOUNDS_AND_CONSTRAINTS
 
 """
     Parameter(val::Float64)
@@ -52,9 +52,10 @@ optimization model.
 
 - `evaluate_duals::Bool`: If `true`, evaluates the dual of parameters. Users might want to set it to false 
   to increase performance when the duals of parameters are not necessary. Defaults to `true`.
+
 - `constraints_interpretation`: Decides how to interpret constraints with `ScalarAffineFunctions`. More details
   are in [`POI.ConstraintsInterpretation`](@ref) and [JuMP Example - Dealing with parametric expressions as variable bounds](@ref).
-  Defaults to `OnlyConstraints`.
+  Defaults to `ONLY_CONSTRAINTS`.
 
 ## Example
 
@@ -204,7 +205,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             Vector{Float64}(),
             evaluate_duals,
             0,
-            OnlyConstraints,
+            ONLY_CONSTRAINTS,
         )
     end
 end
@@ -723,7 +724,7 @@ function add_constraint_with_parameters_on_function(
     vars, params, param_constant =
         separate_possible_terms_and_calculate_parameter_constant(model, f.terms)
     model.last_affine_added += 1
-    if model.constraints_interpretation == OnlyBounds
+    if model.constraints_interpretation == ONLY_BOUNDS
         if (length(vars) == 1) && isone(MOI.coefficient(vars[1]))
             poi_ci =
                 add_vi_constraint(model, vars, params, param_constant, f, set)
@@ -732,9 +733,9 @@ function add_constraint_with_parameters_on_function(
                 "It was not possible to interpret this constraint as a variable bound.",
             )
         end
-    elseif model.constraints_interpretation == OnlyConstraints
+    elseif model.constraints_interpretation == ONLY_CONSTRAINTS
         poi_ci = add_saf_constraint(model, vars, params, param_constant, f, set)
-    elseif model.constraints_interpretation == BoundsAndConstraints
+    elseif model.constraints_interpretation == BOUNDS_AND_CONSTRAINTS
         if (length(vars) == 1) && isone(MOI.coefficient(vars[1]))
             poi_ci =
                 add_vi_constraint(model, vars, params, param_constant, f, set)
@@ -890,25 +891,26 @@ end
 """
     ConstraintsInterpretation <: MOI.AbstractOptimizerAttribute
 
-Attribute to define how `POI.Optimizer` should interpret constraints.
+Attribute to define how [`POI.Optimizer`](@ref) should interpret constraints.
 
-- `POI.OnlyBounds`: Only interpret `ScalarAffineFunction` constraints as a variable bound
+- `POI.ONLY_CONSTRAINTS`: Only interpret `ScalarAffineFunction` constraints as linear constraints
+  If an expression such as `x >= p1 + p2` appears it will be trated like a new constraint.
+  **This is the default behaviour of [`POI.Optimizer`](@ref)**
+
+- `POI.ONLY_BOUNDS`: Only interpret `ScalarAffineFunction` constraints as a variable bound.
   This is valid for constraints such as `x >= p` or `x >= p1 + p2`. If a constraint `x1 + x2 >= p` appears,
   which is not a valid variable bound it will throw an error.
-  
-- `POI.OnlyConstraints`: Only interpret `ScalarAffineFunction` constraints as linear constraints
-  If an expression such as `x >= p1 + p2` appears it will be trated like a new constraint.
 
-- `POI.BoundsAndConstraints`: Interpret `ScalarAffineFunction` constraints as a variable bound if they 
+- `POI.BOUNDS_AND_CONSTRAINTS`: Interpret `ScalarAffineFunction` constraints as a variable bound if they 
   are a valid variable bound, i.e., `x >= p` or `x >= p1 + p2` and interpret them as linear constraints 
   otherwise.
 
 # Example
 
 ```julia
-MOI.set(model, POI.InterpretConstraintsAsBounds(), POI.OnlyBounds)
-MOI.set(model, POI.InterpretConstraintsAsBounds(), POI.OnlyConstraints)
-MOI.set(model, POI.InterpretConstraintsAsBounds(), POI.BoundsAndConstraints)
+MOI.set(model, POI.InterpretConstraintsAsBounds(), POI.ONLY_BOUNDS)
+MOI.set(model, POI.InterpretConstraintsAsBounds(), POI.ONLY_CONSTRAINTS)
+MOI.set(model, POI.InterpretConstraintsAsBounds(), POI.BOUNDS_AND_CONSTRAINTS)
 ```
 """
 struct ConstraintsInterpretation <: MOI.AbstractOptimizerAttribute end

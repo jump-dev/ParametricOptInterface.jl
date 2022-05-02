@@ -274,7 +274,7 @@ end
 
 @testset "JuMP Interpret parametric bounds simple example" begin
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
-    MOI.set(model, POI.ConstraintsInterpretation(), POI.OnlyBounds)
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
 
     @variable(model, x[i = 1:2])
     @variable(model, p[i = 1:2] in POI.Parameter.(-1))
@@ -303,7 +303,7 @@ end
 
 @testset "JuMP Interpret parametric bounds parametric expression" begin
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
-    MOI.set(model, POI.ConstraintsInterpretation(), POI.OnlyBounds)
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
 
     @variable(model, x[i = 1:2])
     @variable(model, p[i = 1:2] in POI.Parameter.(-1))
@@ -332,7 +332,7 @@ end
 
 @testset "JuMP Interpret parametric bounds direct model" begin
     model = direct_model(POI.Optimizer(GLPK.Optimizer()))
-    MOI.set(model, POI.ConstraintsInterpretation(), POI.OnlyBounds)
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
 
     @variable(model, x[i = 1:2])
     @variable(model, p[i = 1:2] in POI.Parameter.(-1))
@@ -358,7 +358,7 @@ end
 
 @testset "JuMP Interpret parametric bounds direct model no interpretation" begin
     model = direct_model(POI.Optimizer(GLPK.Optimizer()))
-    MOI.set(model, POI.ConstraintsInterpretation(), POI.OnlyConstraints)
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_CONSTRAINTS)
 
     @variable(model, x[i = 1:2])
     @variable(model, p[i = 1:2] in POI.Parameter.(-1))
@@ -390,12 +390,12 @@ end
 
 @testset "JuMP Interpret parametric bounds direct model change interpretation" begin
     model = direct_model(POI.Optimizer(GLPK.Optimizer()))
-    MOI.set(model, POI.ConstraintsInterpretation(), POI.OnlyBounds)
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i = 1:2])
     @variable(model, p[i = 1:2] in POI.Parameter.(-1))
     @constraint(model, [i in 1:2], x[i] >= p[i])
     @test_throws ErrorException @constraint(model, [i in 1:2], 2x[i] >= p[i])
-    MOI.set(model, POI.ConstraintsInterpretation(), POI.OnlyConstraints)
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_CONSTRAINTS)
     @constraint(model, [i in 1:2], 2x[i] >= p[i])
     @objective(model, Min, sum(x))
     optimize!(model)
@@ -410,7 +410,7 @@ end
 
 @testset "JuMP Interpret parametric bounds direct model both interpretations" begin
     model = direct_model(POI.Optimizer(GLPK.Optimizer()))
-    MOI.set(model, POI.ConstraintsInterpretation(), POI.BoundsAndConstraints)
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.BOUNDS_AND_CONSTRAINTS)
     @variable(model, x[i = 1:2])
     @variable(model, p[i = 1:2] in POI.Parameter.(-1))
     @constraint(model, [i in 1:2], x[i] >= p[i])
@@ -428,7 +428,7 @@ end
 
 @testset "JuMP Interpret parametric bounds parametric not a valid bound" begin
     model = direct_model(POI.Optimizer(GLPK.Optimizer()))
-    MOI.set(model, POI.ConstraintsInterpretation(), POI.OnlyBounds)
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
 
     @variable(model, x[i = 1:2])
     @variable(model, p[i = 1:2] in POI.Parameter.(-1))

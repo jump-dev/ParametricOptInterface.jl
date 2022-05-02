@@ -291,7 +291,7 @@ model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
 @variable(model, p in POI.Parameter(0.0))
 
 # Indicate that all the new constraints will be valid variable bounds
-MOI.set(model, POI.ConstraintsInterpretation(), POI.OnlyBounds)
+MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
 @constraint(model, x >= p);
 # It has a `;` because the prints don't work for this case.
 # It tries to print a ConstraintName of a linear constraint
@@ -299,7 +299,7 @@ MOI.set(model, POI.ConstraintsInterpretation(), POI.OnlyBounds)
 # and these kinds of constraints don't allow names.
 
 # Indicate that all the new constraints will not be variable bounds
-MOI.set(model, POI.ConstraintsInterpretation(), POI.OnlyConstraints)
+MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_CONSTRAINTS)
 # @constraint(model, ...)
 ```
 
@@ -315,4 +315,4 @@ This way the mathematical representation of the problem will be:
 
 which might lead to faster solves.
 
-Users that just want everything to work can use the default value `POI.OnlyConstraints` or try to use `POI.BoundsAndConstraints` and leave it to ParametricOptInterface to interpret the constraints as bounds when applicable and linear constraints otherwise.
+Users that just want everything to work can use the default value `POI.ONLY_CONSTRAINTS` or try to use `POI.BOUNDS_AND_CONSTRAINTS` and leave it to ParametricOptInterface to interpret the constraints as bounds when applicable and linear constraints otherwise.
