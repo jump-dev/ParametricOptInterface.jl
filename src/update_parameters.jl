@@ -18,12 +18,14 @@ end
 function update_parameter_in_affine_constraints!(model::Optimizer)
     for (F, S) in keys(model.affine_constraint_cache.dict)
         affine_constraint_cache_inner = model.affine_constraint_cache[F, S]
+        affine_added_cache_inner = model.affine_added_cache[F, S]
         if !isempty(affine_constraint_cache_inner)
             update_parameter_in_affine_constraints!(
                 model.optimizer,
                 model.parameters,
                 model.updated_parameters,
                 affine_constraint_cache_inner,
+                affine_added_cache_inner,
             )
         end
     end
@@ -47,13 +49,14 @@ function update_parameter_in_affine_constraints!(
     affine_constraint_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{
         F,
         S,
-        V,
+        V1,
     },
-) where {OT,T,F,S,V}
+    affine_added_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{F,S,V2},
+) where {OT,T,F,S,V1,V2}
     for (ci, param_array) in affine_constraint_cache_inner
         update_parameter_in_affine_constraints!(
             optimizer,
-            ci,
+            affine_added_cache_inner[ci],
             param_array,
             parameters,
             updated_parameters,
