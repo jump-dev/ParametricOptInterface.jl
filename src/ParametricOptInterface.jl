@@ -461,7 +461,14 @@ function MOI.get(
     c::MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S},
 ) where {T,S}
     moi_ci = get(model.affine_added_cache, c, c)
-    return MOI.get(model.optimizer, attr, moi_ci)
+    # This SAF constraint was transformed into variable bound
+    if typeof(moi_ci) === MOI.ConstraintIndex{MOI.VariableIndex,S}
+        v = MOI.get(model.optimizer, MOI.ConstraintFunction(), moi_ci)
+        variable_name = MOI.get(model.optimizer, MOI.VariableName(), v)
+        return "ParametricBound_$(S)_$(variable_name)"
+    else
+        return MOI.get(model.optimizer, attr, moi_ci)
+    end
 end
 
 function MOI.get(model::Optimizer, ::MOI.NumberOfVariables)
