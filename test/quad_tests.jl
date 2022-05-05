@@ -338,7 +338,7 @@ end
 
     @test isapprox(
         MOI.get(optimizer, MOI.ConstraintDual(), cy),
-        MOI.get(optimizer, MOI.ConstraintDual(), cons_index),
+        - MOI.get(optimizer, MOI.ConstraintDual(), cons_index),
         atol = ATOL,
     )
 
@@ -413,7 +413,7 @@ end
 
     @test isapprox(
         MOI.get(optimizer, MOI.ConstraintDual(), cy),
-        2 * MOI.get(optimizer, MOI.ConstraintDual(), cons_index),
+        - 2 * MOI.get(optimizer, MOI.ConstraintDual(), cons_index),
         atol = ATOL,
     )
 
@@ -816,12 +816,12 @@ end
 
     @test isapprox(
         MOI.get(optimizer, MOI.ConstraintDual(), cy),
-        2.0,
+        -2.0,
         atol = ATOL,
     )
     @test isapprox(
         MOI.get(optimizer, MOI.ConstraintDual(), cz),
-        1.0,
+        -1.0,
         atol = ATOL,
     )
 
@@ -831,12 +831,12 @@ end
 
     @test isapprox(
         MOI.get(optimizer, MOI.ConstraintDual(), cy),
-        2.0,
+        -2.0,
         atol = ATOL,
     )
     @test isapprox(
         MOI.get(optimizer, MOI.ConstraintDual(), cz),
-        1.0,
+        -1.0,
         atol = ATOL,
     )
 
