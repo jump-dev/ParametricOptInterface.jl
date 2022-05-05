@@ -134,11 +134,7 @@
     @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [3.0, 0.0]
 
     @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cy), 0, atol = ATOL)
-    @test isapprox(
-        MOI.get(optimizer, MOI.ConstraintDual(), cz),
-        4,
-        atol = ATOL,
-    )
+    @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cz), 4, atol = ATOL)
 end
 
 @testset "Production Problem variation on parameters for duals" begin
@@ -212,11 +208,7 @@ end
         atol = ATOL,
     )
 
-    @test isapprox(
-        MOI.get(optimizer, MOI.ConstraintDual(), cy),
-        5,
-        atol = ATOL,
-    )
+    @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cy), 5, atol = ATOL)
     @test isapprox(
         MOI.get(optimizer, MOI.ConstraintDual(), cz),
         2 / 6,
@@ -297,11 +289,7 @@ end
     )
 
     @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cy), 0, atol = ATOL)
-    @test isapprox(
-        MOI.get(optimizer, MOI.ConstraintDual(), cz),
-        2,
-        atol = ATOL,
-    )
+    @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cz), 2, atol = ATOL)
 end
 
 @testset "Production Problem variation on parameters for duals and interval sets" begin
@@ -382,11 +370,7 @@ end
         atol = ATOL,
     )
 
-    @test isapprox(
-        MOI.get(optimizer, MOI.ConstraintDual(), cy),
-        5,
-        atol = ATOL,
-    )
+    @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cy), 5, atol = ATOL)
     @test isapprox(
         MOI.get(optimizer, MOI.ConstraintDual(), cz),
         2 / 6,
@@ -467,9 +451,5 @@ end
     )
 
     @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cy), 0, atol = ATOL)
-    @test isapprox(
-        MOI.get(optimizer, MOI.ConstraintDual(), cz),
-        2,
-        atol = ATOL,
-    )
+    @test isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cz), 2, atol = ATOL)
 end
