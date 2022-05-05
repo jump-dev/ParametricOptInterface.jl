@@ -106,7 +106,7 @@ function calculate_parameters_in_ci!(
     cons_dual = MOI.get(optimizer, MOI.ConstraintDual(), ci)
 
     for param in param_array
-        param_dual_cum_sum[param.variable.value-PARAMETER_INDEX_THRESHOLD] +=
+        param_dual_cum_sum[param.variable.value-PARAMETER_INDEX_THRESHOLD] -=
             cons_dual * param.coefficient
     end
     return
@@ -117,7 +117,7 @@ function update_duals_in_affine_objective!(
     affine_objective_cache::Vector{MOI.ScalarAffineTerm{T}},
 ) where {T}
     for param in affine_objective_cache
-        param_dual_cum_sum[param.variable.value-PARAMETER_INDEX_THRESHOLD] +=
+        param_dual_cum_sum[param.variable.value-PARAMETER_INDEX_THRESHOLD] -=
             param.coefficient
     end
     return
@@ -128,7 +128,7 @@ function update_duals_in_quadratic_objective!(
     quadratic_objective_cache_pc::Vector{MOI.ScalarAffineTerm{T}},
 ) where {T}
     for param in quadratic_objective_cache_pc
-        param_dual_cum_sum[param.variable.value-PARAMETER_INDEX_THRESHOLD] +=
+        param_dual_cum_sum[param.variable.value-PARAMETER_INDEX_THRESHOLD] -=
             param.coefficient
     end
     return
