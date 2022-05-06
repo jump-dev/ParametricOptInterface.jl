@@ -1,47 +1,47 @@
 @testset "Duals: Test Basic" begin
-    m_slave = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
 
-    @variable(m_slave, x[1:2] in POI.Parameter.(ones(2) .* 4.0))
-    @variable(m_slave, y[1:6])
+    @variable(model, x[1:2] in POI.Parameter.(ones(2) .* 4.0))
+    @variable(model, y[1:6])
 
-    @constraint(m_slave, ctr1, 3 * y[1] >= 2 - 7 * x[1])
+    @constraint(model, ctr1, 3 * y[1] >= 2 - 7 * x[1])
 
-    @objective(m_slave, Min, 5 * y[1])
+    @objective(model, Min, 5 * y[1])
 
-    JuMP.optimize!(m_slave)
+    JuMP.optimize!(model)
 
     @test 5 / 3 ≈ JuMP.dual(ctr1) atol = 1e-3
-    @test [-35 / 3, 0.0] ≈ MOI.get.(m_slave, POI.ParameterDual(), x) atol = 1e-3
+    @test [-35 / 3, 0.0] ≈ MOI.get.(model, POI.ParameterDual(), x) atol = 1e-3
     @test [-26 / 3, 0.0, 0.0, 0.0, 0.0, 0.0] ≈ JuMP.value.(y) atol = 1e-3
-    @test -130 / 3 ≈ JuMP.objective_value(m_slave) atol = 1e-3
+    @test -130 / 3 ≈ JuMP.objective_value(model) atol = 1e-3
 end
 
 @testset "Duals: Test Multiple Parameters" begin
-    m_slave = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
 
-    @variable(m_slave, x[1:6] in POI.Parameter.(ones(6) .* 4.0))
-    @variable(m_slave, y[1:6])
+    @variable(model, x[1:6] in POI.Parameter.(ones(6) .* 4.0))
+    @variable(model, y[1:6])
 
-    @constraint(m_slave, ctr1, 3 * y[1] >= 2 - 7 * x[3])
-    @constraint(m_slave, ctr2, 3 * y[1] >= 2 - 7 * x[3])
-    @constraint(m_slave, ctr3, 3 * y[1] >= 2 - 7 * x[3])
-    @constraint(m_slave, ctr4, 3 * y[1] >= 2 - 7 * x[3])
-    @constraint(m_slave, ctr5, 3 * y[1] >= 2 - 7 * x[3])
-    @constraint(m_slave, ctr6, 3 * y[1] >= 2 - 7 * x[3])
+    @constraint(model, ctr1, 3 * y[1] >= 2 - 7 * x[3])
+    @constraint(model, ctr2, 3 * y[1] >= 2 - 7 * x[3])
+    @constraint(model, ctr3, 3 * y[1] >= 2 - 7 * x[3])
+    @constraint(model, ctr4, 3 * y[1] >= 2 - 7 * x[3])
+    @constraint(model, ctr5, 3 * y[1] >= 2 - 7 * x[3])
+    @constraint(model, ctr6, 3 * y[1] >= 2 - 7 * x[3])
     @constraint(
-        m_slave,
+        model,
         ctr7,
         sum(3 * y[i] + x[i] for i in 2:4) >= 2 - 7 * x[3]
     )
     @constraint(
-        m_slave,
+        model,
         ctr8,
         sum(3 * y[i] + 7.0 * x[i] - x[i] for i in 2:4) >= 2 - 7 * x[3]
     )
 
-    @objective(m_slave, Min, 5 * y[1])
+    @objective(model, Min, 5 * y[1])
 
-    JuMP.optimize!(m_slave)
+    JuMP.optimize!(model)
 
     @test 5 / 3 ≈
           JuMP.dual(ctr1) +
@@ -53,9 +53,9 @@ end
     @test 0.0 ≈ JuMP.dual(ctr7) atol = 1e-3
     @test 0.0 ≈ JuMP.dual(ctr8) atol = 1e-3
     @test [0.0, 0.0, -35 / 3, 0.0, 0.0, 0.0] ≈
-          MOI.get.(m_slave, POI.ParameterDual(), x) atol = 1e-3
+          MOI.get.(model, POI.ParameterDual(), x) atol = 1e-3
     @test [-26 / 3, 0.0, 0.0, 0.0, 0.0, 0.0] ≈ JuMP.value.(y) atol = 1e-3
-    @test -130 / 3 ≈ JuMP.objective_value(m_slave) atol = 1e-3
+    @test -130 / 3 ≈ JuMP.objective_value(model) atol = 1e-3
 end
 
 @testset "Duals: Test LessThan" begin
