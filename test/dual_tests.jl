@@ -28,11 +28,7 @@ end
     @constraint(model, ctr4, 3 * y[1] >= 2 - 7 * x[3])
     @constraint(model, ctr5, 3 * y[1] >= 2 - 7 * x[3])
     @constraint(model, ctr6, 3 * y[1] >= 2 - 7 * x[3])
-    @constraint(
-        model,
-        ctr7,
-        sum(3 * y[i] + x[i] for i in 2:4) >= 2 - 7 * x[3]
-    )
+    @constraint(model, ctr7, sum(3 * y[i] + x[i] for i in 2:4) >= 2 - 7 * x[3])
     @constraint(
         model,
         ctr8,
