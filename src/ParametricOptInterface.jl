@@ -873,16 +873,22 @@ struct ParameterValue <: MOI.AbstractVariableAttribute end
 
 function MOI.set(
     opt::MOI.Utilities.CachingOptimizer,
-    ::ParameterValue, var::MOI.VariableIndex, val::Float64)
-    ci = MOI.ConstraintIndex{MOI.VariableIndex, Parameter}(var.value)
+    ::ParameterValue,
+    var::MOI.VariableIndex,
+    val::Float64,
+)
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,Parameter}(var.value)
     set = MOI.set(opt, MOI.ConstraintSet(), ci, Parameter(val))
     return nothing
 end
 
 function MOI.set(
     model::Optimizer,
-    ::ParameterValue, var::MOI.VariableIndex, val::Float64)
-    ci = MOI.ConstraintIndex{MOI.VariableIndex, Parameter}(var.value)
+    ::ParameterValue,
+    var::MOI.VariableIndex,
+    val::Float64,
+)
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,Parameter}(var.value)
     set = MOI.set(model, MOI.ConstraintSet(), ci, Parameter(val))
     return nothing
 end
@@ -906,19 +912,17 @@ function MOI.set(
 end
 
 function MOI.get(
-    opt::MOI.Utilities.CachingOptimizer, 
-    ::ParameterValue, 
-    var::MOI.VariableIndex)
-    ci = MOI.ConstraintIndex{MOI.VariableIndex, Parameter}(var.value)
+    opt::MOI.Utilities.CachingOptimizer,
+    ::ParameterValue,
+    var::MOI.VariableIndex,
+)
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,Parameter}(var.value)
     set = MOI.get(opt, MOI.ConstraintSet(), ci)
     return set.val
 end
 
-function MOI.get(
-    model::Optimizer, 
-    ::ParameterValue, 
-    var::MOI.VariableIndex)
-    ci = MOI.ConstraintIndex{MOI.VariableIndex, Parameter}(var.value)
+function MOI.get(model::Optimizer, ::ParameterValue, var::MOI.VariableIndex)
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,Parameter}(var.value)
     set = MOI.get(model, MOI.ConstraintSet(), ci)
     return set.val
 end
