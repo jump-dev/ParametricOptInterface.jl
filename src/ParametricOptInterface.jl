@@ -296,6 +296,12 @@ function MOI.supports(
     return MOI.supports(model.optimizer, attr)
 end
 
+MOI.supports(model::Optimizer, ::MOI.NLPBlock) = MOI.supports(model.optimizer, MOI.NLPBlock())
+
+function MOI.set(model::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
+    return MOI.set(model.optimizer, MOI.NLPBlock(), nlp_data)
+end
+
 function MOI.supports_incremental_interface(model::Optimizer)
     return MOI.supports_incremental_interface(model.optimizer)
 end
@@ -1269,6 +1275,47 @@ function MOI.set(
         terms_with_variables_associated_to_parameters
 
     return
+end
+
+function MOI.Utilities.default_copy_to(dest::MOI.ModelLike, src::MOI.ModelLike)
+    if !MOI.supports_incremental_interface(dest)
+        error("Model $(typeof(dest)) does not support copy_to.")
+    end
+    MOI.empty!(dest)
+    vis_src = MOI.get(src, MOI.ListOfVariableIndices())
+    index_map = MOI.IndexMap()
+    # The `NLPBlock` assumes that the order of variables does not change (#849)
+    # Therefore, all VariableIndex and VectorOfVariable constraints are added
+    # seprately, and no variables constrained-on-creation are added.
+
+    # This is not valid for NLPs with Parameters, they should enter
+    has_nlp = MOI.NLPBlock() in MOI.get(src, MOI.ListOfModelAttributesSet())
+    constraints_not_added = if has_nlp
+        vcat(
+            Any[
+                MOI.get(src, MOI.ListOfConstraintIndices{F,S}()) for
+                (F, S) in MOI.get(src, MOI.ListOfConstraintTypesPresent()) if
+                MOI.Utilities._is_variable_function(F) && S != Parameter
+            ],
+            Any[
+                MOI.Utilities._try_constrain_variables_on_creation(dest, src, index_map, Parameter)
+            ]
+        )
+    else
+        Any[
+            MOI.Utilities._try_constrain_variables_on_creation(dest, src, index_map, S)
+            for S in MOI.Utilities.sorted_variable_sets_by_cost(dest, src)
+        ]
+    end
+    MOI.Utilities._copy_free_variables(dest, index_map, vis_src)
+    # Copy variable attributes
+    MOI.Utilities.pass_attributes(dest, src, index_map, vis_src)
+    # Copy model attributes
+    MOI.Utilities.pass_attributes(dest, src, index_map)
+    # Copy constraints
+    MOI.Utilities._pass_constraints(dest, src, index_map, constraints_not_added)
+    MOI.Utilities.final_touch(dest, index_map)
+    return index_map
 end
 
 function MOI.optimize!(model::Optimizer)
