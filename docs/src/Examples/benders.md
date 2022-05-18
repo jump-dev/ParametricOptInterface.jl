@@ -18,12 +18,12 @@ In this example we will solve a problem where the explanatory variables are sinu
 First, we define the number of explanatory variables and observations
 
 ```julia
-using ParametricOptInterface,MathOptInterface,JuMP,GLPK
+using ParametricOptInterface,MathOptInterface,JuMP,HiGHS
 using TimerOutputs,LinearAlgebra,Random
 
 const POI = ParametricOptInterface
 const MOI = MathOptInterface
-const OPTIMIZER = GLPK.Optimizer;
+const OPTIMIZER = HiGHS.Optimizer;
 
 const N_Candidates = 200
 const N_Observations = 2000
@@ -74,7 +74,7 @@ const y = X' * β .+ 0.1 * randn(rng, N_Observations)
 Benders decomposition is used to solve large optimization problems with some special characteristics.
 LP's can be solved with classical linear optimization methods
 such as the Simplex method or Interior point methods provided by
-solvers like GLPK.
+solvers like HiGHS.
 However, these methods do not scale linearly with the problem size.
 In the Benders decomposition framework we break the problem in two pieces:
 A outer and a inner problem.

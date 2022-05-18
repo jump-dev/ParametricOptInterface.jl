@@ -87,11 +87,13 @@ Run the portfolio optimization for different values of $\gamma$
 ```julia
 portfolio = first_model(μ,Σ)
 portfolios_values = Dict()
+# Create a reference to the model to change it later
+portfolio_ref = [portfolio]
 add_to_dict(portfolios_values,portfolio,μ,Σ)
 
 for γ_value in 0.02:0.02:1.0
-    global portfolio = update_model!(portfolio,γ_value)
-    add_to_dict(portfolios_values,portfolio,μ,Σ)
+    portfolio_ref[] = update_model!(portfolio_ref[],γ_value)
+    add_to_dict(portfolios_values,portfolio_ref[],μ,Σ)
 end
 ```
 
