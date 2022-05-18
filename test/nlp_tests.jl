@@ -1,13 +1,14 @@
 @testset "NLP with parameters" begin
     ipopt = Ipopt.Optimizer()
     MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
-    cached = () -> MOI.Bridges.full_bridge_optimizer(
-        MOIU.CachingOptimizer(
-            MOIU.UniversalFallback(MOIU.Model{Float64}()),
-            ipopt,
-        ),
-        Float64,
-    )
+    cached =
+        () -> MOI.Bridges.full_bridge_optimizer(
+            MOIU.CachingOptimizer(
+                MOIU.UniversalFallback(MOIU.Model{Float64}()),
+                ipopt,
+            ),
+            Float64,
+        )
     POI_cached_optimizer() = ParametricOptInterface.Optimizer(cached())
 
     m = Model(() -> POI_cached_optimizer())

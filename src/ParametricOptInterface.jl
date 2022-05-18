@@ -296,7 +296,9 @@ function MOI.supports(
     return MOI.supports(model.optimizer, attr)
 end
 
-MOI.supports(model::Optimizer, ::MOI.NLPBlock) = MOI.supports(model.optimizer, MOI.NLPBlock())
+function MOI.supports(model::Optimizer, ::MOI.NLPBlock)
+    return MOI.supports(model.optimizer, MOI.NLPBlock())
+end
 
 function MOI.set(model::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
     return MOI.set(model.optimizer, MOI.NLPBlock(), nlp_data)
@@ -1297,14 +1299,21 @@ function MOI.Utilities.default_copy_to(dest::MOI.ModelLike, src::MOI.ModelLike)
                 (F, S) in MOI.get(src, MOI.ListOfConstraintTypesPresent()) if
                 MOI.Utilities._is_variable_function(F) && S != Parameter
             ],
-            Any[
-                MOI.Utilities._try_constrain_variables_on_creation(dest, src, index_map, Parameter)
-            ]
+            Any[MOI.Utilities._try_constrain_variables_on_creation(
+                dest,
+                src,
+                index_map,
+                Parameter,
+            )],
         )
     else
         Any[
-            MOI.Utilities._try_constrain_variables_on_creation(dest, src, index_map, S)
-            for S in MOI.Utilities.sorted_variable_sets_by_cost(dest, src)
+            MOI.Utilities._try_constrain_variables_on_creation(
+                dest,
+                src,
+                index_map,
+                S,
+            ) for S in MOI.Utilities.sorted_variable_sets_by_cost(dest, src)
         ]
     end
     MOI.Utilities._copy_free_variables(dest, index_map, vis_src)
