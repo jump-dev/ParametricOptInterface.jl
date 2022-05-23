@@ -1279,7 +1279,10 @@ function MOI.set(
     return
 end
 
-function MOI.Utilities.default_copy_to(dest::MOI.ModelLike, src::MOI.ModelLike)
+function MOI.Utilities.default_copy_to(
+    dest::MOI.Bridges.LazyBridgeOptimizer{Optimizer{Float64,Opt}},
+    src::MOI.ModelLike,
+) where {Opt}
     if !MOI.supports_incremental_interface(dest)
         error("Model $(typeof(dest)) does not support copy_to.")
     end

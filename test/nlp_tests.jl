@@ -11,20 +11,43 @@
         )
     POI_cached_optimizer() = ParametricOptInterface.Optimizer(cached())
 
-    m = Model(() -> POI_cached_optimizer())
+    model = Model(() -> POI_cached_optimizer())
 
-    @variable(m, x)
-    @variable(m, z in ParametricOptInterface.Parameter(10))
-    # MOI.set(m, ParametricOptInterface.ConstraintsInterpretation(), ParametricOptInterface.ONLY_BOUNDS)
-    @constraint(m, x >= z)
-    @NLobjective(m, Min, x^2)
+    @variable(model, x)
+    @variable(model, y)
+    @variable(model, z in ParametricOptInterface.Parameter(10))
+    @constraint(model, x + y >= z)
+    @NLobjective(model, Min, x^2 + y^2)
 
-    optimize!(m)
-    objective_value(m)
+    optimize!(model)
+    objective_value(model)
+    @test value(x) ≈ 5
+    MOI.get(model, ParametricOptInterface.ParameterDual(), z)
+    MOI.set(model, ParametricOptInterface.ParameterValue(), z, 2.0)
+    optimize!(model)
+    @test objective_value(model) ≈ 2 atol = 1e-3
+    @test value(x) ≈ 1
+
+    ipopt = Ipopt.Optimizer()
+    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
+    model = Model(() -> ParametricOptInterface.Optimizer(ipopt))
+
+    @variable(model, x)
+    @variable(model, z in ParametricOptInterface.Parameter(10))
+    MOI.set(
+        model,
+        ParametricOptInterface.ConstraintsInterpretation(),
+        ParametricOptInterface.ONLY_BOUNDS,
+    )
+    @constraint(model, x >= z)
+    @NLobjective(model, Min, x^2)
+
+    optimize!(model)
+    objective_value(model)
     @test value(x) ≈ 10
-    MOI.get(m, ParametricOptInterface.ParameterDual(), z)
-    MOI.set(m, ParametricOptInterface.ParameterValue(), z, 2.0)
-    optimize!(m)
-    objective_value(m)
+    MOI.get(model, ParametricOptInterface.ParameterDual(), z)
+    MOI.set(model, ParametricOptInterface.ParameterValue(), z, 2.0)
+    optimize!(model)
+    @test objective_value(model) ≈ 4 atol = 1e-3
     @test value(x) ≈ 2
 end
