@@ -875,23 +875,39 @@ MOI.get(model, POI.ParameterValue(), p)
 """
 struct ParameterValue <: MOI.AbstractVariableAttribute end
 
+# We need a CachingOptimizer fallback to
+# get ParameterValue working correctly on JuMP
+# TODO: Think of a better solution for this
+
+function MOI.set(
+    opt::MOI.Utilities.CachingOptimizer,
+    ::ParameterValue,
+    var::MOI.VariableIndex,
+    val::Float64,
+)
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,Parameter}(var.value)
+    set = MOI.set(opt, MOI.ConstraintSet(), ci, Parameter(val))
+    return nothing
+end
+
 function MOI.set(
     model::Optimizer,
     ::ParameterValue,
-    vi::MOI.VariableIndex,
+    var::MOI.VariableIndex,
     val::Float64,
 )
-    if !is_parameter_in_model(model, vi)
-        error("Parameter not in the model")
-    end
-    return model.updated_parameters[p_idx(vi)] = val
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,Parameter}(var.value)
+    set = MOI.set(model, MOI.ConstraintSet(), ci, Parameter(val))
+    return nothing
 end
 
-function MOI.get(model::Optimizer, ::ParameterValue, vi::MOI.VariableIndex)
-    if !is_parameter_in_model(model, vi)
-        error("Parameter not in the model")
-    end
-    return model.updated_parameters[p_idx(vi)]
+function MOI.set(
+    opt::MOI.Utilities.CachingOptimizer,
+    ::ParameterValue,
+    vi::MOI.VariableIndex,
+    val::Real,
+)
+    return MOI.set(opt, ParameterValue(), vi, convert(Float64, val))
 end
 
 function MOI.set(
@@ -901,6 +917,22 @@ function MOI.set(
     val::Real,
 )
     return MOI.set(model, ParameterValue(), vi, convert(Float64, val))
+end
+
+function MOI.get(
+    opt::MOI.Utilities.CachingOptimizer,
+    ::ParameterValue,
+    var::MOI.VariableIndex,
+)
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,Parameter}(var.value)
+    set = MOI.get(opt, MOI.ConstraintSet(), ci)
+    return set.val
+end
+
+function MOI.get(model::Optimizer, ::ParameterValue, var::MOI.VariableIndex)
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,Parameter}(var.value)
+    set = MOI.get(model, MOI.ConstraintSet(), ci)
+    return set.val
 end
 
 """

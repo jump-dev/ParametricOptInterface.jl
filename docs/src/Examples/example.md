@@ -1,4 +1,4 @@
-# Examples
+# Basic Examples
 
 ## MOI example - step by step usage
 

@@ -98,6 +98,8 @@ end
     @variable(model, w in POI.Parameter(0))
     @variable(model, z in POI.Parameter(0))
 
+    @test MOI.get(model, POI.ParameterValue(), y) == 0
+
     @constraint(model, 2 * x[1] + x[2] + y <= 4)
     @constraint(model, (1 + y) * x[1] + 2 * x[2] + z <= 4)
 
