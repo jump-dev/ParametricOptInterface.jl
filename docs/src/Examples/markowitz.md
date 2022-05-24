@@ -6,7 +6,7 @@ weight parameter $\gamma$ and maximize $\gamma \text{ risk} - \text{expected ret
 Given the prices changes with mean $\mu$ and covariance $\Sigma$, we can construct the classical portfolio problem:
 
 $$\begin{array}{ll}
-     \text{minimize}   & \gamma* x^T \mu - x^T \Sigma x \\
+     \text{maximize}   & \gamma* x^T \mu - x^T \Sigma x \\
      \text{subject to} & \| x \|_1 = 1 \\
      & x \succeq 0
 \end{array}$$
