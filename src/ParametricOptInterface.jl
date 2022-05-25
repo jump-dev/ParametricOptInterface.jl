@@ -297,9 +297,12 @@ end
 
 function MOI.supports(
     model::Optimizer,
-    ::MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{T}}
+    ::MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{T}},
 ) where {T}
-    return MOI.supports(model.optimizer, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{T}}())
+    return MOI.supports(
+        model.optimizer,
+        MOI.ObjectiveFunction{MOI.ScalarAffineFunction{T}}(),
+    )
 end
 
 function MOI.supports_incremental_interface(model::Optimizer)
