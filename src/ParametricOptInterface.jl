@@ -290,7 +290,6 @@ function MOI.supports(
         MOI.ObjectiveSense,
         MOI.ObjectiveFunction{MOI.VariableIndex},
         MOI.ObjectiveFunction{MOI.ScalarAffineFunction{T}},
-        MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{T}},
     },
 ) where {T}
     return MOI.supports(model.optimizer, attr)
@@ -302,6 +301,16 @@ end
 
 function MOI.set(model::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
     return MOI.set(model.optimizer, MOI.NLPBlock(), nlp_data)
+end
+  
+function MOI.supports(
+    model::Optimizer,
+    ::MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{T}},
+) where {T}
+    return MOI.supports(
+        model.optimizer,
+        MOI.ObjectiveFunction{MOI.ScalarAffineFunction{T}}(),
+    )
 end
 
 function MOI.supports_incremental_interface(model::Optimizer)
@@ -1273,31 +1282,18 @@ function MOI.set(
 
     aff_terms = vcat(aff_terms, aff_vars)
     const_term = f.constant + aff_param_constant + quad_param_constant
-    quad_terms = quad_vars
 
     if !isempty(quad_vars)
         MOI.set(
             model.optimizer,
             attr,
-            MOI.ScalarQuadraticFunction(quad_terms, aff_terms, const_term),
+            MOI.ScalarQuadraticFunction(quad_vars, aff_terms, const_term),
         )
     else
         MOI.set(
             model.optimizer,
             MOI.ObjectiveFunction{MOI.ScalarAffineFunction{T}}(),
             MOI.ScalarAffineFunction(aff_terms, const_term),
-        )
-    end
-
-    if !isempty(quad_terms)
-        f_quad = MOI.ScalarQuadraticFunction(quad_terms, aff_terms, const_term)
-        MOI.set(model.optimizer, attr, f_quad)
-    else
-        f_quad = MOI.ScalarAffineFunction(aff_terms, const_term)
-        MOI.set(
-            model.optimizer,
-            MOI.ObjectiveFunction{MOI.ScalarAffineFunction{T}}(),
-            f_quad,
         )
     end
 
