@@ -302,7 +302,7 @@ end
 function MOI.set(model::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
     return MOI.set(model.optimizer, MOI.NLPBlock(), nlp_data)
 end
-  
+
 function MOI.supports(
     model::Optimizer,
     ::MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{T}},
