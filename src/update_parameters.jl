@@ -307,7 +307,10 @@ function update_parameter_in_quadratic_constraints_pv!(model::Optimizer)
             end
         end
         old_ci = model.quadratic_added_cache[ci]
-        changes = Vector{MOI.ScalarCoefficientChange}(undef, length(new_coeff_per_variable))
+        changes = Vector{MOI.ScalarCoefficientChange}(
+            undef,
+            length(new_coeff_per_variable),
+        )
         i = 1
         for (vi, value) in new_coeff_per_variable
             changes[i] = MOI.ScalarCoefficientChange(vi, value)
@@ -315,10 +318,10 @@ function update_parameter_in_quadratic_constraints_pv!(model::Optimizer)
         end
         # Make multiple changes at once.
         MOI.modify(
-                model.optimizer,
-                fill(old_ci, length(new_coeff_per_variable)),
-                changes,
-            )
+            model.optimizer,
+            fill(old_ci, length(new_coeff_per_variable)),
+            changes,
+        )
     end
     return model
 end
@@ -352,17 +355,16 @@ function update_parameter_in_quadratic_objective_pv!(model::Optimizer)
     end
 
     F_pv = MOI.get(model.optimizer, MOI.ObjectiveFunctionType())
-    changes = Vector{MOI.ScalarCoefficientChange}(undef, length(new_coeff_per_variable))
+    changes = Vector{MOI.ScalarCoefficientChange}(
+        undef,
+        length(new_coeff_per_variable),
+    )
     i = 1
     for (vi, value) in new_coeff_per_variable
         changes[i] = MOI.ScalarCoefficientChange(vi, value)
         i += 1
     end
-    MOI.modify(
-            model.optimizer,
-            MOI.ObjectiveFunction{F_pv}(),
-            changes,
-        )
+    MOI.modify(model.optimizer, MOI.ObjectiveFunction{F_pv}(), changes)
     return model
 end
 
