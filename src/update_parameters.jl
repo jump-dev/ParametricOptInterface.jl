@@ -226,6 +226,7 @@ function update_parameter_in_quadratic_constraints_pp!(model::Optimizer)
             )
         end
     end
+    return model
 end
 
 function update_parameter_in_quadratic_objective_pp!(model::Optimizer)
@@ -272,6 +273,7 @@ function update_parameter_in_quadratic_objective_pp!(model::Optimizer)
             )
         end
     end
+    return model
 end
 
 function update_parameter_in_quadratic_constraints_pv!(model::Optimizer)
@@ -327,44 +329,46 @@ function update_parameter_in_quadratic_constraints_pv!(model::Optimizer)
 end
 
 function update_parameter_in_quadratic_objective_pv!(model::Optimizer)
-    # We need this dictionary because we could have terms like
-    # p_1 * v_1 + p_2 * v_1 and we should add p_1 and p_2 on the update
-    new_coeff_per_variable = Dict{MOI.VariableIndex,Float64}()
-    for term in model.quadratic_objective_cache_pv
-        # Here we use the convention that the parameter always comes as the first variables
-        # in the caches
-        if !isnan(model.updated_parameters[p_idx(term.variable_1)])
-            coef = term.coefficient
-            param_new = model.updated_parameters[p_idx(term.variable_1)]
-            if haskey(new_coeff_per_variable, term.variable_2)
-                new_coeff_per_variable[term.variable_2] += param_new * coef
-            else
-                new_coeff_per_variable[term.variable_2] = param_new * coef
+    if !isempty(model.quadratic_objective_cache_pv)
+        # We need this dictionary because we could have terms like
+        # p_1 * v_1 + p_2 * v_1 and we should add p_1 and p_2 on the update
+        new_coeff_per_variable = Dict{MOI.VariableIndex,Float64}()
+        for term in model.quadratic_objective_cache_pv
+            # Here we use the convention that the parameter always comes as the first variables
+            # in the caches
+            if !isnan(model.updated_parameters[p_idx(term.variable_1)])
+                coef = term.coefficient
+                param_new = model.updated_parameters[p_idx(term.variable_1)]
+                if haskey(new_coeff_per_variable, term.variable_2)
+                    new_coeff_per_variable[term.variable_2] += param_new * coef
+                else
+                    new_coeff_per_variable[term.variable_2] = param_new * coef
+                end
             end
         end
-    end
 
-    for aff_term in
-        model.quadratic_objective_variables_associated_to_parameters_cache
-        coef = aff_term.coefficient
-        if haskey(new_coeff_per_variable, aff_term.variable)
-            new_coeff_per_variable[aff_term.variable] += coef
-        else
-            new_coeff_per_variable[aff_term.variable] = coef
+        for aff_term in
+            model.quadratic_objective_variables_associated_to_parameters_cache
+            coef = aff_term.coefficient
+            if haskey(new_coeff_per_variable, aff_term.variable)
+                new_coeff_per_variable[aff_term.variable] += coef
+            else
+                new_coeff_per_variable[aff_term.variable] = coef
+            end
         end
-    end
 
-    F_pv = MOI.get(model.optimizer, MOI.ObjectiveFunctionType())
-    changes = Vector{MOI.ScalarCoefficientChange}(
-        undef,
-        length(new_coeff_per_variable),
-    )
-    i = 1
-    for (vi, value) in new_coeff_per_variable
-        changes[i] = MOI.ScalarCoefficientChange(vi, value)
-        i += 1
+        F_pv = MOI.get(model.optimizer, MOI.ObjectiveFunctionType())
+        changes = Vector{MOI.ScalarCoefficientChange}(
+            undef,
+            length(new_coeff_per_variable),
+        )
+        i = 1
+        for (vi, value) in new_coeff_per_variable
+            changes[i] = MOI.ScalarCoefficientChange(vi, value)
+            i += 1
+        end
+        MOI.modify(model.optimizer, MOI.ObjectiveFunction{F_pv}(), changes)
     end
-    MOI.modify(model.optimizer, MOI.ObjectiveFunction{F_pv}(), changes)
     return model
 end
 
