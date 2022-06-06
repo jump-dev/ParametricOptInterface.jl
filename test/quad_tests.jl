@@ -852,7 +852,7 @@ end
 
 @testset "QP - Quadratic objective parameter in quadratic part" begin
     cached = MOI.Bridges.full_bridge_optimizer(
-    MOIU.CachingOptimizer(
+        MOIU.CachingOptimizer(
             MOIU.UniversalFallback(MOIU.Model{Float64}()),
             Ipopt.Optimizer(),
         ),
@@ -864,14 +864,8 @@ end
     y = MOI.add_variable(model)
     p = first(MOI.add_constrained_variable.(model, POI.Parameter(1.0)))
 
-    f1 = MOI.ScalarAffineFunction(
-    MOI.ScalarAffineTerm.([1.0,0], [x, y]),
-    0.0,
-    )
-    f2 = MOI.ScalarAffineFunction(
-        MOI.ScalarAffineTerm.([0,1.0], [x, y]),
-        0.0,
-    )
+    f1 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 0], [x, y]), 0.0)
+    f2 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([0, 1.0], [x, y]), 0.0)
 
     MOI.add_constraint(model, f1, MOI.EqualTo(2.0))
     MOI.add_constraint(model, f2, MOI.EqualTo(2.0))
@@ -879,8 +873,10 @@ end
     MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
     obj_func = MOI.ScalarQuadraticFunction(
-        [MOI.ScalarQuadraticTerm(1.0, x, x)
-        MOI.ScalarQuadraticTerm(1.0, y, y)],
+        [
+            MOI.ScalarQuadraticTerm(1.0, x, x)
+            MOI.ScalarQuadraticTerm(1.0, y, y)
+        ],
         MathOptInterface.ScalarAffineTerm{Float64}[],
         0.0,
     )
@@ -891,8 +887,8 @@ end
         obj_func,
     )
 
-    MOI.set(model, POI.QuadraticObjectiveCoef(), (x,y), 2p+3)
-    
+    MOI.set(model, POI.QuadraticObjectiveCoef(), (x, y), 2p + 3)
+
     MOI.optimize!(model)
 
     @test MOI.get(model, MOI.ObjectiveValue()) ≈ 24.0 atol = ATOL
@@ -907,7 +903,7 @@ end
     @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 2.0 atol = ATOL
 
     cached = MOI.Bridges.full_bridge_optimizer(
-    MOIU.CachingOptimizer(
+        MOIU.CachingOptimizer(
             MOIU.UniversalFallback(MOIU.Model{Float64}()),
             Ipopt.Optimizer(),
         ),
@@ -919,14 +915,8 @@ end
     y = MOI.add_variable(model)
     p = first(MOI.add_constrained_variable.(model, POI.Parameter(1.0)))
 
-    f1 = MOI.ScalarAffineFunction(
-    MOI.ScalarAffineTerm.([1.0,0], [x, y]),
-    0.0,
-    )
-    f2 = MOI.ScalarAffineFunction(
-        MOI.ScalarAffineTerm.([0,1.0], [x, y]),
-        0.0,
-    )
+    f1 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 0], [x, y]), 0.0)
+    f2 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([0, 1.0], [x, y]), 0.0)
 
     MOI.add_constraint(model, f1, MOI.EqualTo(2.0))
     MOI.add_constraint(model, f2, MOI.EqualTo(2.0))
@@ -934,8 +924,10 @@ end
     MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
     obj_func = MOI.ScalarAffineFunction(
-        [MOI.ScalarAffineTerm(1.0, x)
-        MOI.ScalarAffineTerm(2.0, y)],
+        [
+            MOI.ScalarAffineTerm(1.0, x)
+            MOI.ScalarAffineTerm(2.0, y)
+        ],
         1.0,
     )
 
@@ -945,8 +937,8 @@ end
         obj_func,
     )
 
-    MOI.set(model, POI.QuadraticObjectiveCoef(), (x,y), p)
-    
+    MOI.set(model, POI.QuadraticObjectiveCoef(), (x, y), p)
+
     MOI.optimize!(model)
 
     @test MOI.get(model, MOI.ObjectiveValue()) ≈ 11.0 atol = ATOL

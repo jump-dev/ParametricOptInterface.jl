@@ -132,11 +132,8 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     quadratic_added_cache::Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}
     # Store parametric expressions for product of variables
     quadratic_objective_cache_product::Dict{
-        Tuple{
-            MOI.VariableIndex,
-            MOI.VariableIndex
-            },
-        MOI.AbstractFunction
+        Tuple{MOI.VariableIndex,MOI.VariableIndex},
+        MOI.AbstractFunction,
     }
     last_quad_add_added::Int64
     vector_constraint_cache::MOI.Utilities.DoubleDicts.DoubleDict{
@@ -200,11 +197,8 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             }(),
             Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}(),
             Dict{
-                Tuple{
-                    MOI.VariableIndex,
-                    MOI.VariableIndex
-                    },
-                MOI.AbstractFunction
+                Tuple{MOI.VariableIndex,MOI.VariableIndex},
+                MOI.AbstractFunction,
             }(),
             0,
             MOI.Utilities.DoubleDicts.DoubleDict{
@@ -1259,7 +1253,7 @@ struct QuadraticObjectiveCoef <: MOI.AbstractModelAttribute end
 
 function _evaluate(model::Optimizer, p::MOI.VariableIndex)
     if !isnan(model.updated_parameters[p_idx(p)])
-        return model.updated_parameters[p_idx(p)]-model.parameters[p_idx(p)]
+        return model.updated_parameters[p_idx(p)] - model.parameters[p_idx(p)]
     else
         return model.parameters[p_idx(p)]
     end
@@ -1286,26 +1280,23 @@ function _evaluate(model::Optimizer, fparam::MOI.ScalarAffineFunction)
 end
 
 function set_quadratic_product_in_obj(model::Optimizer)
-    
     F = MOI.get(model.optimizer, MOI.ObjectiveFunctionType())
     f = MOI.get(model.optimizer, MOI.ObjectiveFunction{F}())
-    
+
     if F <: MOI.ScalarAffineFunction
         num_vars, num_params = count_scalar_affine_terms_types(model, f.terms)
         if num_vars == 0 && num_params == 0
             aff_vars = MOI.ScalarAffineTerm{Float64}[]
             aff_params = MOI.ScalarAffineTerm{Float64}[]
-            terms_with_variables_associated_to_parameters = MOI.ScalarAffineTerm{Float64}[]
+            terms_with_variables_associated_to_parameters =
+                MOI.ScalarAffineTerm{Float64}[]
             aff_param_constant = 0.0
         else
-            (
-                aff_vars,
-                aff_params,
-                aff_param_constant,
-            ) = separate_possible_terms_and_calculate_parameter_constant(
-                model,
-                f.terms
-            )
+            (aff_vars, aff_params, aff_param_constant) =
+                separate_possible_terms_and_calculate_parameter_constant(
+                    model,
+                    f.terms,
+                )
         end
         quad_vars = MOI.ScalarQuadraticTerm{Float64}[]
         quad_aff_vars = MOI.ScalarQuadraticTerm{Float64}[]
@@ -1337,26 +1328,29 @@ function set_quadratic_product_in_obj(model::Optimizer)
             variables_associated_to_parameters,
         )
     end
-    
+
     aff_terms = vcat(aff_terms, aff_vars)
-    
+
     quadratic_prods_vector = MOI.ScalarQuadraticTerm{Float64}[]
 
     dict_vars_quad_prod = model.quadratic_objective_cache_product
-    for (prod_var,fparam) in dict_vars_quad_prod
-        x,y = prod_var
-        evaluated_fparam = _evaluate(model,fparam)
-        push!(quadratic_prods_vector,MOI.ScalarQuadraticTerm(evaluated_fparam, x, y))
+    for (prod_var, fparam) in dict_vars_quad_prod
+        x, y = prod_var
+        evaluated_fparam = _evaluate(model, fparam)
+        push!(
+            quadratic_prods_vector,
+            MOI.ScalarQuadraticTerm(evaluated_fparam, x, y),
+        )
     end
-    
-    quad_vars = vcat(quad_vars,quadratic_prods_vector)
+
+    quad_vars = vcat(quad_vars, quadratic_prods_vector)
     const_term = f.constant + aff_param_constant + quad_param_constant
 
     MOI.set(
-            model.optimizer,
-            MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
-            MOI.ScalarQuadraticFunction(quad_vars, aff_terms, const_term),
-        )
+        model.optimizer,
+        MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
+        MOI.ScalarQuadraticFunction(quad_vars, aff_terms, const_term),
+    )
 
     return
 end
@@ -1364,18 +1358,15 @@ end
 function MOI.set(
     model::Optimizer,
     ::QuadraticObjectiveCoef,
-    (x1,x2)::Tuple{MOI.VariableIndex,MOI.VariableIndex},
-    f_param::Union{
-        MOI.VariableIndex,
-        MOI.ScalarAffineFunction{T}
-    }
+    (x1, x2)::Tuple{MOI.VariableIndex,MOI.VariableIndex},
+    f_param::Union{MOI.VariableIndex,MOI.ScalarAffineFunction{T}},
 ) where {T}
     if x1.value > x2.value
         aux = x1
         x1 = x2
         x2 = aux
     end
-    model.quadratic_objective_cache_product[(x1,x2)] = f_param
+    model.quadratic_objective_cache_product[(x1, x2)] = f_param
     return
 end
 

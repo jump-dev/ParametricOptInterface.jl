@@ -373,7 +373,7 @@ function update_parameter_in_quadratic_objective_prod!(model::Optimizer)
         set_quadratic_product_in_obj(model)
         return
     end
-    return 
+    return
 end
 
 # Vector Affine
