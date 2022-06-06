@@ -314,3 +314,64 @@ This way the mathematical representation of the problem will be:
 which might lead to faster solves.
 
 Users that just want everything to work can use the default value `POI.ONLY_CONSTRAINTS` or try to use `POI.BOUNDS_AND_CONSTRAINTS` and leave it to ParametricOptInterface to interpret the constraints as bounds when applicable and linear constraints otherwise.
+
+## JuMP Example - Non Linear Programming (NLP)
+
+POI currently works with NLPs when users wish to add the parameters to the non-NL constraints or objective. This means that POI works with models like this one:
+
+```julia
+@variable(model, x)
+@variable(model, y)
+@variable(model, z in POI.Parameter(10))
+@constraint(model, x + y >= z)
+@NLobjective(model, Min, x^2 + y^2)
+```
+
+but does not work with models that have parameters on the NL expressions like this one:
+
+```julia
+@variable(model, x)
+@variable(model, y)
+@variable(model, z in POI.Parameter(10))
+@constraint(model, x + y >= z)
+@NLobjective(model, Min, x^2 + y^2 + z) # There is a parameter here
+```
+
+If users with to add parameters in NL expressions we strongly recommend them to read [this section on the JuMP documentation]((https://jump.dev/JuMP.jl/stable/manual/nlp/#Create-a-nonlinear-parameter))
+
+Although POI works with NLPs there are some important information for users to keep in mind. All come from the fact that POI relies on the MOI interface for problem modifications and these are not common on NLP solvers, most solvers only allow users to modify variable bounds using their official APIs. This means that if users wish to make modifications on some constraint that is not a variable bound we are not allowed to call `MOI.modify` because the function is not supported in the MOI solver interface. The work-around to this is defining a [`POI.Optimizer`](@ref) on a caching optimizer:
+
+```julia
+ipopt = Ipopt.Optimizer()
+MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
+cached =
+    () -> MOI.Bridges.full_bridge_optimizer(
+        MOIU.CachingOptimizer(
+            MOIU.UniversalFallback(MOIU.Model{Float64}()),
+            ipopt,
+        ),
+        Float64,
+    )
+POI_cached_optimizer() = POI.Optimizer(cached())
+model = Model(() -> POI_cached_optimizer())
+@variable(model, x)
+@variable(model, y)
+@variable(model, z in POI.Parameter(10))
+@constraint(model, x + y >= z)
+@NLobjective(model, Min, x^2 + y^2)
+```
+
+This works but keep in mind that the model has an additional layer of between the solver and the [`POI.Optimizer`](@ref). This will make most operations slower than with the version without the caching optimizer. Keep in mind that since the official APIs of most solvers don't allow for modifications on linear constraints there should have no big difference between making a modification using POI or re-building the model from scratch.
+
+If users wish to make modifications on variable bounds the POI interface will help you save time between solves. In this case you should use the [`ParametricOptInterface.ConstraintsInterpretation`](@ref) as we do in this example:
+
+```julia
+model = Model(() -> POI.Optimizer(Ipopt.Optimizer()))
+@variable(model, x)
+@variable(model, z in POI.Parameter(10))
+MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
+@constraint(model, x >= z)
+@NLobjective(model, Min, x^2)
+```
+
+This use case should help users diminsh the time of making model modifications and re-solve the model. To increase the performance users that are familiar with [JuMP direct mode](https://jump.dev/JuMP.jl/stable/manual/models/#Direct-mode) can also use it.
