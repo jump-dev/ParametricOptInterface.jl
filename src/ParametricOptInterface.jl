@@ -1307,10 +1307,7 @@ function MOI.set(
     return
 end
 
-function MOI.Utilities.default_copy_to(
-    dest::MOI.Bridges.LazyBridgeOptimizer{Optimizer{Float64,Opt}},
-    src::MOI.ModelLike,
-) where {Opt}
+function _poi_default_copy_to(dest::T, src::MOI.ModelLike) where {T}
     if !MOI.supports_incremental_interface(dest)
         error("Model $(typeof(dest)) does not support copy_to.")
     end
@@ -1356,6 +1353,19 @@ function MOI.Utilities.default_copy_to(
     MOI.Utilities._pass_constraints(dest, src, index_map, constraints_not_added)
     MOI.Utilities.final_touch(dest, index_map)
     return index_map
+end
+
+function MOI.Utilities.default_copy_to(
+    dest::MOI.Bridges.LazyBridgeOptimizer{Optimizer{Float64,T}},
+    src::MOI.ModelLike,
+) where {T}
+    return _poi_default_copy_to(dest, src)
+end
+function MOI.Utilities.default_copy_to(
+    dest::Optimizer{Float64,T},
+    src::MOI.ModelLike,
+) where {T}
+    return _poi_default_copy_to(dest, src)
 end
 
 function MOI.optimize!(model::Optimizer)
