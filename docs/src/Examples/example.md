@@ -124,6 +124,79 @@ isapprox.(MOI.get(optimizer, MOI.ObjectiveValue()), 7.0, atol = 1e-4)
 MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]
 ```
 
+## MOI Example - Parameters multiplying Quadratic terms
+
+Let's start with a simple quadratic problem
+
+```@example moi2
+using Ipopt
+using MathOptInterface
+using ParametricOptInterface
+
+const MOI = MathOptInterface
+const POI = ParametricOptInterface
+
+optimizer = POI.Optimizer(Ipopt.Optimizer())
+
+x = MOI.add_variable(optimizer)
+y = MOI.add_variable(optimizer)
+MOI.add_constraint(optimizer, x, MOI.GreaterThan(0.0))
+MOI.add_constraint(optimizer, y, MOI.GreaterThan(0.0))
+
+cons1 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([2.0, 1.0], [x, y]), 0.0)
+ci1 = MOI.add_constraint(optimizer, cons1, MOI.LessThan(4.0))
+cons2 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 2.0], [x, y]), 0.0)
+ci2 = MOI.add_constraint(optimizer, cons2, MOI.LessThan(4.0))
+
+MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+obj_func = MOI.ScalarQuadraticFunction(
+    [MOI.ScalarQuadraticTerm(1.0, x, x)
+    MOI.ScalarQuadraticTerm(1.0, y, y)],
+    MathOptInterface.ScalarAffineTerm{Float64}[],
+    0.0,
+)
+MOI.set(
+    optimizer,
+    MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
+    obj_func,
+)
+```
+
+To multiply a parameter in a quadratic term, the user will 
+need to use the `POI.QuadraticObjectiveCoef` model attribute.
+
+```@example moi2
+p = first(MOI.add_constrained_variable.(optimizer, POI.Parameter(1.0)))
+MOI.set(optimizer, POI.QuadraticObjectiveCoef(), (x,y), p)
+```
+
+This function will add the term `p*xy` to the objective function.
+It's also possible to multiply a scalar affine function to the quadratic term.
+
+```@example moi2
+MOI.set(optimizer, POI.QuadraticObjectiveCoef(), (x,y), 2p+3)
+```
+
+This will set the term `(2p+3)*xy` to the objective function (it overwrites the last set).
+Then, just optimize the model.
+
+```@example moi2
+MOI.optimize!(model)
+isapprox(MOI.get(model, MOI.ObjectiveValue()), 32/3, atol=1e-4)
+isapprox(MOI.get(model, MOI.VariablePrimal(), x), 4/3, atol=1e-4)
+isapprox(MOI.get(model, MOI.VariablePrimal(), y), 4/3, atol=1e-4)
+```
+
+To change the parameter just set `POI.ParameterValue` and optimize again.
+
+```@example moi2
+MOI.set(model, POI.ParameterValue(), p, 2.0)
+MOI.optimize!(model)
+isapprox(MOI.get(model, MOI.ObjectiveValue()), 128/9, atol=1e-4)
+isapprox(MOI.get(model, MOI.VariablePrimal(), x), 4/3, atol=1e-4)
+isapprox(MOI.get(model, MOI.VariablePrimal(), y), 4/3, atol=1e-4)
+```
+
 ## JuMP Example - step by step usage
 
 Let's write a step-by-step example of `POI` usage at the JuMP level.
@@ -314,3 +387,56 @@ This way the mathematical representation of the problem will be:
 which might lead to faster solves.
 
 Users that just want everything to work can use the default value `POI.ONLY_CONSTRAINTS` or try to use `POI.BOUNDS_AND_CONSTRAINTS` and leave it to ParametricOptInterface to interpret the constraints as bounds when applicable and linear constraints otherwise.
+
+## JuMP Example - Parameters multiplying Quadratic terms
+
+Let's get the same MOI example
+
+```@example jump4
+using Ipopt
+using JuMP
+using ParametricOptInterface
+const POI = ParametricOptInterface
+
+optimizer = POI.Optimizer(Ipopt.Optimizer())
+model = direct_model(optimizer)
+
+@variable(model, x >= 0)
+@variable(model, y >= 0)
+@variable(model, p in POI.Parameter(1.0))
+@constraint(model, 2x + y <= 4)
+@constraint(model, x + 2y <= 4)
+@objective(model, Max, (x^2 + y^2)/2)
+```
+
+We use the same MOI function to add the parameter multiplied to the quadratic term.
+
+```@example jump4
+MOI.set(backend(model), POI.QuadraticObjectiveCoef(), (index(x),index(y)), 2index(p)+3)
+```
+
+If the user print the `model`, the term `(2p+3)*xy` won't show. 
+It's possible to retrieve the parametric function multiplying the term `xy` with `MOI.get`.
+
+```@example jump4
+MOI.get(backend(model), POI.QuadraticObjectiveCoef(), (index(x),index(y)))
+```
+
+Then, just optimize the model
+
+```@example jump4
+optimize!(model)
+isapprox(objective_value(model), 32/3, atol=1e-4)
+isapprox(value(x), 4/3, atol=1e-4)
+isapprox(value(y), 4/3, atol=1e-4)
+```
+
+To change the parameter just set `POI.ParameterValue` and optimize again.
+
+```@example jump4
+MOI.set(model, POI.ParameterValue(), p, 2.0)
+optimize!(model)
+isapprox(objective_value(model), 128/9, atol=1e-4)
+isapprox(value(x), 4/3, atol=1e-4)
+isapprox(value(y), 4/3, atol=1e-4)
+```
