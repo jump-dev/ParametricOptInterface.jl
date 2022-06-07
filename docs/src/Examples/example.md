@@ -498,3 +498,5 @@ MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
 @constraint(model, x >= z)
 @NLobjective(model, Min, x^2)
 ```
+
+This use case should help users diminsh the time of making model modifications and re-solve the model. To increase the performance users that are familiar with [JuMP direct mode](https://jump.dev/JuMP.jl/stable/manual/models/#Direct-mode) can also use it.
