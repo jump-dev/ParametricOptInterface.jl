@@ -1004,11 +1004,7 @@ end
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 4 / 3 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 4 / 3 atol = ATOL
 
-    cached = MOIU.CachingOptimizer(
-        MOIU.UniversalFallback(MOIU.Model{Float64}()),
-        Ipopt.Optimizer(),
-    )
-    model = POI.Optimizer(cached)
+    model = POI.Optimizer(Ipopt.Optimizer())
     MOI.set(model, MOI.Silent(), true)
 
     x = MOI.add_variable(model)
