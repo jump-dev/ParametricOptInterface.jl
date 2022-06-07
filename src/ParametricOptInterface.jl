@@ -1382,6 +1382,27 @@ function MOI.set(
     return
 end
 
+function MOI.get(
+    model::Optimizer,
+    ::QuadraticObjectiveCoef,
+    (x1, x2)::Tuple{MOI.VariableIndex,MOI.VariableIndex},
+) where {T}
+    if x1.value > x2.value
+        aux = x1
+        x1 = x2
+        x2 = aux
+    end
+    if haskey(model.quadratic_objective_cache_product, (x1, x2))
+        return model.quadratic_objective_cache_product[(x1, x2)]
+    else
+        throw(
+            ErrorException(
+                "Parameter not set in product of variables ($x1,$x2)",
+            ),
+        )
+    end
+end
+
 function MOI.set(
     model::Optimizer,
     attr::MOI.ObjectiveFunction,

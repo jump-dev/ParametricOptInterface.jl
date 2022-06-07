@@ -851,27 +851,25 @@ end
 end
 
 @testset "QP - Quadratic objective parameter in quadratic part" begin
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOIU.CachingOptimizer(
-            MOIU.UniversalFallback(MOIU.Model{Float64}()),
-            Ipopt.Optimizer(),
-        ),
-        Float64,
-    )
-    model = POI.Optimizer(cached)
+    model = POI.Optimizer(Ipopt.Optimizer())
     MOI.set(model, MOI.Silent(), true)
 
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
+    z = MOI.add_variable(model)
     p = first(MOI.add_constrained_variable.(model, POI.Parameter(1.0)))
 
-    f1 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 0], [x, y]), 0.0)
-    f2 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([0, 1.0], [x, y]), 0.0)
+    MOI.add_constraint(model, x, MOI.GreaterThan(0.0))
+    MOI.add_constraint(model, y, MOI.GreaterThan(0.0))
 
-    MOI.add_constraint(model, f1, MOI.EqualTo(2.0))
-    MOI.add_constraint(model, f2, MOI.EqualTo(2.0))
+    cons1 =
+        MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([2.0, 1.0], [x, y]), 0.0)
+    ci1 = MOI.add_constraint(model, cons1, MOI.LessThan(4.0))
+    cons2 =
+        MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 2.0], [x, y]), 0.0)
+    ci2 = MOI.add_constraint(model, cons2, MOI.LessThan(4.0))
 
-    MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    MOI.set(model, MOI.ObjectiveSense(), MOI.MAX_SENSE)
 
     obj_func = MOI.ScalarQuadraticFunction(
         [
@@ -889,41 +887,53 @@ end
     )
 
     MOI.set(model, POI.QuadraticObjectiveCoef(), (x, y), 2p + 3)
+    @test MOI.get(model, POI.QuadraticObjectiveCoef(), (x, y)) ≈
+          MathOptInterface.ScalarAffineFunction{Int64}(
+        MathOptInterface.ScalarAffineTerm{Int64}[MathOptInterface.ScalarAffineTerm{
+            Int64,
+        }(
+            2,
+            MathOptInterface.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+        )],
+        3,
+    )
+    @test_throws ErrorException MOI.get(
+        model,
+        POI.QuadraticObjectiveCoef(),
+        (x, z),
+    )
 
     MOI.optimize!(model)
 
-    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 24.0 atol = ATOL
-    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 2.0 atol = ATOL
-    @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 2.0 atol = ATOL
+    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 32 / 3 atol = ATOL
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 4 / 3 atol = ATOL
+    @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 4 / 3 atol = ATOL
 
     MOI.set(model, POI.ParameterValue(), p, 2.0)
     MOI.optimize!(model)
 
-    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 32.0 atol = ATOL
-    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 2.0 atol = ATOL
-    @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 2.0 atol = ATOL
+    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 128 / 9 atol = ATOL
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 4 / 3 atol = ATOL
+    @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 4 / 3 atol = ATOL
 
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOIU.CachingOptimizer(
-            MOIU.UniversalFallback(MOIU.Model{Float64}()),
-            Ipopt.Optimizer(),
-        ),
-        Float64,
-    )
-    model = POI.Optimizer(cached)
+    model = POI.Optimizer(Ipopt.Optimizer())
     MOI.set(model, MOI.Silent(), true)
 
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
     p = first(MOI.add_constrained_variable.(model, POI.Parameter(1.0)))
 
-    f1 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 0], [x, y]), 0.0)
-    f2 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([0, 1.0], [x, y]), 0.0)
+    MOI.add_constraint(model, x, MOI.GreaterThan(0.0))
+    MOI.add_constraint(model, y, MOI.GreaterThan(0.0))
 
-    MOI.add_constraint(model, f1, MOI.EqualTo(2.0))
-    MOI.add_constraint(model, f2, MOI.EqualTo(2.0))
+    cons1 =
+        MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([2.0, 1.0], [x, y]), 0.0)
+    ci1 = MOI.add_constraint(model, cons1, MOI.LessThan(4.0))
+    cons2 =
+        MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 2.0], [x, y]), 0.0)
+    ci2 = MOI.add_constraint(model, cons2, MOI.LessThan(4.0))
 
-    MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    MOI.set(model, MOI.ObjectiveSense(), MOI.MAX_SENSE)
 
     obj_func = MOI.ScalarAffineFunction(
         [
@@ -943,38 +953,37 @@ end
 
     MOI.optimize!(model)
 
-    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 11.0 atol = ATOL
-    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 2.0 atol = ATOL
-    @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 2.0 atol = ATOL
+    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 61 / 9 atol = ATOL
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 4 / 3 atol = ATOL
+    @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 4 / 3 atol = ATOL
+    @test MOI.get(model, POI.QuadraticObjectiveCoef(), (x, y)) ≈
+          MathOptInterface.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1)
 
     MOI.set(model, POI.ParameterValue(), p, 2.0)
     MOI.optimize!(model)
 
-    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 15.0 atol = ATOL
-    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 2.0 atol = ATOL
-    @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 2.0 atol = ATOL
+    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 77 / 9 atol = ATOL
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 4 / 3 atol = ATOL
+    @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 4 / 3 atol = ATOL
 
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOIU.CachingOptimizer(
-            MOIU.UniversalFallback(MOIU.Model{Float64}()),
-            Ipopt.Optimizer(),
-        ),
-        Float64,
-    )
-    model = POI.Optimizer(cached)
+    model = POI.Optimizer(Ipopt.Optimizer())
     MOI.set(model, MOI.Silent(), true)
 
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
     p = first(MOI.add_constrained_variable.(model, POI.Parameter(1.0)))
 
-    f1 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 0], [x, y]), 0.0)
-    f2 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([0, 1.0], [x, y]), 0.0)
+    MOI.add_constraint(model, x, MOI.GreaterThan(0.0))
+    MOI.add_constraint(model, y, MOI.GreaterThan(0.0))
 
-    MOI.add_constraint(model, f1, MOI.EqualTo(2.0))
-    MOI.add_constraint(model, f2, MOI.EqualTo(2.0))
+    cons1 =
+        MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([2.0, 1.0], [x, y]), 0.0)
+    ci1 = MOI.add_constraint(model, cons1, MOI.LessThan(4.0))
+    cons2 =
+        MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 2.0], [x, y]), 0.0)
+    ci2 = MOI.add_constraint(model, cons2, MOI.LessThan(4.0))
 
-    MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    MOI.set(model, MOI.ObjectiveSense(), MOI.MAX_SENSE)
 
     obj_func = x
 
@@ -984,23 +993,20 @@ end
 
     MOI.optimize!(model)
 
-    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 6.0 atol = ATOL
-    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 2.0 atol = ATOL
-    @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 2.0 atol = ATOL
+    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 28 / 9 atol = ATOL
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 4 / 3 atol = ATOL
+    @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 4 / 3 atol = ATOL
 
     MOI.set(model, POI.ParameterValue(), p, 2.0)
     MOI.optimize!(model)
 
-    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 10.0 atol = ATOL
-    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 2.0 atol = ATOL
-    @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 2.0 atol = ATOL
+    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 44 / 9 atol = ATOL
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 4 / 3 atol = ATOL
+    @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 4 / 3 atol = ATOL
 
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOIU.CachingOptimizer(
-            MOIU.UniversalFallback(MOIU.Model{Float64}()),
-            Ipopt.Optimizer(),
-        ),
-        Float64,
+    cached = MOIU.CachingOptimizer(
+        MOIU.UniversalFallback(MOIU.Model{Float64}()),
+        Ipopt.Optimizer(),
     )
     model = POI.Optimizer(cached)
     MOI.set(model, MOI.Silent(), true)
@@ -1009,45 +1015,45 @@ end
     y = MOI.add_variable(model)
     p = first(MOI.add_constrained_variable.(model, POI.Parameter(1.0)))
 
-    f1 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 0], [x, y]), 0.0)
-    f2 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([0, 1.0], [x, y]), 0.0)
+    MOI.add_constraint(model, x, MOI.GreaterThan(0.0))
+    MOI.add_constraint(model, y, MOI.GreaterThan(0.0))
 
-    MOI.add_constraint(model, f1, MOI.EqualTo(2.0))
-    MOI.add_constraint(model, f2, MOI.EqualTo(2.0))
+    cons1 =
+        MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([2.0, 1.0], [x, y]), 0.0)
+    ci1 = MOI.add_constraint(model, cons1, MOI.LessThan(4.0))
+    cons2 =
+        MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 2.0], [x, y]), 0.0)
+    ci2 = MOI.add_constraint(model, cons2, MOI.LessThan(4.0))
 
-    MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    MOI.set(model, MOI.ObjectiveSense(), MOI.MAX_SENSE)
 
     MOI.set(model, POI.QuadraticObjectiveCoef(), (x, y), p)
 
     MOI.optimize!(model)
 
-    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 4.0 atol = ATOL
-    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 2.0 atol = ATOL
-    @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 2.0 atol = ATOL
+    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 16 / 9 atol = ATOL
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 4 / 3 atol = ATOL
+    @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 4 / 3 atol = ATOL
 
     MOI.set(model, POI.ParameterValue(), p, 2.0)
     MOI.optimize!(model)
 
-    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 8.0 atol = ATOL
-    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 2.0 atol = ATOL
-    @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 2.0 atol = ATOL
+    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 32 / 9 atol = ATOL
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 4 / 3 atol = ATOL
+    @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 4 / 3 atol = ATOL
 end
 
 @testset "JuMP direct model - QP - Quadratic objective parameter in quadratic part" begin
-    cached = MOIU.CachingOptimizer(
-        MOIU.UniversalFallback(MOIU.Model{Float64}()),
-        Ipopt.Optimizer(),
-    )
-    optimizer = POI.Optimizer(cached)
+    optimizer = POI.Optimizer(Ipopt.Optimizer())
     model = direct_model(optimizer)
     MOI.set(model, MOI.Silent(), true)
 
-    @variable(model, x)
-    @variable(model, y)
+    @variable(model, x >= 0)
+    @variable(model, y >= 0)
     @variable(model, p in POI.Parameter(1.0))
-    @constraint(model, x == 2)
-    @constraint(model, y == 2)
-    @objective(model, Min, (x^2 + y^2) / 2)
+    @constraint(model, 2x + y <= 4)
+    @constraint(model, x + 2y <= 4)
+    @objective(model, Max, (x^2 + y^2) / 2)
     MOI.set(
         backend(model),
         POI.QuadraticObjectiveCoef(),
@@ -1056,16 +1062,29 @@ end
     )
     optimize!(model)
 
-    @test objective_value(model) ≈ 24.0 atol = ATOL
-    @test value(x) ≈ 2.0 atol = ATOL
-    @test value(y) ≈ 2.0 atol = ATOL
+    @test MOI.get(
+        backend(model),
+        POI.QuadraticObjectiveCoef(),
+        (index(x), index(y)),
+    ) ≈ MathOptInterface.ScalarAffineFunction{Int64}(
+        MathOptInterface.ScalarAffineTerm{Int64}[MathOptInterface.ScalarAffineTerm{
+            Int64,
+        }(
+            2,
+            MathOptInterface.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+        )],
+        3,
+    )
+    @test objective_value(model) ≈ 32 / 3 atol = ATOL
+    @test value(x) ≈ 4 / 3 atol = ATOL
+    @test value(y) ≈ 4 / 3 atol = ATOL
 
     MOI.set(model, POI.ParameterValue(), p, 2.0)
     optimize!(model)
 
-    @test objective_value(model) ≈ 32.0 atol = ATOL
-    @test value(x) ≈ 2.0 atol = ATOL
-    @test value(y) ≈ 2.0 atol = ATOL
+    @test objective_value(model) ≈ 128 / 9 atol = ATOL
+    @test value(x) ≈ 4 / 3 atol = ATOL
+    @test value(y) ≈ 4 / 3 atol = ATOL
 end
 
 @testset "JuMP direct model - Vector Constraints - RSOC - Parameter in quadratic part" begin
