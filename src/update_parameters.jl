@@ -368,14 +368,6 @@ function update_parameter_in_quadratic_objective_pv!(model::Optimizer)
     return model
 end
 
-function update_parameter_in_quadratic_objective_prod!(model::Optimizer)
-    if !isempty(model.quadratic_objective_cache_product)
-        set_quadratic_product_in_obj(model)
-        return
-    end
-    return
-end
-
 # Vector Affine
 function update_parameter_in_vector_affine_constraints!(model::Optimizer)
     for (F, S) in keys(model.vector_constraint_cache.dict)
@@ -477,7 +469,6 @@ function update_parameters!(model::Optimizer)
     update_parameter_in_quadratic_objective_pv!(model)
     update_parameter_in_quadratic_constraints_pp!(model)
     update_parameter_in_quadratic_objective_pp!(model)
-    update_parameter_in_quadratic_objective_prod!(model)
     update_parameter_in_vector_affine_constraints!(model)
 
     # Update parameters and put NaN to indicate that the parameter has been updated
