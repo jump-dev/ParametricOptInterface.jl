@@ -50,12 +50,19 @@ optimization model.
 
 ## Keyword arguments
 
-- `evaluate_duals::Bool`: If `true`, evaluates the dual of parameters. Users might want to set it to false 
+- `evaluate_duals::Bool`: If `true`, evaluates the dual of parameters. Users might want to set it to `false ``
   to increase performance when the duals of parameters are not necessary. Defaults to `true`.
 
 - `constraints_interpretation`: Decides how to interpret constraints with `ScalarAffineFunctions`. More details
   are in [`POI.ConstraintsInterpretation`](@ref) and [JuMP Example - Dealing with parametric expressions as variable bounds](@ref).
   Defaults to `ONLY_CONSTRAINTS`.
+
+- `save_original_objective_and_constraints`: If `true`` saves the orginal function and set of the constraints
+  as well as the original objective function inside [`POI.Optimizer`](@ref). This is useful for printing the model
+  but greatly increases the memory footprint. Users might want to set it to `false` to increase performance
+  in applications where you don't need to query the original expressions provided to the model in constraints
+  or in the objective. Note that this might break printing or queries such as `MOI.get(model, MOI.ConstraintFunction(), c)`.
+  Defaults to `true`.
 
 ## Example
 
@@ -148,7 +155,12 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     evaluate_duals::Bool
     number_of_parameters_in_model::Int64
     constraints_interpretation::ConstraintsInterpretationCode
-    function Optimizer(optimizer::OT; evaluate_duals::Bool = true) where {OT}
+    save_original_objective_and_constraints::Bool
+    function Optimizer(
+        optimizer::OT;
+        evaluate_duals::Bool = true,
+        save_original_objective_and_constraints::Bool = true,
+    ) where {OT}
         return new{Float64,OT}(
             optimizer,
             MOI.Utilities.CleverDicts.CleverDict{ParameterIndex,Float64}(
@@ -206,6 +218,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             evaluate_duals,
             0,
             ONLY_CONSTRAINTS,
+            save_original_objective_and_constraints,
         )
     end
 end
@@ -768,7 +781,9 @@ function add_constraint_with_parameters_on_function(
                 add_saf_constraint(model, vars, params, param_constant, f, set)
         end
     end
-    model.original_constraint_function_and_set_cache[poi_ci] = (f, set)
+    if model.save_original_objective_and_constraints
+        model.original_constraint_function_and_set_cache[poi_ci] = (f, set)
+    end
     return poi_ci
 end
 
@@ -1009,7 +1024,9 @@ function MOI.set(
         )
         model.affine_objective_cache = params
     end
-    model.original_objective_function = f
+    if model.save_original_objective_and_constraints
+        model.original_objective_function = f
+    end
     return
 end
 
@@ -1023,7 +1040,9 @@ function MOI.set(
     elseif !is_variable_in_model(model, v)
         error("Variable not in the model")
     end
-    model.original_objective_function = v
+    if model.save_original_objective_and_constraints
+        model.original_objective_function = v
+    end
     return MOI.set(model.optimizer, attr, model.variables[v])
 end
 
@@ -1128,7 +1147,9 @@ function add_constraint_with_parameters_on_function(
         set,
     )
     model.vector_constraint_cache[ci] = params
-    model.original_constraint_function_and_set_cache[ci] = (f, set)
+    if model.save_original_objective_and_constraints
+        model.original_constraint_function_and_set_cache[ci] = (f, set)
+    end
     return ci
 end
 
@@ -1177,7 +1198,9 @@ function add_constraint_with_parameters_on_function(
         model.last_quad_add_added,
     )
     model.quadratic_added_cache[new_ci] = ci
-    model.original_constraint_function_and_set_cache[new_ci] = (f, set)
+    if model.save_original_objective_and_constraints
+        model.original_constraint_function_and_set_cache[new_ci] = (f, set)
+    end
     fill_quadratic_constraint_caches!(
         model,
         new_ci,
@@ -1297,7 +1320,9 @@ function MOI.set(
         )
     end
 
-    model.original_objective_function = f
+    if model.save_original_objective_and_constraints
+        model.original_objective_function = f
+    end
     model.quadratic_objective_cache_pv = quad_aff_vars
     model.quadratic_objective_cache_pp = quad_params
     model.quadratic_objective_cache_pc = aff_params
