@@ -31,6 +31,7 @@ a function that is not listed here, it will return an unsupported error.
 |:-------|
 |    `ScalarAffineFunction`    |
 |    `ScalarQuadraticFunction`    |
+|    `VectorAffineFunction`    |
 
 
 ### Supported objective functions
@@ -39,7 +40,6 @@ a function that is not listed here, it will return an unsupported error.
 |:-------|
 |    `ScalarAffineFunction`    |
 |    `ScalarQuadraticFunction`    |
-|    `VectorAffineFunction`    |
 
 ### Declare a Optimizer
 
