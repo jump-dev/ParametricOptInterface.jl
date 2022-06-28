@@ -124,79 +124,6 @@ isapprox.(MOI.get(optimizer, MOI.ObjectiveValue()), 7.0, atol = 1e-4)
 MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]
 ```
 
-## MOI Example - Parameters multiplying Quadratic terms
-
-Let's start with a simple quadratic problem
-
-```@example moi2
-using Ipopt
-using MathOptInterface
-using ParametricOptInterface
-
-const MOI = MathOptInterface
-const POI = ParametricOptInterface
-
-optimizer = POI.Optimizer(Ipopt.Optimizer())
-
-x = MOI.add_variable(optimizer)
-y = MOI.add_variable(optimizer)
-MOI.add_constraint(optimizer, x, MOI.GreaterThan(0.0))
-MOI.add_constraint(optimizer, y, MOI.GreaterThan(0.0))
-
-cons1 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([2.0, 1.0], [x, y]), 0.0)
-ci1 = MOI.add_constraint(optimizer, cons1, MOI.LessThan(4.0))
-cons2 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 2.0], [x, y]), 0.0)
-ci2 = MOI.add_constraint(optimizer, cons2, MOI.LessThan(4.0))
-
-MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
-obj_func = MOI.ScalarQuadraticFunction(
-    [MOI.ScalarQuadraticTerm(1.0, x, x)
-    MOI.ScalarQuadraticTerm(1.0, y, y)],
-    MathOptInterface.ScalarAffineTerm{Float64}[],
-    0.0,
-)
-MOI.set(
-    optimizer,
-    MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
-    obj_func,
-)
-```
-
-To multiply a parameter in a quadratic term, the user will 
-need to use the `POI.QuadraticObjectiveCoef` model attribute.
-
-```@example moi2
-p = first(MOI.add_constrained_variable.(optimizer, POI.Parameter(1.0)))
-MOI.set(optimizer, POI.QuadraticObjectiveCoef(), (x,y), p)
-```
-
-This function will add the term `p*xy` to the objective function.
-It's also possible to multiply a scalar affine function to the quadratic term.
-
-```@example moi2
-MOI.set(optimizer, POI.QuadraticObjectiveCoef(), (x,y), 2p+3)
-```
-
-This will set the term `(2p+3)*xy` to the objective function (it overwrites the last set).
-Then, just optimize the model.
-
-```@example moi2
-MOI.optimize!(model)
-isapprox(MOI.get(model, MOI.ObjectiveValue()), 32/3, atol=1e-4)
-isapprox(MOI.get(model, MOI.VariablePrimal(), x), 4/3, atol=1e-4)
-isapprox(MOI.get(model, MOI.VariablePrimal(), y), 4/3, atol=1e-4)
-```
-
-To change the parameter just set `POI.ParameterValue` and optimize again.
-
-```@example moi2
-MOI.set(model, POI.ParameterValue(), p, 2.0)
-MOI.optimize!(model)
-isapprox(MOI.get(model, MOI.ObjectiveValue()), 128/9, atol=1e-4)
-isapprox(MOI.get(model, MOI.VariablePrimal(), x), 4/3, atol=1e-4)
-isapprox(MOI.get(model, MOI.VariablePrimal(), y), 4/3, atol=1e-4)
-```
-
 ## JuMP Example - step by step usage
 
 Let's write a step-by-step example of `POI` usage at the JuMP level.
@@ -500,3 +427,77 @@ MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
 ```
 
 This use case should help users diminsh the time of making model modifications and re-solve the model. To increase the performance users that are familiar with [JuMP direct mode](https://jump.dev/JuMP.jl/stable/manual/models/#Direct-mode) can also use it.
+
+
+## MOI Example - Parameters multiplying Quadratic terms
+
+Let's start with a simple quadratic problem
+
+```@example moi2
+using Ipopt
+using MathOptInterface
+using ParametricOptInterface
+
+const MOI = MathOptInterface
+const POI = ParametricOptInterface
+
+optimizer = POI.Optimizer(Ipopt.Optimizer())
+
+x = MOI.add_variable(optimizer)
+y = MOI.add_variable(optimizer)
+MOI.add_constraint(optimizer, x, MOI.GreaterThan(0.0))
+MOI.add_constraint(optimizer, y, MOI.GreaterThan(0.0))
+
+cons1 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([2.0, 1.0], [x, y]), 0.0)
+ci1 = MOI.add_constraint(optimizer, cons1, MOI.LessThan(4.0))
+cons2 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 2.0], [x, y]), 0.0)
+ci2 = MOI.add_constraint(optimizer, cons2, MOI.LessThan(4.0))
+
+MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+obj_func = MOI.ScalarQuadraticFunction(
+    [MOI.ScalarQuadraticTerm(1.0, x, x)
+    MOI.ScalarQuadraticTerm(1.0, y, y)],
+    MathOptInterface.ScalarAffineTerm{Float64}[],
+    0.0,
+)
+MOI.set(
+    optimizer,
+    MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
+    obj_func,
+)
+```
+
+To multiply a parameter in a quadratic term, the user will 
+need to use the `POI.QuadraticObjectiveCoef` model attribute.
+
+```@example moi2
+p = first(MOI.add_constrained_variable.(optimizer, POI.Parameter(1.0)))
+MOI.set(optimizer, POI.QuadraticObjectiveCoef(), (x,y), p)
+```
+
+This function will add the term `p*xy` to the objective function.
+It's also possible to multiply a scalar affine function to the quadratic term.
+
+```@example moi2
+MOI.set(optimizer, POI.QuadraticObjectiveCoef(), (x,y), 2p+3)
+```
+
+This will set the term `(2p+3)*xy` to the objective function (it overwrites the last set).
+Then, just optimize the model.
+
+```@example moi2
+MOI.optimize!(model)
+isapprox(MOI.get(model, MOI.ObjectiveValue()), 32/3, atol=1e-4)
+isapprox(MOI.get(model, MOI.VariablePrimal(), x), 4/3, atol=1e-4)
+isapprox(MOI.get(model, MOI.VariablePrimal(), y), 4/3, atol=1e-4)
+```
+
+To change the parameter just set `POI.ParameterValue` and optimize again.
+
+```@example moi2
+MOI.set(model, POI.ParameterValue(), p, 2.0)
+MOI.optimize!(model)
+isapprox(MOI.get(model, MOI.ObjectiveValue()), 128/9, atol=1e-4)
+isapprox(MOI.get(model, MOI.VariablePrimal(), x), 4/3, atol=1e-4)
+isapprox(MOI.get(model, MOI.VariablePrimal(), y), 4/3, atol=1e-4)
+```
