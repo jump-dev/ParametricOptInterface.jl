@@ -12,7 +12,7 @@ using ParameterJuMP
 using JuMP
 
 using GLPK
-const OPTIMIZER = GLPK.Optimizer;
+const OPTIMIZER = GLPK.Optimizer
 using TimerOutputs
 
 using LinearAlgebra
@@ -56,7 +56,8 @@ function full_model_regression()
     time_build = @elapsed begin # measure time to create a model
 
         # initialize a optimization model
-        full_model = Model(OPTIMIZER)
+        full_model = direct_model(OPTIMIZER)
+        MOI.set(full_model, MOI.Silent(), true)
 
         # create optimization variables of the problem
         @variables(full_model, begin
@@ -116,8 +117,9 @@ function slave_model(PARAM, K)
         # Model(() -> POI.ParametricOptimizer(OPTIMIZER()))
     else
         # regular JuMP constructor
-        Model(OPTIMIZER)
+        direct_model(OPTIMIZER())
     end
+    MOI.set(slave, MOI.Silent(), true)
 
     # Define local optimization variables for norm-1 error
     @variables(slave, begin
@@ -135,10 +137,7 @@ function slave_model(PARAM, K)
         @variable(slave, β[i = 1:N_Candidates] == 0, Param())
     elseif PARAM == 1
         # Create parameters
-        β = [@variable(slave, set = POI.Parameter(0)) for i in 1:N_Candidates]
-        for (i, βi) in enumerate(β)
-            set_name(βi, "β[$i]")
-        end
+        @variable(slave, β[i = 1:N_Candidates] in POI.Parameter.(0))
     else
         # Create fixed variables
         @variables(slave, begin
@@ -187,25 +186,6 @@ function master_solve(PARAM, master_model)
     return (value.(β), objective_value(model))
 end
 
-#' ### Query dual of parameters in POI
-function dual_of_parameter(vref::VariableRef)
-    if mode(vref.model) == JuMP.AUTOMATIC
-        backend_optimizer_model = JuMP.backend(vref.model).optimizer.model
-        poi_optimizer = backend_optimizer_model.optimizer
-        optimizer_map = backend_optimizer_model.model_to_optimizer_map
-        c_index = optimizer_map[vref.index].value
-        cp = MOI.ConstraintIndex{MOI.VariableIndex,POI.Parameter}(c_index)
-        return MOI.get(poi_optimizer, MOI.ConstraintDual(), cp)
-    elseif mode(vref.model) == JuMP.DIRECT
-        poi_optimizer = JuMP.backend(vref.model)
-        cp = MOI.ConstraintIndex{MOI.VariableIndex,POI.Parameter}(
-            vref.index.value,
-        )
-        return MOI.get(poi_optimizer, MOI.ConstraintDual(), cp)
-    end
-    return throw(ErrorException("Only works for JuMP.Model"))
-end
-
 function slave_solve(PARAM, model, master_solution)
     β0 = master_solution[1]
     slave = model[1]
@@ -239,7 +219,7 @@ function slave_solve(PARAM, model, master_solution)
         π = dual.(β)
     elseif PARAM == 1
         # POI: we can query dual values of *parameters*
-        π = -dual_of_parameter.(β)
+        π = MOI.get.(slave, POI.ParameterDual(), β)
     else
         # or, in pure JuMP, we query the duals form
         # constraints that fix the values of our regression
@@ -338,20 +318,20 @@ function decomposed_model(PARAM; print_timer_outputs::Bool = true)
 end
 
 
-# println("ParameterJuMP")
-# GC.gc()
-# β1 = decomposed_model(0; print_timer_outputs = false);
-# GC.gc()
-# β1 = decomposed_model(0);
+println("ParameterJuMP")
+GC.gc()
+β1 = decomposed_model(0; print_timer_outputs = false);
+GC.gc()
+β1 = decomposed_model(0);
 
-println("POI")
+println("POI, direct mode")
 GC.gc()
 β2 = decomposed_model(1; print_timer_outputs = false);
 GC.gc()
 β2 = decomposed_model(1);
 
-# println("Pure JuMP")
-# GC.gc()
-# β3 = decomposed_model(2; print_timer_outputs = false);
-# GC.gc()
-# β3 = decomposed_model(2);
+println("Pure JuMP, direct mode")
+GC.gc()
+β3 = decomposed_model(2; print_timer_outputs = false);
+GC.gc()
+β3 = decomposed_model(2);
