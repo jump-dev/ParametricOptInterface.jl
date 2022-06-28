@@ -1259,14 +1259,14 @@ end
 
 struct QuadraticObjectiveCoef <: MOI.AbstractModelAttribute end
 
-function _evaluate(model::Optimizer, p::MOI.VariableIndex)
+function _evaluate_parametric_expression(model::Optimizer, p::MOI.VariableIndex)
     return model.parameters[p_idx(p)]
 end
 
-function _evaluate(model::Optimizer, fparam::MOI.ScalarAffineFunction)
+function _evaluate_parametric_expression(model::Optimizer, fparam::MOI.ScalarAffineFunction{T}) where T
     constant = fparam.constant
     terms = fparam.terms
-    evaluated_parameter_expression = 0.0
+    evaluated_parameter_expression = zero(T)
     for term in terms
         coef = term.coefficient
         p = term.variable
@@ -1286,21 +1286,21 @@ function set_quadratic_product_in_obj!(model::Optimizer)
         else
             aff_vars =
                 MOI.ScalarAffineTerm{Float64}[MOI.ScalarAffineTerm{Float64}(
-                    1.0,
+                    one(Float64),
                     f,
                 )]
         end
         aff_params = MOI.ScalarAffineTerm{Float64}[]
         terms_with_variables_associated_to_parameters =
             MOI.ScalarAffineTerm{Float64}[]
-        aff_param_constant = 0.0
+        aff_param_constant = zero(Float64)
         quad_vars = MOI.ScalarQuadraticTerm{Float64}[]
         quad_aff_vars = MOI.ScalarQuadraticTerm{Float64}[]
         quad_params = MOI.ScalarQuadraticTerm{Float64}[]
         aff_terms = MOI.ScalarAffineTerm{Float64}[]
         variables_associated_to_parameters = MOI.VariableIndex[]
-        quad_param_constant = 0.0
-        constant = 0.0
+        quad_param_constant = zero(Float64)
+        constant = zero(Float64)
     elseif F <: MOI.ScalarAffineFunction
         num_vars, num_params = count_scalar_affine_terms_types(model, f.terms)
         if num_vars == 0 && num_params == 0
@@ -1308,7 +1308,7 @@ function set_quadratic_product_in_obj!(model::Optimizer)
             aff_params = MOI.ScalarAffineTerm{Float64}[]
             terms_with_variables_associated_to_parameters =
                 MOI.ScalarAffineTerm{Float64}[]
-            aff_param_constant = 0.0
+            aff_param_constant = zero(Float64)
         else
             (aff_vars, aff_params, aff_param_constant) =
                 separate_possible_terms_and_calculate_parameter_constant(
@@ -1321,7 +1321,7 @@ function set_quadratic_product_in_obj!(model::Optimizer)
         quad_params = MOI.ScalarQuadraticTerm{Float64}[]
         aff_terms = MOI.ScalarAffineTerm{Float64}[]
         variables_associated_to_parameters = MOI.VariableIndex[]
-        quad_param_constant = 0.0
+        quad_param_constant = zero(Float64)
         constant = f.constant
     elseif F <: MOI.ScalarQuadraticFunction
         (
@@ -1356,7 +1356,7 @@ function set_quadratic_product_in_obj!(model::Optimizer)
     dict_vars_quad_prod = model.quadratic_objective_cache_product
     for (prod_var, fparam) in dict_vars_quad_prod
         x, y = prod_var
-        evaluated_fparam = _evaluate(model, fparam)
+        evaluated_fparam = _evaluate_parametric_expression(model, fparam)
         push!(
             quadratic_prods_vector,
             MOI.ScalarQuadraticTerm(evaluated_fparam, x, y),
@@ -1418,9 +1418,9 @@ function MOI.set(
 ) where {T}
     # clear previously defined objetive function cache
     empty_objective_function_caches!(model)
+    model.original_objective_function = f
     if !function_has_parameters(model, f)
         MOI.set(model.optimizer, attr, f)
-        model.original_objective_function = f
         return
     end
     (
@@ -1463,7 +1463,6 @@ function MOI.set(
         )
     end
 
-    model.original_objective_function = f
     model.quadratic_objective_cache_pv = quad_aff_vars
     model.quadratic_objective_cache_pp = quad_params
     model.quadratic_objective_cache_pc = aff_params
