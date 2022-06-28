@@ -1286,7 +1286,10 @@ function _evaluate_parametric_expression(model::Optimizer, p::MOI.VariableIndex)
     return model.parameters[p_idx(p)]
 end
 
-function _evaluate_parametric_expression(model::Optimizer, fparam::MOI.ScalarAffineFunction{T}) where T
+function _evaluate_parametric_expression(
+    model::Optimizer,
+    fparam::MOI.ScalarAffineFunction{T},
+) where {T}
     constant = fparam.constant
     terms = fparam.terms
     evaluated_parameter_expression = zero(T)
