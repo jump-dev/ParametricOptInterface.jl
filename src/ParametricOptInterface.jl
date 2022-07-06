@@ -50,7 +50,7 @@ optimization model.
 
 ## Keyword arguments
 
-- `evaluate_duals::Bool`: If `true`, evaluates the dual of parameters. Users might want to set it to `false ``
+- `evaluate_duals::Bool`: If `true`, evaluates the dual of parameters. Users might want to set it to `false`
   to increase performance when the duals of parameters are not necessary. Defaults to `true`.
 
 - `constraints_interpretation`: Decides how to interpret constraints with `ScalarAffineFunctions`. More details
