@@ -140,11 +140,7 @@ function slave_model(PARAM, K)
         @variable(slave, β[i = 1:N_Candidates] in POI.Parameter.(0))
     else
         # Create fixed variables
-        @variables(slave, begin
-            β[Candidates]
-            β_fixed[1:N_Candidates] == 0
-        end)
-        @constraint(slave, β_fix[i in Candidates], β[i] == β_fixed[i])
+        @variable(slave, β[Candidates] == 0)
     end
 
     # create local constraints
@@ -203,8 +199,7 @@ function slave_solve(PARAM, model, master_solution)
         MOI.set.(slave, POI.ParameterValue(), β, β0)
     else
         # JuMP: it is also possible to fix variables to new values
-        β_fixed = slave[:β_fixed]
-        fix.(β_fixed, β0)
+        fix.(slave[:β], β0)
     end
 
     # here the slave problem is solved
@@ -224,7 +219,7 @@ function slave_solve(PARAM, model, master_solution)
         # or, in pure JuMP, we query the duals form
         # constraints that fix the values of our regression
         # coefficients
-        π = dual.(slave[:β_fix])
+        π = dual.(FixRef.(slave[:β]))
     end
 
     # π2 = shadow_price.(β_fix)
@@ -335,3 +330,5 @@ GC.gc()
 β3 = decomposed_model(2; print_timer_outputs = false);
 GC.gc()
 β3 = decomposed_model(2);
+
+β3 ≈ β1
