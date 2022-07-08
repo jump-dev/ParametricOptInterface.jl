@@ -137,17 +137,12 @@ function update_parameter_in_quadratic_constraints_pc!(model::Optimizer)
             end
         end
         if param_constant != zero(Float64)
-            set = MOI.get(
-                model.optimizer,
-                MOI.ConstraintSet(),
-                model.quadratic_added_cache[ci],
-            )
-            set = update_constant!(set, param_constant)
+            S = set_type(model.quadratic_added_cache[ci])
             MOI.set(
                 model.optimizer,
                 MOI.ConstraintSet(),
                 model.quadratic_added_cache[ci],
-                set,
+                S(model.quadratic_constraint_pc_bounds[ci] - param_constant),
             )
         end
     end
@@ -484,4 +479,21 @@ function update_parameters!(model::Optimizer)
     end
 
     return model
+end
+
+function fill_constraint_bounds!(model::Optimizer)
+    update_quadratic_constraint_pc_bounds!(model)    
+    return model
+end
+
+function update_quadratic_constraint_pc_bounds!(model::Optimizer)
+    for ci in keys(model.quadratic_constraint_cache_pc)
+        set = MOI.get(
+            model.optimizer,
+            MOI.ConstraintSet(),
+            model.quadratic_added_cache[ci],
+        )
+        model.quadratic_constraint_pc_bounds[ci] = MOI.constant(set)
+    end
+    return
 end

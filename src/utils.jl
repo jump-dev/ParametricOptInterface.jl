@@ -370,3 +370,5 @@ function separate_possible_terms_and_calculate_parameter_constant(
     end
     return vars, params, param_constants
 end
+
+set_type(::MOI.ConstraintIndex{F, S}) where {F, S} = S

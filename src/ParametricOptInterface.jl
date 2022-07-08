@@ -123,6 +123,9 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     quadratic_constraint_cache_pc::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.ScalarAffineTerm{Float64}},
     }
+    quadratic_constraint_pc_bounds::MOI.Utilities.DoubleDicts.DoubleDict{
+        Float64,
+    }
     # Store the reference to variables in the scalar affine part that are 
     # multiplied by parameters in the scalar quadratic terms.
     # i.e.
@@ -203,6 +206,9 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             }(),
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.ScalarAffineTerm{Float64}},
+            }(),
+            MOI.Utilities.DoubleDicts.DoubleDict{
+                Float64,
             }(),
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.ScalarAffineTerm{Float64}},
@@ -1564,6 +1570,7 @@ end
 
 function MOI.optimize!(model::Optimizer)
     if !isempty(model.updated_parameters)
+        fill_constraint_bounds!(model)
         update_parameters!(model)
     end
     if !isempty(model.quadratic_objective_cache_product)
