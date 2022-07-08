@@ -484,7 +484,13 @@ function MOI.set(
     c::MOI.ConstraintIndex,
     name::String,
 )
-    MOI.set(model.optimizer, attr, c, name)
+    if typeof(c).parameters[1] == MathOptInterface.ScalarQuadraticFunction{Float64}
+        MOI.set(model.optimizer, attr, model.quadratic_added_cache[c], name)
+    elseif typeof(c).parameters[1] == MathOptInterface.ScalarAffineFunction{Float64}
+        MOI.set(model.optimizer, attr, model.affine_added_cache[c], name)
+    else
+        MOI.set(model.optimizer, attr, c, name)
+    end
     return
 end
 
@@ -493,7 +499,13 @@ function MOI.get(
     attr::MOI.ConstraintName,
     c::MOI.ConstraintIndex,
 )
-    return MOI.get(model.optimizer, attr, c)
+    if typeof(c).parameters[1] == MathOptInterface.ScalarQuadraticFunction{Float64}
+        return MOI.get(model.optimizer, attr, model.quadratic_added_cache[c])
+    elseif typeof(c).parameters[1] == MathOptInterface.ScalarAffineFunction{Float64}
+        return MOI.get(model.optimizer, attr, model.affine_added_cache[c])
+    else
+        return MOI.get(model.optimizer, attr, c)
+    end
 end
 
 function MOI.get(
