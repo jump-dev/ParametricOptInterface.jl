@@ -317,15 +317,18 @@ function fill_quadratic_constraint_caches!(
     terms_with_variables_associated_to_parameters::Vector{
         MOI.ScalarAffineTerm{T},
     },
-) where {T}
+    set::S
+) where {T, S}
     if !isempty(quad_aff_vars)
         model.quadratic_constraint_cache_pv[new_ci] = quad_aff_vars
     end
     if !isempty(quad_params)
         model.quadratic_constraint_cache_pp[new_ci] = quad_params
+        model.quadratic_constraint_cache_pp_set[new_ci] = set
     end
     if !isempty(aff_params)
         model.quadratic_constraint_cache_pc[new_ci] = aff_params
+        model.quadratic_constraint_cache_pc_set[new_ci] = set
     end
     if !isempty(terms_with_variables_associated_to_parameters)
         model.quadratic_constraint_variables_associated_to_parameters_cache[new_ci] =

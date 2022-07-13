@@ -111,6 +111,10 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     affine_constraint_cache::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.ScalarAffineTerm{Float64}},
     }
+    # Store constraint set
+    affine_constraint_cache_set::MOI.Utilities.DoubleDicts.DoubleDict{
+        MOI.AbstractScalarSet,
+    }
     # Store reference quadratic constraints with parameter * variable constraints: p * v
     quadratic_constraint_cache_pv::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.ScalarQuadraticTerm{Float64}},
@@ -119,9 +123,17 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     quadratic_constraint_cache_pp::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.ScalarQuadraticTerm{Float64}},
     }
+    # Store constraint set
+    quadratic_constraint_cache_pp_set::MOI.Utilities.DoubleDicts.DoubleDict{
+        MOI.AbstractScalarSet,
+    }
     # Store reference to constraints with quad_variable_term + affine_with_parameters: v * v + p
     quadratic_constraint_cache_pc::MOI.Utilities.DoubleDicts.DoubleDict{
         Vector{MOI.ScalarAffineTerm{Float64}},
+    }
+    # Store constraint set
+    quadratic_constraint_cache_pc_set::MOI.Utilities.DoubleDicts.DoubleDict{
+        MOI.AbstractScalarSet,
     }
     # Store the reference to variables in the scalar affine part that are 
     # multiplied by parameters in the scalar quadratic terms.
@@ -196,13 +208,22 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
                 Vector{MOI.ScalarAffineTerm{Float64}},
             }(),
             MOI.Utilities.DoubleDicts.DoubleDict{
+                MOI.AbstractScalarSet,
+            }(),
+            MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.ScalarQuadraticTerm{Float64}},
             }(),
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.ScalarQuadraticTerm{Float64}},
+            }(),
+            MOI.Utilities.DoubleDicts.DoubleDict{
+                MOI.AbstractScalarSet,
             }(),
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.ScalarAffineTerm{Float64}},
+            }(),
+            MOI.Utilities.DoubleDicts.DoubleDict{
+                MOI.AbstractScalarSet,
             }(),
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.ScalarAffineTerm{Float64}},
@@ -249,9 +270,12 @@ function MOI.is_empty(model::Optimizer)
            isempty(model.affine_added_cache) &&
            model.last_affine_added == 0 &&
            isempty(model.affine_constraint_cache) &&
+           isempty(model.affine_constraint_cache_set) &&
            isempty(model.quadratic_constraint_cache_pv) &&
            isempty(model.quadratic_constraint_cache_pp) &&
+           isempty(model.quadratic_constraint_cache_pp_set) &&
            isempty(model.quadratic_constraint_cache_pc) &&
+           isempty(model.quadratic_constraint_cache_pc_set) &&
            isempty(
                model.quadratic_constraint_variables_associated_to_parameters_cache,
            ) &&
@@ -421,9 +445,12 @@ function MOI.empty!(model::Optimizer{T}) where {T}
     empty!(model.affine_added_cache)
     model.last_affine_added = 0
     empty!(model.affine_constraint_cache)
+    empty!(model.affine_constraint_cache_set)
     empty!(model.quadratic_constraint_cache_pv)
     empty!(model.quadratic_constraint_cache_pp)
+    empty!(model.quadratic_constraint_cache_pp_set)
     empty!(model.quadratic_constraint_cache_pc)
+    empty!(model.quadratic_constraint_cache_pc_set)
     empty!(model.quadratic_constraint_variables_associated_to_parameters_cache)
     empty!(model.quadratic_added_cache)
     empty!(model.quadratic_objective_cache_product)
@@ -811,7 +838,7 @@ function add_saf_constraint(
         MOI.ScalarAffineFunction(vars, f.constant + param_constant),
         set,
     )
-    poi_ci = create_new_poi_ci_and_save_affine_caches(model, params, moi_ci)
+    poi_ci = create_new_poi_ci_and_save_affine_caches(model, params, moi_ci, set)
     return poi_ci
 end
 
@@ -828,7 +855,7 @@ function add_vi_constraint(
         MOI.VariableIndex(vars[1].variable.value),
         update_constant!(set, f.constant + param_constant),
     )
-    poi_ci = create_new_poi_ci_and_save_affine_caches(model, params, moi_ci)
+    poi_ci = create_new_poi_ci_and_save_affine_caches(model, params, moi_ci, set)
     return poi_ci
 end
 
@@ -836,11 +863,13 @@ function create_new_poi_ci_and_save_affine_caches(
     model::Optimizer,
     params::Vector{MOI.ScalarAffineTerm{T}},
     moi_ci::MOI.ConstraintIndex{F,S},
+    set::S
 ) where {T,F,S}
     poi_ci = MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S}(
         model.last_affine_added,
     )
     model.affine_constraint_cache[poi_ci] = params
+    model.affine_constraint_cache_set[poi_ci] = set
     model.affine_added_cache[poi_ci] = moi_ci
     return poi_ci
 end
@@ -1219,6 +1248,7 @@ function add_constraint_with_parameters_on_function(
         quad_params,
         aff_params,
         terms_with_variables_associated_to_parameters,
+        set
     )
     return new_ci
 end
