@@ -53,10 +53,6 @@ optimization model.
 - `evaluate_duals::Bool`: If `true`, evaluates the dual of parameters. Users might want to set it to `false`
   to increase performance when the duals of parameters are not necessary. Defaults to `true`.
 
-- `constraints_interpretation`: Decides how to interpret constraints with `ScalarAffineFunctions`. More details
-  are in [`POI.ConstraintsInterpretation`](@ref) and [JuMP Example - Dealing with parametric expressions as variable bounds](@ref).
-  Defaults to `ONLY_CONSTRAINTS`.
-
 - `save_original_objective_and_constraints`: If `true` saves the orginal function and set of the constraints
   as well as the original objective function inside [`POI.Optimizer`](@ref). This is useful for printing the model
   but greatly increases the memory footprint. Users might want to set it to `false` to increase performance
@@ -1570,7 +1566,10 @@ function MOI.optimize!(model::Optimizer)
         set_quadratic_product_in_obj!(model)
     end
     MOI.optimize!(model.optimizer)
-    if model.evaluate_duals
+    if MOI.get(model, MOI.DualStatus()) == MOI.NO_SOLUTION &&
+       model.evaluate_duals
+        @warn "Dual solution not available, ignoring `evaluate_duals`"
+    elseif model.evaluate_duals
         calculate_dual_of_parameters(model)
     end
     return
