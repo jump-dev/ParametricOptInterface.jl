@@ -1568,10 +1568,8 @@ function MOI.optimize!(model::Optimizer)
     MOI.optimize!(model.optimizer)
     if MOI.get(model, MOI.DualStatus()) == MOI.NO_SOLUTION &&
        model.evaluate_duals
-        @warn "Dual solution not available, setting evaluate_duals to false"
-        model.evaluate_duals = false
-    end
-    if model.evaluate_duals
+        @warn "Dual solution not available, ignoring `evaluate_duals`"
+    elseif model.evaluate_duals
         calculate_dual_of_parameters(model)
     end
     return
