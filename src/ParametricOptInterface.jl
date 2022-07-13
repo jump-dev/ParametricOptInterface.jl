@@ -1566,8 +1566,11 @@ function MOI.optimize!(model::Optimizer)
         set_quadratic_product_in_obj!(model)
     end
     MOI.optimize!(model.optimizer)
-    if model.evaluate_duals &&
-       MOI.get(model, MOI.DualStatus()) != MOI.NO_SOLUTION
+    if MOI.get(model, MOI.DualStatus()) == MOI.NO_SOLUTION && model.evaluate_duals
+        @warn "Dual solution not available, setting evaluate_duals to false"
+        model.evaluate_duals = false
+    end
+    if model.evaluate_duals
         calculate_dual_of_parameters(model)
     end
     return
