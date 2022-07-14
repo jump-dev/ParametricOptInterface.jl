@@ -879,6 +879,32 @@ function MOI.get(
     end
 end
 
+function MOI.supports(
+    model::Optimizer,
+    attr::MOI.AbstractVariableAttribute,
+    tp::Type{MOI.VariableIndex},
+)
+    return MOI.supports(model.optimizer, attr, tp)
+end
+
+function MOI.set(
+    model::Optimizer, 
+    attr::MOI.AbstractVariableAttribute,
+    v::MOI.VariableIndex,
+    val::Float64,
+    )
+    MOI.set(model.optimizer, attr, v, val)
+    return
+end
+
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.AbstractVariableAttribute,
+    v::MOI.VariableIndex,
+    )
+    return MOI.get(model.optimizer, attr, v)
+end
+
 function MOI.set(
     model::Optimizer,
     ::MOI.ConstraintSet,
