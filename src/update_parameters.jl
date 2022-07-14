@@ -18,7 +18,8 @@ end
 function update_parameter_in_affine_constraints!(model::Optimizer)
     for (F, S) in keys(model.affine_constraint_cache.dict)
         affine_constraint_cache_inner = model.affine_constraint_cache[F, S]
-        affine_constraint_cache_set_inner = model.affine_constraint_cache_set[F, S]
+        affine_constraint_cache_set_inner =
+            model.affine_constraint_cache_set[F, S]
         affine_added_cache_inner = model.affine_added_cache[F, S]
         if !isempty(affine_constraint_cache_inner)
             update_parameter_in_affine_constraints!(
@@ -67,7 +68,7 @@ function update_parameter_in_affine_constraints!(
             param_array,
             parameters,
             updated_parameters,
-            affine_constraint_cache_set_inner[ci]
+            affine_constraint_cache_set_inner[ci],
         )
         affine_constraint_cache_set_inner[ci] = new_set
     end
@@ -90,8 +91,8 @@ function update_parameter_in_affine_constraints!(
         typeof(MOI.Utilities.CleverDicts.key_to_index),
         typeof(MOI.Utilities.CleverDicts.index_to_key),
     },
-    set::S
-) where {OT,T,CI, S}
+    set::S,
+) where {OT,T,CI,S}
     param_constant = zero(T)
     for term in param_array
         if !isnan(updated_parameters[p_idx(term.variable)])

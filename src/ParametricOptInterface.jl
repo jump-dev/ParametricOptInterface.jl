@@ -207,24 +207,18 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.ScalarAffineTerm{Float64}},
             }(),
-            MOI.Utilities.DoubleDicts.DoubleDict{
-                MOI.AbstractScalarSet,
-            }(),
+            MOI.Utilities.DoubleDicts.DoubleDict{MOI.AbstractScalarSet}(),
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.ScalarQuadraticTerm{Float64}},
             }(),
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.ScalarQuadraticTerm{Float64}},
             }(),
-            MOI.Utilities.DoubleDicts.DoubleDict{
-                MOI.AbstractScalarSet,
-            }(),
+            MOI.Utilities.DoubleDicts.DoubleDict{MOI.AbstractScalarSet}(),
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.ScalarAffineTerm{Float64}},
             }(),
-            MOI.Utilities.DoubleDicts.DoubleDict{
-                MOI.AbstractScalarSet,
-            }(),
+            MOI.Utilities.DoubleDicts.DoubleDict{MOI.AbstractScalarSet}(),
             MOI.Utilities.DoubleDicts.DoubleDict{
                 Vector{MOI.ScalarAffineTerm{Float64}},
             }(),
@@ -838,7 +832,7 @@ function add_saf_constraint(
         MOI.ScalarAffineFunction(vars, f.constant + param_constant),
         set,
     )
-    poi_ci = create_new_poi_ci_and_save_affine_caches(model, params, moi_ci, set)
+    poi_ci = create_new_poi_ci_and_save_affine_caches(model, params, moi_ci)
     return poi_ci
 end
 
@@ -855,7 +849,7 @@ function add_vi_constraint(
         MOI.VariableIndex(vars[1].variable.value),
         update_constant!(set, f.constant + param_constant),
     )
-    poi_ci = create_new_poi_ci_and_save_affine_caches(model, params, moi_ci, set)
+    poi_ci = create_new_poi_ci_and_save_affine_caches(model, params, moi_ci)
     return poi_ci
 end
 
@@ -863,13 +857,13 @@ function create_new_poi_ci_and_save_affine_caches(
     model::Optimizer,
     params::Vector{MOI.ScalarAffineTerm{T}},
     moi_ci::MOI.ConstraintIndex{F,S},
-    set::S
 ) where {T,F,S}
     poi_ci = MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S}(
         model.last_affine_added,
     )
     model.affine_constraint_cache[poi_ci] = params
-    model.affine_constraint_cache_set[poi_ci] = set
+    model.affine_constraint_cache_set[poi_ci] =
+        MOI.get(model.optimizer, MOI.ConstraintSet(), moi_ci)
     model.affine_added_cache[poi_ci] = moi_ci
     return poi_ci
 end
@@ -1248,7 +1242,7 @@ function add_constraint_with_parameters_on_function(
         quad_params,
         aff_params,
         terms_with_variables_associated_to_parameters,
-        set
+        ci,
     )
     return new_ci
 end
