@@ -888,11 +888,11 @@ function MOI.supports(
 end
 
 function MOI.set(
-    model::Optimizer, 
+    model::Optimizer,
     attr::MOI.AbstractVariableAttribute,
     v::MOI.VariableIndex,
     val::Float64,
-    )
+)
     MOI.set(model.optimizer, attr, v, val)
     return
 end
@@ -901,7 +901,7 @@ function MOI.get(
     model::Optimizer,
     attr::MOI.AbstractVariableAttribute,
     v::MOI.VariableIndex,
-    )
+)
     return MOI.get(model.optimizer, attr, v)
 end
 
