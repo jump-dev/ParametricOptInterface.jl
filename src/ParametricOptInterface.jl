@@ -893,7 +893,13 @@ function MOI.set(
     v::MOI.VariableIndex,
     val::Float64,
 )
-    MOI.set(model.optimizer, attr, v, val)
+    if is_parameter_in_model(model, v)
+        error("AbstractVariableAttribute not supported for parameters")
+    elseif is_variable_in_model(model, v)
+        MOI.set(model.optimizer, attr, v, val)
+    else
+        error("Variable not defined in model")
+    end
     return
 end
 
@@ -902,7 +908,13 @@ function MOI.get(
     attr::MOI.AbstractVariableAttribute,
     v::MOI.VariableIndex,
 )
-    return MOI.get(model.optimizer, attr, v)
+    if is_parameter_in_model(model, v)
+        error("AbstractVariableAttribute not supported for parameters")
+    elseif is_variable_in_model(model, v)
+        MOI.get(model.optimizer, attr, v)
+    else
+        error("Variable not defined in model")
+    end
 end
 
 function MOI.set(
