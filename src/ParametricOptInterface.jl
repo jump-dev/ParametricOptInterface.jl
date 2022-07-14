@@ -481,9 +481,9 @@ end
 function MOI.set(
     model::Optimizer,
     attr::MOI.ConstraintName,
-    c::MOI.ConstraintIndex{F,S},
+    c::MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},S},
     name::String,
-) where {S<:MOI.AbstractSet,F<:MOI.ScalarQuadraticFunction{T}} where {T}
+) where {T,S<:MOI.AbstractSet}
     if haskey(model.quadratic_added_cache, c)
         MOI.set(model.optimizer, attr, model.quadratic_added_cache[c], name)
     else
@@ -495,10 +495,10 @@ end
 function MOI.set(
     model::Optimizer,
     attr::MOI.ConstraintName,
-    c::MOI.ConstraintIndex{F,S},
+    c::MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S},
     name::String,
-) where {S<:MOI.AbstractSet,F<:MOI.ScalarAffineFunction{T}} where {T}
-    if haskey(model.affine_added_cache[c], c)
+) where {T,S<:MOI.AbstractSet}
+    if haskey(model.affine_added_cache, c)
         MOI.set(model.optimizer, attr, model.affine_added_cache[c], name)
     else
         MOI.set(model.optimizer, attr, c, name)
@@ -519,27 +519,25 @@ end
 function MOI.get(
     model::Optimizer,
     attr::MOI.ConstraintName,
-    c::MOI.ConstraintIndex{F,S},
-) where {S<:MOI.AbstractSet,F<:MOI.ScalarQuadraticFunction{T}} where {T}
+    c::MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},S},
+) where {T,S<:MOI.AbstractSet}
     if haskey(model.quadratic_added_cache, c)
-        MOI.get(model.optimizer, attr, model.quadratic_added_cache[c])
+        return MOI.get(model.optimizer, attr, model.quadratic_added_cache[c])
     else
-        MOI.get(model.optimizer, attr, c)
+        return MOI.get(model.optimizer, attr, c)
     end
-    return
 end
 
 function MOI.get(
     model::Optimizer,
     attr::MOI.ConstraintName,
-    c::MOI.ConstraintIndex{F,S},
-) where {S<:MOI.AbstractSet,F<:MOI.ScalarAffineFunction{T}} where {T}
-    if haskey(model.affine_added_cache[c], c)
-        MOI.get(model.optimizer, attr, model.affine_added_cache[c])
+    c::MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S},
+) where {T,S<:MOI.AbstractSet}
+    if haskey(model.affine_added_cache, c)
+        return MOI.get(model.optimizer, attr, model.affine_added_cache[c])
     else
-        MOI.get(model.optimizer, attr, c)
+        return MOI.get(model.optimizer, attr, c)
     end
-    return
 end
 
 function MOI.get(
@@ -547,8 +545,7 @@ function MOI.get(
     attr::MOI.ConstraintName,
     c::MOI.ConstraintIndex,
 )
-    MOI.set(model.optimizer, attr, c, name)
-    return
+    return MOI.get(model.optimizer, attr, c)
 end
 
 function MOI.get(
