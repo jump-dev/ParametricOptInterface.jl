@@ -18,6 +18,8 @@ end
 function update_parameter_in_affine_constraints!(model::Optimizer)
     for (F, S) in keys(model.affine_constraint_cache.dict)
         affine_constraint_cache_inner = model.affine_constraint_cache[F, S]
+        affine_constraint_cache_set_inner =
+            model.affine_constraint_cache_set[F, S]
         affine_added_cache_inner = model.affine_added_cache[F, S]
         if !isempty(affine_constraint_cache_inner)
             update_parameter_in_affine_constraints!(
@@ -25,6 +27,7 @@ function update_parameter_in_affine_constraints!(model::Optimizer)
                 model.parameters,
                 model.updated_parameters,
                 affine_constraint_cache_inner,
+                affine_constraint_cache_set_inner,
                 affine_added_cache_inner,
             )
         end
@@ -51,16 +54,23 @@ function update_parameter_in_affine_constraints!(
         S,
         V1,
     },
+    affine_constraint_cache_set_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{
+        F,
+        S,
+        MOI.AbstractScalarSet,
+    },
     affine_added_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{F,S,V2},
 ) where {OT,T,F,S,V1,V2}
     for (ci, param_array) in affine_constraint_cache_inner
-        update_parameter_in_affine_constraints!(
+        new_set = update_parameter_in_affine_constraints!(
             optimizer,
             affine_added_cache_inner[ci],
             param_array,
             parameters,
             updated_parameters,
+            affine_constraint_cache_set_inner[ci],
         )
+        affine_constraint_cache_set_inner[ci] = new_set
     end
     return optimizer
 end
@@ -81,7 +91,8 @@ function update_parameter_in_affine_constraints!(
         typeof(MOI.Utilities.CleverDicts.key_to_index),
         typeof(MOI.Utilities.CleverDicts.index_to_key),
     },
-) where {OT,T,CI}
+    set::S,
+) where {OT,T,CI,S}
     param_constant = zero(T)
     for term in param_array
         if !isnan(updated_parameters[p_idx(term.variable)])
@@ -93,11 +104,11 @@ function update_parameter_in_affine_constraints!(
         end
     end
     if param_constant != zero(Float64)
-        set = MOI.get(optimizer, MOI.ConstraintSet(), ci)
-        set = update_constant!(set, param_constant)
-        MOI.set(optimizer, MOI.ConstraintSet(), ci, set)
+        new_set = update_constant!(set, param_constant)
+        MOI.set(optimizer, MOI.ConstraintSet(), ci, new_set)
+        return new_set
     end
-    return ci
+    return set
 end
 
 function update_parameter_in_affine_objective!(model::Optimizer)
@@ -137,18 +148,15 @@ function update_parameter_in_quadratic_constraints_pc!(model::Optimizer)
             end
         end
         if param_constant != zero(Float64)
-            set = MOI.get(
-                model.optimizer,
-                MOI.ConstraintSet(),
-                model.quadratic_added_cache[ci],
-            )
-            set = update_constant!(set, param_constant)
+            old_set = model.quadratic_constraint_cache_pc_set[ci]
+            new_set = update_constant!(old_set, param_constant)
             MOI.set(
                 model.optimizer,
                 MOI.ConstraintSet(),
                 model.quadratic_added_cache[ci],
-                set,
+                new_set,
             )
+            model.quadratic_constraint_cache_pc_set[ci] = new_set
         end
     end
 end
@@ -212,18 +220,15 @@ function update_parameter_in_quadratic_constraints_pp!(model::Optimizer)
             end
         end
         if param_constant != zero(Float64)
-            set = MOI.get(
-                model.optimizer,
-                MOI.ConstraintSet(),
-                model.quadratic_added_cache[ci],
-            )
-            set = update_constant!(set, param_constant)
+            old_set = model.quadratic_constraint_cache_pp_set[ci]
+            new_set = update_constant!(old_set, param_constant)
             MOI.set(
                 model.optimizer,
                 MOI.ConstraintSet(),
                 model.quadratic_added_cache[ci],
-                set,
+                new_set,
             )
+            model.quadratic_constraint_cache_pp_set[ci] = new_set
         end
     end
     return model
