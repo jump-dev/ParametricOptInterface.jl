@@ -942,15 +942,36 @@ function MOI.get(
     end
 end
 
+function MOI.supports(
+    model::Optimizer,
+    attr::MOI.AbstractVariableAttribute,
+    tp::Type{MOI.VariableIndex},
+)
+    return MOI.supports(model.optimizer, attr, tp)
+end
+
+function MOI.set(
+    model::Optimizer,
+    attr::MOI.AbstractVariableAttribute,
+    v::MOI.VariableIndex,
+    val::Float64,
+)
+    if is_variable_in_model(model, v)
+        MOI.set(model.optimizer, attr, v, val)
+    else
+        error("$attr is not supported for parameters")
+    end
+end
+
 function MOI.get(
     model::Optimizer,
-    attr::MOI.VariableBasisStatus,
+    attr::MOI.AbstractVariableAttribute,
     v::MOI.VariableIndex,
 )
     if is_variable_in_model(model, v)
         return MOI.get(model.optimizer, attr, model.variables[v])
     else
-        error("VariableBasisStatus is not supported for parameters.")
+        error("$attr is not supported for parameters")
     end
 end
 

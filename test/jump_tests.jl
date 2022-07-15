@@ -440,3 +440,28 @@ end
         2x[i] >= p[i] + p[1]
     )
 end
+
+@testset "JuMP Set Variable Start Value" begin
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOIU.CachingOptimizer(
+            MOIU.UniversalFallback(MOIU.Model{Float64}()),
+            GLPK.Optimizer(),
+        ),
+        Float64,
+    )
+    optimizer = POI.Optimizer(cached)
+
+    model = direct_model(optimizer)
+    @variable(model, x >= 0)
+    @variable(model, p in POI.Parameter(0))
+
+    set_start_value(x, 1.0)
+    @test start_value(x) == 1
+
+    @test_throws ErrorException(
+        "MathOptInterface.VariablePrimalStart() is not supported for parameters",
+    ) set_start_value(p, 1.0)
+    @test_throws ErrorException(
+        "MathOptInterface.VariablePrimalStart() is not supported for parameters",
+    ) start_value(p)
+end
