@@ -65,13 +65,10 @@
     )
 
     @test MOI.get(optimizer, POI.ListOfPureVariableIndices()) ==
-        MOI.VariableIndex[
-            MOI.VariableIndex(1), 
-            MOI.VariableIndex(2)
-        ]
+          MOI.VariableIndex[MOI.VariableIndex(1), MOI.VariableIndex(2)]
 
     @test MOI.get(optimizer, POI.ListOfParametersIndices()) ==
-        POI.ParameterIndex[POI.ParameterIndex(1)]
+          POI.ParameterIndex[POI.ParameterIndex(1)]
 
     MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(1.0))
 
