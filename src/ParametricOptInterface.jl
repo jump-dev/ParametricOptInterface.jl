@@ -366,7 +366,10 @@ end
 function MOI.get(model::Optimizer, ::MOI.ListOfVariableIndices)
     return _all_variables(model)
 end
-function MOI.get(model::MOI.Utilities.CachingOptimizer, ::MOI.ListOfVariableIndices)
+function MOI.get(
+    model::MOI.Utilities.CachingOptimizer,
+    ::MOI.ListOfVariableIndices,
+)
     return _all_variables(model.optimizer.model)
 end
 function _all_variables(model::Optimizer)
