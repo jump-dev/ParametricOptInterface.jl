@@ -364,7 +364,16 @@ function MOI.set(model::Optimizer, ::MOI.Name, name::String)
     return MOI.set(model.optimizer, MOI.Name(), name)
 end
 function MOI.get(model::Optimizer, ::MOI.ListOfVariableIndices)
-    return MOI.get(model.optimizer, MOI.ListOfVariableIndices())
+    return _all_variables(model)
+end
+function MOI.get(model::MOI.Utilities.CachingOptimizer, ::MOI.ListOfVariableIndices)
+    return _all_variables(model.optimizer.model)
+end
+function _all_variables(model::Optimizer)
+    return keys(model.variables)
+end
+function _all_parameters(model::Optimizer)
+    return keys(model.parameters)
 end
 function MOI.get(model::Optimizer, ::MOI.ListOfVariableAttributesSet)
     return MOI.get(model.optimizer, MOI.ListOfVariableAttributesSet())
