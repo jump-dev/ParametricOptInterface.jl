@@ -368,12 +368,12 @@ function MOI.get(model::Optimizer, ::MOI.ListOfVariableIndices)
 end
 
 struct ListOfPureVariableIndices <: MOI.AbstractModelAttribute end
-struct ListOfParametersIndices <: MOI.AbstractModelAttribute end
+struct ListOfParameterIndices <: MOI.AbstractModelAttribute end
 
 function MOI.get(model::Optimizer, ::ListOfPureVariableIndices)
     return _all_variables(model)
 end
-function MOI.get(model::Optimizer, ::ListOfParametersIndices)
+function MOI.get(model::Optimizer, ::ListOfParameterIndices)
     return _all_parameters(model)
 end
 
