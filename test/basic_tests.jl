@@ -64,6 +64,12 @@
         z,
     )
 
+    @test MOI.get(optimizer, POI.ListOfPureVariableIndices()) ==
+          MOI.VariableIndex[MOI.VariableIndex(1), MOI.VariableIndex(2)]
+
+    @test MOI.get(optimizer, POI.ListOfParameterIndices()) ==
+          POI.ParameterIndex[POI.ParameterIndex(1)]
+
     MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(1.0))
 
     @test_throws ErrorException("Parameter not in the model") MOI.set(
