@@ -408,6 +408,78 @@ function MOI.set(
 end
 function MOI.set(
     model::Optimizer,
+    ::MOI.ConstraintFunction,
+    c::MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S},
+    f::F,
+) where {T,S<:MOI.AbstractSet,F}
+    if haskey(model.affine_added_cache, c)
+        MOI.set(
+            model.optimizer,
+            MOI.ConstraintFunction(),
+            model.affine_added_cache[c],
+            f,
+        )
+    else
+        MOI.set(model.optimizer, MOI.ConstraintFunction(), c, f)
+    end
+    return
+end
+function MOI.set(
+    model::Optimizer,
+    ::MOI.ConstraintFunction,
+    c::MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},S},
+    f::F,
+) where {T,S<:MOI.AbstractSet,F}
+    if haskey(model.quadratic_added_cache, c)
+        MOI.set(
+            model.optimizer,
+            MOI.ConstraintFunction(),
+            model.quadratic_added_cache[c],
+            f,
+        )
+    else
+        MOI.set(model.optimizer, MOI.ConstraintFunction(), c, f)
+    end
+    return
+end
+function MOI.set(
+    model::Optimizer,
+    ::MOI.ConstraintSet,
+    c::MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},S},
+    s::S,
+) where {T,S<:MOI.AbstractSet}
+    if haskey(model.quadratic_added_cache, c)
+        MOI.set(
+            model.optimizer,
+            MOI.ConstraintSet(),
+            model.quadratic_added_cache[c],
+            s,
+        )
+    else
+        MOI.set(model.optimizer, MOI.ConstraintSet(), c, s)
+    end
+    return
+end
+function MOI.set(
+    model::Optimizer,
+    ::MOI.ConstraintSet,
+    c::MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S},
+    s::S,
+) where {T,S<:MOI.AbstractSet}
+    if haskey(model.affine_added_cache, c)
+        MOI.set(
+            model.optimizer,
+            MOI.ConstraintSet(),
+            model.affine_added_cache[c],
+            s,
+        )
+    else
+        MOI.set(model.optimizer, MOI.ConstraintSet(), c, s)
+    end
+    return
+end
+function MOI.set(
+    model::Optimizer,
     ::MOI.ConstraintSet,
     c::MOI.ConstraintIndex{F,S},
     s::S,
