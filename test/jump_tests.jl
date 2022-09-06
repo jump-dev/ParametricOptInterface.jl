@@ -472,7 +472,7 @@ end
     @variable(model, x, lower_bound = 0.0, upper_bound = 10.0)
     @variable(model, y, binary = true)
     @variable(model, z, set = POI.Parameter(10))
-    c = @constraint(model, 19.0*x - z + 22.0*y <= 1.0)
+    c = @constraint(model, 19.0 * x - z + 22.0 * y <= 1.0)
     @objective(model, Min, x + y)
     @test MOI.get(model, POI.ParameterValue(), z) == 10
 end
@@ -482,7 +482,7 @@ end
     @variable(model, x, lower_bound = 0.0, upper_bound = 10.0)
     @variable(model, y, binary = true)
     @variable(model, z, set = POI.Parameter(10))
-    c = @constraint(model, 19.0*x - z + 22.0*y <= 1.0)
+    c = @constraint(model, 19.0 * x - z + 22.0 * y <= 1.0)
     @objective(model, Min, x + y)
     @test MOI.get(model, POI.ParameterValue(), z) == 10
 end
