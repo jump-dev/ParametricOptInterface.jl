@@ -468,7 +468,6 @@ end
 
 @testset "JuMP Get parameter value - direct mode" begin
     model = direct_model(POI.Optimizer(GLPK.Optimizer()))
-    # model = Model(() -> ParametricOptInterface.Optimizer(HiGHS.Optimizer()))
     @variable(model, x, lower_bound = 0.0, upper_bound = 10.0)
     @variable(model, y, binary = true)
     @variable(model, z, set = POI.Parameter(10))
