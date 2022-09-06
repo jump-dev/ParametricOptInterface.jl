@@ -465,3 +465,23 @@ end
         "MathOptInterface.VariablePrimalStart() is not supported for parameters",
     ) start_value(p)
 end
+
+@testset "JuMP Get parameter value - direct mode" begin
+    model = direct_model(POI.Optimizer(GLPK.Optimizer()))
+    @variable(model, x, lower_bound = 0.0, upper_bound = 10.0)
+    @variable(model, y, binary = true)
+    @variable(model, z, set = POI.Parameter(10))
+    c = @constraint(model, 19.0 * x - z + 22.0 * y <= 1.0)
+    @objective(model, Min, x + y)
+    @test MOI.get(model, POI.ParameterValue(), z) == 10
+end
+
+@testset "JuMP Get parameter value - automatic mode" begin
+    model = Model(() -> ParametricOptInterface.Optimizer(GLPK.Optimizer()))
+    @variable(model, x, lower_bound = 0.0, upper_bound = 10.0)
+    @variable(model, y, binary = true)
+    @variable(model, z, set = POI.Parameter(10))
+    c = @constraint(model, 19.0 * x - z + 22.0 * y <= 1.0)
+    @objective(model, Min, x + y)
+    @test MOI.get(model, POI.ParameterValue(), z) == 10
+end

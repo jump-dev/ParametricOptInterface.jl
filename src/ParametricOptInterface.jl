@@ -1074,9 +1074,7 @@ function MOI.get(
 end
 
 function MOI.get(model::Optimizer, ::ParameterValue, var::MOI.VariableIndex)
-    ci = MOI.ConstraintIndex{MOI.VariableIndex,Parameter}(var.value)
-    set = MOI.get(model, MOI.ConstraintSet(), ci)
-    return set.val
+    return model.parameters[p_idx(var)]
 end
 
 """
