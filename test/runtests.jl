@@ -10,6 +10,7 @@ import GLPK
 import Ipopt
 import SCS
 
+import LinearAlgebra
 import ParametricOptInterface
 
 const POI = ParametricOptInterface
