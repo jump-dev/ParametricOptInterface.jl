@@ -1,3 +1,8 @@
+# Copyright (c) 2020: Tomás Gutierrez and contributors
+#
+# Use of this source code is governed by an MIT-style license that can be found
+# in the LICENSE.md file or at https://opensource.org/licenses/MIT.
+
 @testset "Basic tests" begin
     """
         min x₁ + y
