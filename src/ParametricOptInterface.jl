@@ -1,3 +1,8 @@
+# Copyright (c) 2020: Tomás Gutierrez and contributors
+#
+# Use of this source code is governed by an MIT-style license that can be found
+# in the LICENSE.md file or at https://opensource.org/licenses/MIT.
+
 module ParametricOptInterface
 
 using MathOptInterface
@@ -76,7 +81,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
         typeof(MOI.Utilities.CleverDicts.index_to_key),
     }
     parameters_name::Dict{MOI.VariableIndex,String}
-    # The updated_parameters dictionary has the same dimension of the 
+    # The updated_parameters dictionary has the same dimension of the
     # parameters dictionary and if the value stored is a NaN is means
     # that the parameter has not been updated.
     updated_parameters::MOI.Utilities.CleverDicts.CleverDict{
@@ -131,12 +136,12 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     quadratic_constraint_cache_pc_set::MOI.Utilities.DoubleDicts.DoubleDict{
         MOI.AbstractScalarSet,
     }
-    # Store the reference to variables in the scalar affine part that are 
+    # Store the reference to variables in the scalar affine part that are
     # multiplied by parameters in the scalar quadratic terms.
     # i.e.
-    # If we have a constraint function with both scalar quadratic terms and 
+    # If we have a constraint function with both scalar quadratic terms and
     # scalar affine terms such as p_1 * v_1 + 2.0 * v_1
-    # When we need to update the constraint coefficient after updating the parameter 
+    # When we need to update the constraint coefficient after updating the parameter
     # we must do (new_p_1 + 2.0) * v_1
     # This cache is storing the 2.0 * v_1 part.
     quadratic_constraint_variables_associated_to_parameters_cache::MOI.Utilities.DoubleDicts.DoubleDict{
@@ -1090,8 +1095,8 @@ Attribute to define how [`POI.Optimizer`](@ref) should interpret constraints.
   This is valid for constraints such as `x >= p` or `x >= p1 + p2`. If a constraint `x1 + x2 >= p` appears,
   which is not a valid variable bound it will throw an error.
 
-- `POI.BOUNDS_AND_CONSTRAINTS`: Interpret `ScalarAffineFunction` constraints as a variable bound if they 
-  are a valid variable bound, i.e., `x >= p` or `x >= p1 + p2` and interpret them as linear constraints 
+- `POI.BOUNDS_AND_CONSTRAINTS`: Interpret `ScalarAffineFunction` constraints as a variable bound if they
+  are a valid variable bound, i.e., `x >= p` or `x >= p1 + p2` and interpret them as linear constraints
   otherwise.
 
 # Example

@@ -1,3 +1,8 @@
+# Copyright (c) 2020: Tomás Gutierrez and contributors
+#
+# Use of this source code is governed by an MIT-style license that can be found
+# in the LICENSE.md file or at https://opensource.org/licenses/MIT.
+
 @testset "QP - No parameters 1" begin
     ipopt = Ipopt.Optimizer()
     MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)

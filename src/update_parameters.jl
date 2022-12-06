@@ -1,3 +1,8 @@
+# Copyright (c) 2020: Tomás Gutierrez and contributors
+#
+# Use of this source code is governed by an MIT-style license that can be found
+# in the LICENSE.md file or at https://opensource.org/licenses/MIT.
+
 function update_constant!(s::MOI.LessThan{T}, val::T) where {T}
     return MOI.LessThan{T}(s.upper - val)
 end

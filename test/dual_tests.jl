@@ -1,3 +1,8 @@
+# Copyright (c) 2020: Tomás Gutierrez and contributors
+#
+# Use of this source code is governed by an MIT-style license that can be found
+# in the LICENSE.md file or at https://opensource.org/licenses/MIT.
+
 @testset "Duals: Test Basic" begin
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
 
