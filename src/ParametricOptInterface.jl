@@ -9,7 +9,7 @@ using MathOptInterface
 
 const MOI = MathOptInterface
 
-const PARAMETER_INDEX_THRESHOLD = 1_000_000_000_000_000_000
+const PARAMETER_INDEX_THRESHOLD = Int64(4_611_686_018_427_387_904) # div(typemax(Int64),2)+1
 
 @enum ConstraintsInterpretationCode ONLY_CONSTRAINTS ONLY_BOUNDS BOUNDS_AND_CONSTRAINTS
 
@@ -47,6 +47,70 @@ function p_idx(vi::MOI.VariableIndex)
     return ParameterIndex(vi.value - PARAMETER_INDEX_THRESHOLD)
 end
 
+const ParamTo{T} = MOI.Utilities.CleverDicts.CleverDict{
+    ParameterIndex,
+    T,
+    typeof(MOI.Utilities.CleverDicts.key_to_index),
+    typeof(MOI.Utilities.CleverDicts.index_to_key),
+}
+const VariableMap = MOI.Utilities.CleverDicts.CleverDict{
+    MOI.VariableIndex,
+    MOI.VariableIndex,
+    typeof(MOI.Utilities.CleverDicts.key_to_index),
+    typeof(MOI.Utilities.CleverDicts.index_to_key),
+}
+
+const DoubleDict{T} = MOI.Utilities.DoubleDicts.DoubleDict{T}
+const DoubleDictInner{F,S,T} = MOI.Utilities.DoubleDicts.DoubleDictInner{F,S,T}
+
+mutable struct ParametricQuadraticFunction{T}
+    # helper to efficiently update affine terms 
+    affine_data::Dict{MOI.VariableIndex,T}
+    # constant * parameter * variable (in this order)
+    pv::Vector{MOI.ScalarQuadraticTerm{T}}
+    # constant * parameter * parameter
+    pp::Vector{MOI.ScalarQuadraticTerm{T}}
+    # constant * variable * variable
+    vv::Vector{MOI.ScalarQuadraticTerm{T}}
+    # constant * parameter
+    p::Vector{MOI.ScalarAffineTerm{T}}
+    # constant * variable
+    v::Vector{MOI.ScalarAffineTerm{T}}
+    # constant (includes the set constant TODO!!!!)
+    c::T
+    #
+    # cache data that is inside the solver to avoid slow getters
+    current_terms_with_p::Dict{MOI.VariableIndex,T}
+    current_constant::T
+    # computed on runtime
+    # updated_terms_with_p::Dict{MOI.VariableIndex,T}
+    # updated_constant::T
+    #=
+    function ParametricQuadraticFunction{T}()
+        return new(
+            zero(T),
+            MOI.ScalarAffineTerm{T}[],
+            MOI.ScalarAffineTerm{T}[],
+            Dict{MOI.VariableIndex,T}(),
+            MOI.ScalarQuadraticTerm{T}[],
+            MOI.ScalarQuadraticTerm{T}[],
+            MOI.ScalarQuadraticTerm{T}[],
+        )
+    end
+    =#
+end
+
+mutable struct ParametricAffineFunction{T}
+    # constant * parameter
+    p::Vector{MOI.ScalarAffineTerm{T}}
+    # constant * variable
+    v::Vector{MOI.ScalarAffineTerm{T}}
+    # constant
+    c::T
+    # cache to avoid slow getters
+    current_constant::T
+end
+
 """
     Optimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimizer
 
@@ -74,68 +138,57 @@ ParametricOptInterface.Optimizer{Float64,GLPK.Optimizer}
 """
 mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     optimizer::OT
-    parameters::MOI.Utilities.CleverDicts.CleverDict{
-        ParameterIndex,
-        T,
-        typeof(MOI.Utilities.CleverDicts.key_to_index),
-        typeof(MOI.Utilities.CleverDicts.index_to_key),
-    }
+    parameters::ParamTo{T}
     parameters_name::Dict{MOI.VariableIndex,String}
     # The updated_parameters dictionary has the same dimension of the
     # parameters dictionary and if the value stored is a NaN is means
     # that the parameter has not been updated.
-    updated_parameters::MOI.Utilities.CleverDicts.CleverDict{
-        ParameterIndex,
-        T,
-        typeof(MOI.Utilities.CleverDicts.key_to_index),
-        typeof(MOI.Utilities.CleverDicts.index_to_key),
-    }
-    variables::MOI.Utilities.CleverDicts.CleverDict{
-        MOI.VariableIndex,
-        MOI.VariableIndex,
-        typeof(MOI.Utilities.CleverDicts.key_to_index),
-        typeof(MOI.Utilities.CleverDicts.index_to_key),
-    }
+    updated_parameters::ParamTo{T}
+    variables::VariableMap
     last_variable_index_added::Int64
     last_parameter_index_added::Int64
     # Store the constraint function and set passed to POI by MOI
-    original_constraint_function_and_set_cache::Dict{
+    # REM
+    original_constraint_data::Dict{
         MOI.ConstraintIndex,
         Tuple{MOI.AbstractFunction,MOI.AbstractSet},
     }
     # Store the map for SAFs that might be transformed into VI
-    affine_added_cache::MOI.Utilities.DoubleDicts.DoubleDict{
-        MOI.ConstraintIndex,
-    }
+    affine_added_cache::DoubleDict{MOI.ConstraintIndex}
     last_affine_added::Int64
+
     # Store reference to parameters of affine constraints with parameters: v + p
-    affine_constraint_cache::MOI.Utilities.DoubleDicts.DoubleDict{
-        Vector{MOI.ScalarAffineTerm{Float64}},
-    }
+    # REM
+    affine_constraint_cache::DoubleDict{Vector{MOI.ScalarAffineTerm{Float64}}}
     # Store constraint set
-    affine_constraint_cache_set::MOI.Utilities.DoubleDicts.DoubleDict{
-        MOI.AbstractScalarSet,
-    }
+    affine_constraint_cache_set::DoubleDict{MOI.AbstractScalarSet}
+
+    # replaces above
+    affine_constraint_cache2::DoubleDict{ParametricAffineFunction{T}}
+    # replaces below
+    quadratic_constraint_cache::DoubleDict{ParametricQuadraticFunction{T}}
+    objective_cache::Union{Nothing,ParametricQuadraticFunction{T}}
+
     # Store reference quadratic constraints with parameter * variable constraints: p * v
-    quadratic_constraint_cache_pv::MOI.Utilities.DoubleDicts.DoubleDict{
+    # REM
+    quadratic_constraint_cache_pv::DoubleDict{
         Vector{MOI.ScalarQuadraticTerm{Float64}},
     }
-    # Store reference quadratic constraints with parameter * variable constraints: p * v
-    quadratic_constraint_cache_pp::MOI.Utilities.DoubleDicts.DoubleDict{
+    # Store reference quadratic constraints with parameter * parameter constraints: p * v
+    # REM
+    quadratic_constraint_cache_pp::DoubleDict{
         Vector{MOI.ScalarQuadraticTerm{Float64}},
     }
     # Store constraint set
-    quadratic_constraint_cache_pp_set::MOI.Utilities.DoubleDicts.DoubleDict{
-        MOI.AbstractScalarSet,
-    }
+    # REM
+    quadratic_constraint_cache_pp_set::DoubleDict{MOI.AbstractScalarSet}
     # Store reference to constraints with quad_variable_term + affine_with_parameters: v * v + p
-    quadratic_constraint_cache_pc::MOI.Utilities.DoubleDicts.DoubleDict{
+    # REM
+    quadratic_constraint_cache_pc::DoubleDict{
         Vector{MOI.ScalarAffineTerm{Float64}},
     }
     # Store constraint set
-    quadratic_constraint_cache_pc_set::MOI.Utilities.DoubleDicts.DoubleDict{
-        MOI.AbstractScalarSet,
-    }
+    quadratic_constraint_cache_pc_set::DoubleDict{MOI.AbstractScalarSet}
     # Store the reference to variables in the scalar affine part that are
     # multiplied by parameters in the scalar quadratic terms.
     # i.e.
@@ -144,30 +197,39 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     # When we need to update the constraint coefficient after updating the parameter
     # we must do (new_p_1 + 2.0) * v_1
     # This cache is storing the 2.0 * v_1 part.
-    quadratic_constraint_variables_associated_to_parameters_cache::MOI.Utilities.DoubleDicts.DoubleDict{
+    # REM
+    variables_multiplied_by_parameters::DoubleDict{
         Vector{MOI.ScalarAffineTerm{T}},
     }
     # Store the map for SQFs that might be transformed into SAF
     # for instance p*p + var -> ScalarAffine(var)
-    quadratic_added_cache::Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}
+    moi_quadratic_to_poi_affine_map::Dict{
+        MOI.ConstraintIndex,
+        MOI.ConstraintIndex,
+    }
     # Store parametric expressions for product of variables
     quadratic_objective_cache_product::Dict{
         Tuple{MOI.VariableIndex,MOI.VariableIndex},
         MOI.AbstractFunction,
     }
     last_quad_add_added::Int64
-    vector_constraint_cache::MOI.Utilities.DoubleDicts.DoubleDict{
-        Vector{MOI.VectorAffineTerm{Float64}},
-    }
+    vector_constraint_cache::DoubleDict{Vector{MOI.VectorAffineTerm{Float64}}}
     # Ditto from the constraint caches but for the objective function
+    # REM
     original_objective_function::MOI.AbstractFunction
+    # REM
     affine_objective_cache::Vector{MOI.ScalarAffineTerm{T}}
+    # REM
     quadratic_objective_cache_pv::Vector{MOI.ScalarQuadraticTerm{T}}
+    # REM
     quadratic_objective_cache_pp::Vector{MOI.ScalarQuadraticTerm{T}}
+    # REM
     quadratic_objective_cache_pc::Vector{MOI.ScalarAffineTerm{T}}
+    # REM
     quadratic_objective_variables_associated_to_parameters_cache::Vector{
         MOI.ScalarAffineTerm{T},
     }
+    #
     multiplicative_parameters::Set{Int64}
     dual_value_of_parameters::Vector{Float64}
     evaluate_duals::Bool
@@ -179,14 +241,15 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
         evaluate_duals::Bool = true,
         save_original_objective_and_constraints::Bool = true,
     ) where {OT}
+        T = Float64
         return new{Float64,OT}(
             optimizer,
-            MOI.Utilities.CleverDicts.CleverDict{ParameterIndex,Float64}(
+            MOI.Utilities.CleverDicts.CleverDict{ParameterIndex,T}(
                 MOI.Utilities.CleverDicts.key_to_index,
                 MOI.Utilities.CleverDicts.index_to_key,
             ),
             Dict{MOI.VariableIndex,String}(),
-            MOI.Utilities.CleverDicts.CleverDict{ParameterIndex,Float64}(
+            MOI.Utilities.CleverDicts.CleverDict{ParameterIndex,T}(
                 MOI.Utilities.CleverDicts.key_to_index,
                 MOI.Utilities.CleverDicts.index_to_key,
             ),
@@ -203,43 +266,34 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
                 MOI.ConstraintIndex,
                 Tuple{MOI.AbstractFunction,MOI.AbstractSet},
             }(),
-            MOI.Utilities.DoubleDicts.DoubleDict{MOI.ConstraintIndex}(),
+            DoubleDict{MOI.ConstraintIndex}(),
             0,
-            MOI.Utilities.DoubleDicts.DoubleDict{
-                Vector{MOI.ScalarAffineTerm{Float64}},
-            }(),
-            MOI.Utilities.DoubleDicts.DoubleDict{MOI.AbstractScalarSet}(),
-            MOI.Utilities.DoubleDicts.DoubleDict{
-                Vector{MOI.ScalarQuadraticTerm{Float64}},
-            }(),
-            MOI.Utilities.DoubleDicts.DoubleDict{
-                Vector{MOI.ScalarQuadraticTerm{Float64}},
-            }(),
-            MOI.Utilities.DoubleDicts.DoubleDict{MOI.AbstractScalarSet}(),
-            MOI.Utilities.DoubleDicts.DoubleDict{
-                Vector{MOI.ScalarAffineTerm{Float64}},
-            }(),
-            MOI.Utilities.DoubleDicts.DoubleDict{MOI.AbstractScalarSet}(),
-            MOI.Utilities.DoubleDicts.DoubleDict{
-                Vector{MOI.ScalarAffineTerm{Float64}},
-            }(),
+            DoubleDict{Vector{MOI.ScalarAffineTerm{T}}}(),
+            DoubleDict{MOI.AbstractScalarSet}(),
+            DoubleDict{ParametricAffineFunction{T}}(),
+            DoubleDict{ParametricQuadraticFunction{T}}(),
+            nothing,
+            DoubleDict{Vector{MOI.ScalarQuadraticTerm{T}}}(),
+            DoubleDict{Vector{MOI.ScalarQuadraticTerm{T}}}(),
+            DoubleDict{MOI.AbstractScalarSet}(),
+            DoubleDict{Vector{MOI.ScalarAffineTerm{T}}}(),
+            DoubleDict{MOI.AbstractScalarSet}(),
+            DoubleDict{Vector{MOI.ScalarAffineTerm{T}}}(),
             Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}(),
             Dict{
                 Tuple{MOI.VariableIndex,MOI.VariableIndex},
                 MOI.AbstractFunction,
             }(),
             0,
-            MOI.Utilities.DoubleDicts.DoubleDict{
-                Vector{MOI.VectorAffineTerm{Float64}},
-            }(),
+            DoubleDict{Vector{MOI.VectorAffineTerm{T}}}(),
             MOI.VariableIndex(-1),
-            Vector{MOI.ScalarAffineTerm{Float64}}(),
-            Vector{MOI.ScalarQuadraticTerm{Float64}}(),
-            Vector{MOI.ScalarQuadraticTerm{Float64}}(),
-            Vector{MOI.ScalarAffineTerm{Float64}}(),
-            Vector{MOI.ScalarAffineTerm{Float64}}(),
+            Vector{MOI.ScalarAffineTerm{T}}(),
+            Vector{MOI.ScalarQuadraticTerm{T}}(),
+            Vector{MOI.ScalarQuadraticTerm{T}}(),
+            Vector{MOI.ScalarAffineTerm{T}}(),
+            Vector{MOI.ScalarAffineTerm{T}}(),
             Set{Int64}(),
-            Vector{Float64}(),
+            Vector{T}(),
             evaluate_duals,
             0,
             ONLY_CONSTRAINTS,
@@ -261,20 +315,21 @@ function MOI.is_empty(model::Optimizer)
            isempty(model.variables) &&
            model.last_variable_index_added == 0 &&
            model.last_parameter_index_added == PARAMETER_INDEX_THRESHOLD &&
-           isempty(model.original_constraint_function_and_set_cache) &&
+           isempty(model.original_constraint_data) &&
            isempty(model.affine_added_cache) &&
            model.last_affine_added == 0 &&
            isempty(model.affine_constraint_cache) &&
            isempty(model.affine_constraint_cache_set) &&
+           isempty(model.quadratic_constraint_cache) &&
            isempty(model.quadratic_constraint_cache_pv) &&
            isempty(model.quadratic_constraint_cache_pp) &&
            isempty(model.quadratic_constraint_cache_pp_set) &&
            isempty(model.quadratic_constraint_cache_pc) &&
            isempty(model.quadratic_constraint_cache_pc_set) &&
            isempty(
-               model.quadratic_constraint_variables_associated_to_parameters_cache,
+               model.variables_multiplied_by_parameters,
            ) &&
-           isempty(model.quadratic_added_cache) &&
+           isempty(model.moi_quadratic_to_poi_affine_map) &&
            isempty(model.quadratic_objective_cache_product) &&
            model.last_quad_add_added == 0 &&
            model.original_objective_function == MOI.VariableIndex(-1) &&
@@ -453,18 +508,19 @@ function MOI.empty!(model::Optimizer{T}) where {T}
     empty!(model.variables)
     model.last_variable_index_added = 0
     model.last_parameter_index_added = PARAMETER_INDEX_THRESHOLD
-    empty!(model.original_constraint_function_and_set_cache)
+    empty!(model.original_constraint_data)
     empty!(model.affine_added_cache)
     model.last_affine_added = 0
     empty!(model.affine_constraint_cache)
     empty!(model.affine_constraint_cache_set)
+    empty!(model.quadratic_constraint_cache)
     empty!(model.quadratic_constraint_cache_pv)
     empty!(model.quadratic_constraint_cache_pp)
     empty!(model.quadratic_constraint_cache_pp_set)
     empty!(model.quadratic_constraint_cache_pc)
     empty!(model.quadratic_constraint_cache_pc_set)
-    empty!(model.quadratic_constraint_variables_associated_to_parameters_cache)
-    empty!(model.quadratic_added_cache)
+    empty!(model.variables_multiplied_by_parameters)
+    empty!(model.moi_quadratic_to_poi_affine_map)
     empty!(model.quadratic_objective_cache_product)
     model.last_quad_add_added = 0
     model.original_objective_function = MOI.VariableIndex(-1)
@@ -523,8 +579,8 @@ function MOI.set(
     c::MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},S},
     name::String,
 ) where {T,S<:MOI.AbstractSet}
-    if haskey(model.quadratic_added_cache, c)
-        MOI.set(model.optimizer, attr, model.quadratic_added_cache[c], name)
+    if haskey(model.moi_quadratic_to_poi_affine_map, c)
+        MOI.set(model.optimizer, attr, model.moi_quadratic_to_poi_affine_map[c], name)
     else
         MOI.set(model.optimizer, attr, c, name)
     end
@@ -560,8 +616,8 @@ function MOI.get(
     attr::MOI.ConstraintName,
     c::MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},S},
 ) where {T,S<:MOI.AbstractSet}
-    if haskey(model.quadratic_added_cache, c)
-        return MOI.get(model.optimizer, attr, model.quadratic_added_cache[c])
+    if haskey(model.moi_quadratic_to_poi_affine_map, c)
+        return MOI.get(model.optimizer, attr, model.moi_quadratic_to_poi_affine_map[c])
     else
         return MOI.get(model.optimizer, attr, c)
     end
@@ -620,8 +676,8 @@ function MOI.get(
     attr::MOI.ConstraintFunction,
     ci::MOI.ConstraintIndex{F,S},
 ) where {F,S}
-    if haskey(model.original_constraint_function_and_set_cache, ci)
-        return model.original_constraint_function_and_set_cache[ci][1]
+    if haskey(model.original_constraint_data, ci)
+        return model.original_constraint_data[ci][1]
     else
         return MOI.get(model.optimizer, attr, ci)
     end
@@ -688,8 +744,8 @@ function MOI.get(
     attr::MOI.ConstraintSet,
     ci::MOI.ConstraintIndex{F,S},
 ) where {F,S}
-    if haskey(model.original_constraint_function_and_set_cache, ci)
-        return model.original_constraint_function_and_set_cache[ci][2]
+    if haskey(model.original_constraint_data, ci)
+        return model.original_constraint_data[ci][2]
     else
         MOI.throw_if_not_valid(model, ci)
         return MOI.get(model.optimizer, attr, ci)
@@ -731,16 +787,16 @@ end
 
 # In the AbstractBridgeOptimizer, we collect all the possible constraint types and them filter with NumberOfConstraints.
 # If NumberOfConstraints is zero then we remove it from the list.
-# Here, you can look over keys(quadratic_added_cache) and add the F-S types of all the keys in constraints.
+# Here, you can look over keys(moi_quadratic_to_poi_affine_map) and add the F-S types of all the keys in constraints.
 # To implement NumberOfConstraints, you call NumberOfConstraints to the inner optimizer.
-# Then you remove the number of constraints of that that in values(quadratic_added_cache)
+# Then you remove the number of constraints of that that in values(moi_quadratic_to_poi_affine_map)
 function MOI.get(model::Optimizer, ::MOI.ListOfConstraintTypesPresent)
     inner_ctrs = MOI.get(model.optimizer, MOI.ListOfConstraintTypesPresent())
     if !has_quadratic_constraint_caches(model)
         return inner_ctrs
     end
 
-    cache_keys = collect(keys(model.quadratic_added_cache))
+    cache_keys = collect(keys(model.moi_quadratic_to_poi_affine_map))
     constraints = Set{Tuple{DataType,DataType}}()
 
     for (F, S) in inner_ctrs
@@ -801,7 +857,7 @@ function MOI.get(
         :quadratic_constraint_cache_pp,
         :quadratic_constraint_cache_pv,
         # JD: Check if this applies here
-        # :quadratic_constraint_variables_associated_to_parameters_cache
+        # :variables_multiplied_by_parameters
     ]
 
     for field in quadratic_caches
@@ -884,7 +940,7 @@ function add_constraint_with_parameters_on_function(
         end
     end
     if model.save_original_objective_and_constraints
-        model.original_constraint_function_and_set_cache[poi_ci] = (f, set)
+        model.original_constraint_data[poi_ci] = (f, set)
     end
     return poi_ci
 end
@@ -1271,7 +1327,7 @@ function add_constraint_with_parameters_on_function(
     )
     model.vector_constraint_cache[ci] = params
     if model.save_original_objective_and_constraints
-        model.original_constraint_function_and_set_cache[ci] = (f, set)
+        model.original_constraint_data[ci] = (f, set)
     end
     return ci
 end
@@ -1320,9 +1376,9 @@ function add_constraint_with_parameters_on_function(
     new_ci = MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},S}(
         model.last_quad_add_added,
     )
-    model.quadratic_added_cache[new_ci] = ci
+    model.moi_quadratic_to_poi_affine_map[new_ci] = ci
     if model.save_original_objective_and_constraints
-        model.original_constraint_function_and_set_cache[new_ci] = (f, set)
+        model.original_constraint_data[new_ci] = (f, set)
     end
     fill_quadratic_constraint_caches!(
         model,

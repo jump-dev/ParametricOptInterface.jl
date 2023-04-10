@@ -42,29 +42,11 @@ end
 
 function update_parameter_in_affine_constraints!(
     optimizer::OT,
-    parameters::MOI.Utilities.CleverDicts.CleverDict{
-        ParameterIndex,
-        T,
-        typeof(MOI.Utilities.CleverDicts.key_to_index),
-        typeof(MOI.Utilities.CleverDicts.index_to_key),
-    },
-    updated_parameters::MOI.Utilities.CleverDicts.CleverDict{
-        ParameterIndex,
-        T,
-        typeof(MOI.Utilities.CleverDicts.key_to_index),
-        typeof(MOI.Utilities.CleverDicts.index_to_key),
-    },
-    affine_constraint_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{
-        F,
-        S,
-        V1,
-    },
-    affine_constraint_cache_set_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{
-        F,
-        S,
-        MOI.AbstractScalarSet,
-    },
-    affine_added_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{F,S,V2},
+    parameters::ParamTo{T},
+    updated_parameters::ParamTo{T},
+    affine_constraint_cache_inner::DoubleDictInner{F,S,V1},
+    affine_constraint_cache_set_inner::DoubleDictInner{F,S,MOI.AbstractScalarSet},
+    affine_added_cache_inner::DoubleDictInner{F,S,V2},
 ) where {OT,T,F,S,V1,V2}
     for (ci, param_array) in affine_constraint_cache_inner
         new_set = update_parameter_in_affine_constraints!(
@@ -84,18 +66,8 @@ function update_parameter_in_affine_constraints!(
     optimizer::OT,
     ci::CI,
     param_array::Vector{MOI.ScalarAffineTerm{T}},
-    parameters::MOI.Utilities.CleverDicts.CleverDict{
-        ParameterIndex,
-        T,
-        typeof(MOI.Utilities.CleverDicts.key_to_index),
-        typeof(MOI.Utilities.CleverDicts.index_to_key),
-    },
-    updated_parameters::MOI.Utilities.CleverDicts.CleverDict{
-        ParameterIndex,
-        T,
-        typeof(MOI.Utilities.CleverDicts.key_to_index),
-        typeof(MOI.Utilities.CleverDicts.index_to_key),
-    },
+    parameters::ParamTo{T},
+    updated_parameters::ParamTo{T},
     set::S,
 ) where {OT,T,CI,S}
     param_constant = zero(T)
@@ -158,7 +130,7 @@ function update_parameter_in_quadratic_constraints_pc!(model::Optimizer)
             MOI.set(
                 model.optimizer,
                 MOI.ConstraintSet(),
-                model.quadratic_added_cache[ci],
+                model.moi_quadratic_to_poi_affine_map[ci],
                 new_set,
             )
             model.quadratic_constraint_cache_pc_set[ci] = new_set
@@ -230,7 +202,7 @@ function update_parameter_in_quadratic_constraints_pp!(model::Optimizer)
             MOI.set(
                 model.optimizer,
                 MOI.ConstraintSet(),
-                model.quadratic_added_cache[ci],
+                model.moi_quadratic_to_poi_affine_map[ci],
                 new_set,
             )
             model.quadratic_constraint_cache_pp_set[ci] = new_set
@@ -305,11 +277,11 @@ function update_parameter_in_quadratic_constraints_pv!(model::Optimizer)
             end
         end
         if haskey(
-            model.quadratic_constraint_variables_associated_to_parameters_cache,
+            model.variables_multiplied_by_parameters,
             ci,
         )
             for aff_term in
-                model.quadratic_constraint_variables_associated_to_parameters_cache[ci]
+                model.variables_multiplied_by_parameters[ci]
                 coef = aff_term.coefficient
                 if haskey(new_coeff_per_variable, aff_term.variable)
                     new_coeff_per_variable[aff_term.variable] += coef
@@ -318,7 +290,7 @@ function update_parameter_in_quadratic_constraints_pv!(model::Optimizer)
                 end
             end
         end
-        old_ci = model.quadratic_added_cache[ci]
+        old_ci = model.moi_quadratic_to_poi_affine_map[ci]
         changes = Vector{MOI.ScalarCoefficientChange}(
             undef,
             length(new_coeff_per_variable),
@@ -400,23 +372,9 @@ end
 
 function update_parameter_in_vector_affine_constraints!(
     optimizer::OT,
-    parameters::MOI.Utilities.CleverDicts.CleverDict{
-        ParameterIndex,
-        T,
-        typeof(MOI.Utilities.CleverDicts.key_to_index),
-        typeof(MOI.Utilities.CleverDicts.index_to_key),
-    },
-    updated_parameters::MOI.Utilities.CleverDicts.CleverDict{
-        ParameterIndex,
-        T,
-        typeof(MOI.Utilities.CleverDicts.key_to_index),
-        typeof(MOI.Utilities.CleverDicts.index_to_key),
-    },
-    vector_constraint_cache_inner::MOI.Utilities.DoubleDicts.DoubleDictInner{
-        F,
-        S,
-        V,
-    },
+    parameters::ParamTo{T},
+    updated_parameters::ParamTo{T},
+    vector_constraint_cache_inner::DoubleDictInner{F,S,V},
 ) where {OT,T,F,S,V}
     for (ci, param_array) in vector_constraint_cache_inner
         update_parameter_in_vector_affine_constraints!(
@@ -435,18 +393,8 @@ function update_parameter_in_vector_affine_constraints!(
     optimizer::OT,
     ci::CI,
     param_array::Vector{MOI.VectorAffineTerm{T}},
-    parameters::MOI.Utilities.CleverDicts.CleverDict{
-        ParameterIndex,
-        T,
-        typeof(MOI.Utilities.CleverDicts.key_to_index),
-        typeof(MOI.Utilities.CleverDicts.index_to_key),
-    },
-    updated_parameters::MOI.Utilities.CleverDicts.CleverDict{
-        ParameterIndex,
-        T,
-        typeof(MOI.Utilities.CleverDicts.key_to_index),
-        typeof(MOI.Utilities.CleverDicts.index_to_key),
-    },
+    parameters::ParamTo{T},
+    updated_parameters::ParamTo{T},
 ) where {OT,T,CI}
     cf = MOI.get(optimizer, MOI.ConstraintFunction(), ci)
 
