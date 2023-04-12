@@ -1299,7 +1299,7 @@ function add_constraint_with_parameters_on_function(
     f::MOI.VectorAffineFunction{T},
     set::MOI.AbstractVectorSet,
 ) where {T}
-    error("TODO")
+    @warn("TODO")
     vars, params, param_constants =
         separate_possible_terms_and_calculate_parameter_constant(model, f, set)
     ci = MOI.add_constraint(
@@ -1384,7 +1384,7 @@ function MOI.delete(
     F<:Union{MOI.VariableIndex,MOI.VectorOfVariables,MOI.VectorAffineFunction},
     S<:MOI.AbstractSet,
 }
-error("TODO: MOI.VectorAffineFunction")
+@warn("TODO: MOI.VectorAffineFunction")
     MOI.delete(model.optimizer, c)
     return
 end
@@ -1396,7 +1396,7 @@ function MOI.is_valid(
     F<:Union{MOI.VariableIndex,MOI.VectorOfVariables,MOI.VectorAffineFunction},
     S<:MOI.AbstractSet,
 }
-error("TODO: MOI.VectorAffineFunction")
+@warn("TODO: MOI.VectorAffineFunction")
 
     return MOI.is_valid(model.optimizer, c)
 end
