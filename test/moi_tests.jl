@@ -129,7 +129,7 @@ function test_basic_special_cases_of_getters()
     )
     MOI.set(
         optimizer,
-        MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
+        MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
         obj_func,
     )
     MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)

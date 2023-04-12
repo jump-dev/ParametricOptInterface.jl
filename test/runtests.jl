@@ -17,6 +17,10 @@ const POI = ParametricOptInterface
 
 const ATOL = 1e-4
 
+function canonical_compare(f1, f2)
+    return MOI.Utilities.canonical(f1) ≈ MOI.Utilities.canonical(f2)
+end
+
 include("moi_tests.jl")
 include("jump_tests.jl")
 
