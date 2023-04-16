@@ -765,6 +765,7 @@ function test_jump_direct_vector_parameter_affine_nonnegatives()
     )
     optimizer = POI.Optimizer(cached)
     model = direct_model(optimizer)
+    set_silent(model)
     @variable(model, x)
     @variable(model, y)
     @variable(model, t in POI.Parameter(5))
@@ -800,6 +801,7 @@ function test_jump_direct_vector_parameter_affine_nonpositives()
     )
     optimizer = POI.Optimizer(cached)
     model = direct_model(optimizer)
+    set_silent(model)
     @variable(model, x)
     @variable(model, y)
     @variable(model, t in POI.Parameter(5))
@@ -840,6 +842,7 @@ function test_jump_direct_soc_parameters()
     )
     optimizer = POI.Optimizer(cached)
     model = direct_model(optimizer)
+    set_silent(model)
     @variable(model, x)
     @variable(model, y)
     @variable(model, t)
@@ -870,6 +873,10 @@ function test_jump_direct_qp_objective()
     @constraint(model, 2x + y <= 4)
     @constraint(model, x + 2y <= 4)
     @objective(model, Max, (x^2 + y^2) / 2)
+    optimize!(model)
+    @test objective_value(model) ≈ 16 / 9 atol = ATOL
+    @test value(x) ≈ 4 / 3 atol = ATOL
+    @test value(y) ≈ 4 / 3 atol = ATOL
     MOI.set(
         backend(model),
         POI.QuadraticObjectiveCoef(),
@@ -897,6 +904,37 @@ function test_jump_direct_qp_objective()
     MOI.set(model, POI.ParameterValue(), p, 2.0)
     optimize!(model)
     @test objective_value(model) ≈ 128 / 9 atol = ATOL
+    @test value(x) ≈ 4 / 3 atol = ATOL
+    @test value(y) ≈ 4 / 3 atol = ATOL
+    MOI.set(
+        backend(model),
+        POI.QuadraticObjectiveCoef(),
+        (index(x), index(y)),
+        nothing,
+    )
+    optimize!(model)
+    @test objective_value(model) ≈ 16 / 9 atol = ATOL
+    @test value(x) ≈ 4 / 3 atol = ATOL
+    @test value(y) ≈ 4 / 3 atol = ATOL
+    # now in reverse order
+    MOI.set(
+        backend(model),
+        POI.QuadraticObjectiveCoef(),
+        (index(y), index(x)),
+        2index(p) + 3,
+    )
+    optimize!(model)
+    @test objective_value(model) ≈ 128 / 9 atol = ATOL
+    @test value(x) ≈ 4 / 3 atol = ATOL
+    @test value(y) ≈ 4 / 3 atol = ATOL
+    MOI.set(
+        backend(model),
+        POI.QuadraticObjectiveCoef(),
+        (index(y), index(x)),
+        nothing,
+    )
+    optimize!(model)
+    @test objective_value(model) ≈ 16 / 9 atol = ATOL
     @test value(x) ≈ 4 / 3 atol = ATOL
     @test value(y) ≈ 4 / 3 atol = ATOL
     return
@@ -945,5 +983,25 @@ function test_jump_direct_rsoc_constraints()
     @test objective_value(model) ≈ 0.0 atol = ATOL
     @test value(x) ≈ 0.0 atol = ATOL
     @test value(y) ≈ 2 atol = ATOL
+    return
+end
+
+function test_jump_quadratic_interval()
+    optimizer = POI.Optimizer(GLPK.Optimizer())
+    # model = direct_model(optimizer)
+    model = Model(() -> optimizer)
+    MOI.set(model, MOI.Silent(), true)
+    @variable(model, x >= 0)
+    @variable(model, y >= 0)
+    @variable(model, p in POI.Parameter(10.0))
+    @constraint(model, -4 <= x - p * y <= -4)
+    @objective(model, Min, x + y)
+    optimize!(model)
+    @test value(x) ≈ 0 atol = ATOL
+    @test value(y) ≈ 0.4 atol = ATOL
+    MOI.set(model, POI.ParameterValue(), p, 20.0)
+    optimize!(model)
+    @test value(x) ≈ 0 atol = ATOL
+    @test value(y) ≈ 0.2 atol = ATOL
     return
 end

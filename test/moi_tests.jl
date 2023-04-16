@@ -94,6 +94,8 @@ function test_basic_tests()
     @test MOI.get(optimizer, MOI.ObjectiveSense()) == MOI.MIN_SENSE
     @test MOI.get(optimizer, MOI.VariableName(), x[1]) == ""
     @test MOI.get(optimizer, MOI.ConstraintName(), c1) == ""
+    MOI.set(optimizer, MOI.ConstraintName(), c1, "ctr123")
+    @test MOI.get(optimizer, MOI.ConstraintName(), c1) == "ctr123"
     return
 end
 
@@ -278,6 +280,7 @@ function test_moi_ListOfConstraintTypesPresent()
     N = 10
     ipopt = Ipopt.Optimizer()
     model = POI.Optimizer(ipopt)
+    MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variables(model, N / 2)
     y =
         first.(
@@ -575,6 +578,7 @@ function test_vector_parameter_affine_nonnegatives()
         SCS.Optimizer(),
     )
     model = POI.Optimizer(cached)
+    MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
     t, ct = MOI.add_constrained_variable(model, POI.Parameter(5))
@@ -633,6 +637,7 @@ function test_vector_parameter_affine_nonpositives()
         Float64,
     )
     model = POI.Optimizer(cached)
+    MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
     t, ct = MOI.add_constrained_variable(model, POI.Parameter(5))
@@ -696,6 +701,7 @@ function test_vector_soc_parameters()
         SCS.Optimizer(),
     )
     model = POI.Optimizer(cached)
+    MOI.set(model, MOI.Silent(), true)
     x, y, t = MOI.add_variables(model, 3)
     p, cp = MOI.add_constrained_variable(model, POI.Parameter(0))
     MOI.set(
@@ -781,6 +787,7 @@ function test_vector_soc_no_parameters()
         Float64,
     )
     model = POI.Optimizer(cached)
+    MOI.set(model, MOI.Silent(), true)
     x, y, t = MOI.add_variables(model, 3)
     MOI.set(
         model,

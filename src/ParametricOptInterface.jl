@@ -190,6 +190,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
         Tuple{MOI.VariableIndex,MOI.VariableIndex},
         MOI.AbstractFunction,
     }
+    quadratic_objective_cache_product_changed::Bool
 
     # vector affine function data
     # vector_constraint_cache::DoubleDict{Vector{MOI.VectorAffineTerm{T}}}
@@ -252,6 +253,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
                 Tuple{MOI.VariableIndex,MOI.VariableIndex},
                 MOI.AbstractFunction,
             }(),
+            false,
             # vec affine
             # DoubleDict{Vector{MOI.VectorAffineTerm{T}}}(),
             DoubleDict{ParametricVectorAffineFunction{T}}(),
@@ -1402,9 +1404,6 @@ end
 
 function set_quadratic_product_in_obj!(model::Optimizer{T}) where {T}
     n = length(model.quadratic_objective_cache_product)
-    if n == 0
-        return
-    end
 
     f = if model.affine_objective_cache !== nothing
         current_function(model.affine_objective_cache)
@@ -1462,6 +1461,7 @@ function MOI.set(
         x2 = aux
     end
     delete!(model.quadratic_objective_cache_product, (x1, x2))
+    model.quadratic_objective_cache_product_changed = true
     return
 end
 
@@ -1477,6 +1477,7 @@ function MOI.set(
         x2 = aux
     end
     model.quadratic_objective_cache_product[(x1, x2)] = f_param
+    model.quadratic_objective_cache_product_changed = true
     return
 end
 
@@ -1567,7 +1568,11 @@ function MOI.optimize!(model::Optimizer)
     if !isempty(model.updated_parameters)
         update_parameters!(model)
     end
-    if !isempty(model.quadratic_objective_cache_product)
+    if (
+        !isempty(model.quadratic_objective_cache_product) ||
+        model.quadratic_objective_cache_product_changed
+    )
+        model.quadratic_objective_cache_product_changed = false
         set_quadratic_product_in_obj!(model)
     end
     MOI.optimize!(model.optimizer)
