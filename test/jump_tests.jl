@@ -1005,3 +1005,14 @@ function test_jump_quadratic_interval()
     @test value(y) ≈ 0.2 atol = ATOL
     return
 end
+
+function test_affine_parametric_objective()
+    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+    @variable(model, p in POI.Parameter(1.0))
+    @variable(model, 0 <= x <= 1)
+    @objective(model, Max, (p + 0.5) * x)
+    optimize!(model)
+    @test value(x) ≈ 1.0
+    @test objective_value(model) ≈ 1.5
+    @test value(objective_function(model)) ≈ 1.5
+end
