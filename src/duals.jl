@@ -4,7 +4,8 @@
 # in the LICENSE.md file or at https://opensource.org/licenses/MIT.
 
 function compute_dual_of_parameters!(model::Optimizer{T}) where {T}
-    model.dual_value_of_parameters = zeros(T, model.number_of_parameters_in_model)
+    model.dual_value_of_parameters =
+        zeros(T, model.number_of_parameters_in_model)
     update_duals_from_affine_constraints!(model)
     update_duals_from_vector_affine_constraints!(model)
     update_duals_from_quadratic_constraints!(model)
@@ -21,10 +22,7 @@ function update_duals_from_affine_constraints!(model::Optimizer)
     for (F, S) in keys(model.affine_constraint_cache.dict)
         affine_constraint_cache_inner = model.affine_constraint_cache[F, S]
         # barrier for type instability
-        compute_parameters_in_ci!(
-            model,
-            affine_constraint_cache_inner,
-        )
+        compute_parameters_in_ci!(model, affine_constraint_cache_inner)
     end
     return
 end
@@ -34,10 +32,7 @@ function update_duals_from_vector_affine_constraints!(model::Optimizer)
         vector_affine_constraint_cache_inner =
             model.vector_affine_constraint_cache[F, S]
         # barrier for type instability
-        compute_parameters_in_ci!(
-            model,
-            vector_affine_constraint_cache_inner,
-        )
+        compute_parameters_in_ci!(model, vector_affine_constraint_cache_inner)
     end
     return
 end
@@ -47,10 +42,7 @@ function update_duals_from_quadratic_constraints!(model::Optimizer)
         quadratic_constraint_cache_inner =
             model.quadratic_constraint_cache[F, S]
         # barrier for type instability
-        compute_parameters_in_ci!(
-            model,
-            quadratic_constraint_cache_inner,
-        )
+        compute_parameters_in_ci!(model, quadratic_constraint_cache_inner)
     end
     return
 end
@@ -92,10 +84,7 @@ function compute_parameters_in_ci!(
 end
 
 # this one seem to be the same as the next
-function update_duals_from_objective!(
-    model::Optimizer{T},
-    pf,
-) where {T}
+function update_duals_from_objective!(model::Optimizer{T}, pf) where {T}
     for param in pf.p
         model.dual_value_of_parameters[p_val(param.variable)] -=
             param.coefficient

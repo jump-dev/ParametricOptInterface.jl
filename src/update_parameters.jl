@@ -44,7 +44,11 @@ end
 function update_parametric_affine_constraints!(
     model::Optimizer,
     affine_constraint_cache_inner::DoubleDictInner{F,S,V},
-    affine_constraint_cache_set_inner::DoubleDictInner{F,S,MOI.AbstractScalarSet},
+    affine_constraint_cache_set_inner::DoubleDictInner{
+        F,
+        S,
+        MOI.AbstractScalarSet,
+    },
 ) where {F,S<:SIMPLE_SCALAR_SETS{T},V} where {T}
     # cis = MOI.ConstraintIndex{F,S}[]
     # sets = S[]
@@ -70,7 +74,11 @@ end
 function update_parametric_affine_constraints!(
     model::Optimizer,
     affine_constraint_cache_inner::DoubleDictInner{F,S,V},
-    affine_constraint_cache_set_inner::DoubleDictInner{F,S,MOI.AbstractScalarSet},
+    affine_constraint_cache_set_inner::DoubleDictInner{
+        F,
+        S,
+        MOI.AbstractScalarSet,
+    },
 ) where {F,S<:MOI.Interval{T},V} where {T}
     for (inner_ci, pf) in affine_constraint_cache_inner
         set = affine_constraint_cache_set_inner[inner_ci]::S
@@ -111,7 +119,7 @@ function update_parametric_vector_affine_constraints!(
             MOI.modify(
                 model.optimizer,
                 inner_ci,
-                MOI.VectorConstantChange(pf.current_constant)
+                MOI.VectorConstantChange(pf.current_constant),
             )
         end
     end
@@ -120,7 +128,8 @@ end
 
 function update_parametric_quadratic_constraints!(model::Optimizer)
     for (F, S) in keys(model.quadratic_constraint_cache.dict)
-        quadratic_constraint_cache_inner = model.quadratic_constraint_cache[F, S]
+        quadratic_constraint_cache_inner =
+            model.quadratic_constraint_cache[F, S]
         quadratic_constraint_cache_set_inner =
             model.quadratic_constraint_cache_set[F, S]
         if !isempty(quadratic_constraint_cache_inner)
@@ -139,10 +148,7 @@ function affine_build_change_and_up_param_func(
     pf::ParametricQuadraticFunction{T},
     delta_terms,
 ) where {T}
-    changes = Vector{MOI.ScalarCoefficientChange}(
-        undef,
-        length(delta_terms),
-    )
+    changes = Vector{MOI.ScalarCoefficientChange}(undef, length(delta_terms))
     i = 1
     for (var, coef) in delta_terms
         base_coef = pf.current_terms_with_p[var]
@@ -157,7 +163,11 @@ end
 function update_parametric_quadratic_constraints!(
     model::Optimizer,
     quadratic_constraint_cache_inner::DoubleDictInner{F,S,V},
-    quadratic_constraint_cache_set_inner::DoubleDictInner{F,S,MOI.AbstractScalarSet},
+    quadratic_constraint_cache_set_inner::DoubleDictInner{
+        F,
+        S,
+        MOI.AbstractScalarSet,
+    },
 ) where {F,S<:SIMPLE_SCALAR_SETS{T},V} where {T}
     # cis = MOI.ConstraintIndex{F,S}[]
     # sets = S[]
@@ -189,7 +199,11 @@ end
 function update_parametric_quadratic_constraints!(
     model::Optimizer,
     quadratic_constraint_cache_inner::DoubleDictInner{F,S,V},
-    quadratic_constraint_cache_set_inner::DoubleDictInner{F,S,MOI.AbstractScalarSet},
+    quadratic_constraint_cache_set_inner::DoubleDictInner{
+        F,
+        S,
+        MOI.AbstractScalarSet,
+    },
 ) where {F,S<:MOI.Interval{T},V} where {T}
     for (inner_ci, pf) in quadratic_constraint_cache_inner
         set = quadratic_constraint_cache_set_inner[inner_ci]::S

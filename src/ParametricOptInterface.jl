@@ -13,7 +13,8 @@ const PARAMETER_INDEX_THRESHOLD = Int64(4_611_686_018_427_387_904) # div(typemax
 
 @enum ConstraintsInterpretationCode ONLY_CONSTRAINTS ONLY_BOUNDS BOUNDS_AND_CONSTRAINTS
 
-const SIMPLE_SCALAR_SETS{T} = Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}}
+const SIMPLE_SCALAR_SETS{T} =
+    Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}}
 
 """
     Parameter(val::Float64)
@@ -193,7 +194,9 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     # vector affine function data
     # vector_constraint_cache::DoubleDict{Vector{MOI.VectorAffineTerm{T}}}
     # Clever cache of data (inner key)
-    vector_affine_constraint_cache::DoubleDict{ParametricVectorAffineFunction{T}}
+    vector_affine_constraint_cache::DoubleDict{
+        ParametricVectorAffineFunction{T},
+    }
 
     #
     multiplicative_parameters::Set{Int64}
@@ -269,33 +272,33 @@ include("update_parameters.jl")
 
 function MOI.is_empty(model::Optimizer)
     return MOI.is_empty(model.optimizer) &&
-        isempty(model.parameters) &&
-        isempty(model.parameters_name) &&
-        isempty(model.updated_parameters) &&
-        isempty(model.variables) &&
-        model.last_variable_index_added == 0 &&
-        model.last_parameter_index_added == PARAMETER_INDEX_THRESHOLD &&
-        # affine ctr
-        model.last_affine_added == 0 &&
-        isempty(model.affine_outer_to_inner) &&
-        isempty(model.affine_constraint_cache) &&
-        isempty(model.affine_constraint_cache_set) &&
-        # quad ctr
-        model.last_quad_add_added == 0 &&
-        isempty(model.quadratic_outer_to_inner) &&
-        isempty(model.quadratic_constraint_cache) &&
-        isempty(model.quadratic_constraint_cache_set) &&
-        # obj
-        model.affine_objective_cache === nothing &&
-        model.quadratic_objective_cache === nothing &&
-        MOI.is_empty(model.original_objective_cache) &&
-        isempty(model.quadratic_objective_cache_product) &&
-        #
-        isempty(model.vector_affine_constraint_cache) &&
-        #
-        isempty(model.multiplicative_parameters) &&
-        isempty(model.dual_value_of_parameters) &&
-        model.number_of_parameters_in_model == 0
+           isempty(model.parameters) &&
+           isempty(model.parameters_name) &&
+           isempty(model.updated_parameters) &&
+           isempty(model.variables) &&
+           model.last_variable_index_added == 0 &&
+           model.last_parameter_index_added == PARAMETER_INDEX_THRESHOLD &&
+           # affine ctr
+           model.last_affine_added == 0 &&
+           isempty(model.affine_outer_to_inner) &&
+           isempty(model.affine_constraint_cache) &&
+           isempty(model.affine_constraint_cache_set) &&
+           # quad ctr
+           model.last_quad_add_added == 0 &&
+           isempty(model.quadratic_outer_to_inner) &&
+           isempty(model.quadratic_constraint_cache) &&
+           isempty(model.quadratic_constraint_cache_set) &&
+           # obj
+           model.affine_objective_cache === nothing &&
+           model.quadratic_objective_cache === nothing &&
+           MOI.is_empty(model.original_objective_cache) &&
+           isempty(model.quadratic_objective_cache_product) &&
+           #
+           isempty(model.vector_affine_constraint_cache) &&
+           #
+           isempty(model.multiplicative_parameters) &&
+           isempty(model.dual_value_of_parameters) &&
+           model.number_of_parameters_in_model == 0
 end
 
 function MOI.empty!(model::Optimizer{T}) where {T}
@@ -466,7 +469,7 @@ function MOI.modify(
     chg::MOI.ScalarCoefficientChange{T},
 ) where {F,S,T}
     if haskey(model.quadratic_constraint_cache, c) ||
-        haskey(model.affine_constraint_cache, c)
+       haskey(model.affine_constraint_cache, c)
         error("Parametric constraint cannot be modified")
     end
     MOI.modify(model.optimizer, c, chg)
@@ -476,14 +479,11 @@ end
 function MOI.modify(
     model::Optimizer,
     c::MOI.ObjectiveFunction{F},
-    chg::Union{
-        MOI.ScalarConstantChange{T},
-        MOI.ScalarCoefficientChange{T},
-    },
+    chg::Union{MOI.ScalarConstantChange{T},MOI.ScalarCoefficientChange{T}},
 ) where {F<:MathOptInterface.AbstractScalarFunction,T}
     if model.quadratic_objective_cache !== nothing ||
-        model.affine_objective_cache !== nothing ||
-        !isempty(model.quadratic_objective_cache_product)
+       model.affine_objective_cache !== nothing ||
+       !isempty(model.quadratic_objective_cache_product)
         error("Parametric objective cannot be modified")
     end
     MOI.modify(model.optimizer, c, chg)
@@ -592,7 +592,6 @@ function MOI.get(
     attr::MOI.ConstraintName,
     c::MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S},
 ) where {T,S}
-
     if haskey(model.affine_outer_to_inner, c)
         inner_ci = model.affine_outer_to_inner[c]
         # This SAF constraint was transformed into variable bound
@@ -1114,11 +1113,7 @@ function MOI.set(
     else
         pf = ParametricAffineFunction(f)
         update_cache!(pf, model)
-        MOI.set(
-            model.optimizer,
-            attr,
-            current_function(pf),
-        )
+        MOI.set(model.optimizer, attr, current_function(pf))
         model.affine_objective_cache = pf
     end
     MOI.set(model.original_objective_cache, attr, f)
@@ -1141,15 +1136,16 @@ function MOI.set(
         func = current_function(pf)
         MOI.set(
             model.optimizer,
-            MOI.ObjectiveFunction{
-                (is_affine(func) ?
-                    MOI.ScalarAffineFunction{T} :
-                    MOI.ScalarQuadraticFunction{T})
-            }(),
+            MOI.ObjectiveFunction{(
+                is_affine(func) ? MOI.ScalarAffineFunction{T} :
+                MOI.ScalarQuadraticFunction{T}
+            )}(),
             # func,
-            (is_affine(func) ?
+            (
+                is_affine(func) ?
                 MOI.ScalarAffineFunction(func.affine_terms, func.constant) :
-                func),
+                func
+            ),
         )
         model.quadratic_objective_cache = pf
     end
@@ -1268,11 +1264,7 @@ function add_constraint_with_parameters_on_function(
     pf = ParametricVectorAffineFunction(f)
     # cache_set_constant!(pf, set) # there is no constant is vector sets
     update_cache!(pf, model)
-    inner_ci = MOI.add_constraint(
-        model.optimizer,
-        current_function(pf),
-        set,
-    )
+    inner_ci = MOI.add_constraint(model.optimizer, current_function(pf), set)
     model.vector_affine_constraint_cache[inner_ci] = pf
     return inner_ci
 end
@@ -1290,7 +1282,11 @@ function add_constraint_with_parameters_on_function(
     func = current_function(pf)
     f_quad = if !is_affine(func)
         fq = func
-        inner_ci = MOI.Utilities.normalize_and_add_constraint(model.optimizer, fq, s)
+        inner_ci = MOI.Utilities.normalize_and_add_constraint(
+            model.optimizer,
+            fq,
+            s,
+        )
         model.last_quad_add_added += 1
         outer_ci = MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},S}(
             model.last_quad_add_added,
@@ -1299,7 +1295,11 @@ function add_constraint_with_parameters_on_function(
         # model.outer_to_inner_map[outer_ci] = inner_ci
     else
         fa = MOI.ScalarAffineFunction(func.affine_terms, func.constant)
-        inner_ci = MOI.Utilities.normalize_and_add_constraint(model.optimizer, fa, s)
+        inner_ci = MOI.Utilities.normalize_and_add_constraint(
+            model.optimizer,
+            fa,
+            s,
+        )
         model.last_quad_add_added += 1
         outer_ci = MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},S}(
             model.last_quad_add_added,
@@ -1347,10 +1347,7 @@ end
 function MOI.delete(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
-) where {
-    F<:Union{MOI.VariableIndex,MOI.VectorOfVariables},
-    S<:MOI.AbstractSet,
-}
+) where {F<:Union{MOI.VariableIndex,MOI.VectorOfVariables},S<:MOI.AbstractSet}
     MOI.delete(model.optimizer, c)
     return
 end
@@ -1358,10 +1355,7 @@ end
 function MOI.delete(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
-) where {
-    F<:MOI.VectorAffineFunction,
-    S<:MOI.AbstractSet,
-}
+) where {F<:MOI.VectorAffineFunction,S<:MOI.AbstractSet}
     MOI.delete(model.optimizer, c)
     deleteat!(model.vector_affine_constraint_cache, c)
     return
@@ -1428,8 +1422,10 @@ function set_quadratic_product_in_obj!(model::Optimizer{T}) where {T}
     for ((x, y), fparam) in model.quadratic_objective_cache_product
         # x, y = prod_var
         evaluated_fparam = _evaluate_parametric_expression(model, fparam)
-        push!(quadratic_prods_vector,
-            MOI.ScalarQuadraticTerm(evaluated_fparam, x, y))
+        push!(
+            quadratic_prods_vector,
+            MOI.ScalarQuadraticTerm(evaluated_fparam, x, y),
+        )
     end
 
     f_new = if F <: MOI.VariableIndex
@@ -1439,18 +1435,10 @@ function set_quadratic_product_in_obj!(model::Optimizer{T}) where {T}
             0.0,
         )
     elseif F <: MOI.ScalarAffineFunction{T}
-        MOI.ScalarQuadraticFunction(
-            quadratic_prods_vector,
-            f.terms,
-            f.constant,
-        )
-    elseif  F <: MOI.ScalarQuadraticFunction{T}
+        MOI.ScalarQuadraticFunction(quadratic_prods_vector, f.terms, f.constant)
+    elseif F <: MOI.ScalarQuadraticFunction{T}
         quadratic_terms = vcat(f.quadratic_terms, quadratic_prods_vector)
-        MOI.ScalarQuadraticFunction(
-            quadratic_terms,
-            f.affine_terms,
-            f.constant,
-        )
+        MOI.ScalarQuadraticFunction(quadratic_terms, f.affine_terms, f.constant)
     end
 
     MOI.set(
