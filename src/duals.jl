@@ -6,6 +6,7 @@
 function compute_dual_of_parameters!(model::Optimizer{T}) where {T}
     model.dual_value_of_parameters = zeros(T, model.number_of_parameters_in_model)
     update_duals_from_affine_constraints!(model)
+    update_duals_from_vector_affine_constraints!(model)
     update_duals_from_quadratic_constraints!(model)
     if model.affine_objective_cache !== nothing
         update_duals_from_objective!(model, model.affine_objective_cache)
@@ -23,6 +24,19 @@ function update_duals_from_affine_constraints!(model::Optimizer)
         compute_parameters_in_ci!(
             model,
             affine_constraint_cache_inner,
+        )
+    end
+    return
+end
+
+function update_duals_from_vector_affine_constraints!(model::Optimizer)
+    for (F, S) in keys(model.vector_affine_constraint_cache.dict)
+        vector_affine_constraint_cache_inner =
+            model.vector_affine_constraint_cache[F, S]
+        # barrier for type instability
+        compute_parameters_in_ci!(
+            model,
+            vector_affine_constraint_cache_inner,
         )
     end
     return
@@ -54,12 +68,25 @@ end
 function compute_parameters_in_ci!(
     model::Optimizer{T},
     pf,
-    ci::CI,
-) where {CI,T}
+    ci::MOI.ConstraintIndex{F,S},
+) where {F,S} where {T}
     cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
     for term in pf.p
         model.dual_value_of_parameters[p_val(term.variable)] -=
             cons_dual * term.coefficient
+    end
+    return
+end
+
+function compute_parameters_in_ci!(
+    model::Optimizer{T},
+    pf::ParametricVectorAffineFunction{T},
+    ci::MOI.ConstraintIndex{F,S},
+) where {F<:MOI.VectorAffineFunction{T},S} where {T}
+    cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
+    for term in pf.p
+        model.dual_value_of_parameters[p_val(term.scalar_term.variable)] -=
+            cons_dual[term.output_index] * term.scalar_term.coefficient
     end
     return
 end

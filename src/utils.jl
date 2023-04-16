@@ -134,8 +134,8 @@ function ParametricAffineFunction(
     return ParametricAffineFunction{T}(
         p,
         v,
-        zero(T),
         f.constant,
+        zero(T),
         zero(T),
     )
 end
@@ -184,6 +184,102 @@ function delta_parametric_constant(
         p = p_idx(term.variable)
         if !isnan(model.updated_parameters[p])
             delta_constant += term.coefficient *
+                (model.updated_parameters[p] - model.parameters[p])
+        end
+    end
+    return delta_constant
+end
+
+function count_vector_affine_terms_types(
+    terms::Vector{MOI.VectorAffineTerm{T}},
+) where {T}
+    num_vars = 0
+    num_params = 0
+    for term in terms
+        if is_variable(term.scalar_term.variable)
+            num_vars += 1
+        else
+            num_params += 1
+        end
+    end
+    return num_vars, num_params
+end
+
+function split_affine_terms(terms::Vector{MOI.VectorAffineTerm{T}}) where {T}
+    num_v, num_p = count_vector_affine_terms_types(terms)
+    v = Vector{MOI.VectorAffineTerm{T}}(undef, num_v)
+    p = Vector{MOI.VectorAffineTerm{T}}(undef, num_p)
+    i_v = 1
+    i_p = 1
+    for term in terms
+        if is_variable(term.scalar_term.variable)
+            v[i_v] = term
+            i_v += 1
+        else
+            p[i_p] = term
+            i_p += 1
+        end
+    end
+    return v, p
+end
+
+function ParametricVectorAffineFunction(
+    f::MOI.VectorAffineFunction{T}
+) where {T}
+    v, p = split_affine_terms(f.terms)
+    return ParametricVectorAffineFunction{T}(
+        p,
+        v,
+        copy(f.constants),
+        zeros(T, length(f.constants)),
+        zeros(T, length(f.constants)),
+    )
+end
+
+function original_function(f::ParametricVectorAffineFunction{T}) where {T}
+    return MOI.VectorAffineFunction{T}(
+        vcat(f.p, f.v),
+        f.c,
+    )
+end
+
+function current_function(f::ParametricVectorAffineFunction{T}) where {T}
+    return MOI.VectorAffineFunction{T}(
+        f.v,
+        f.current_constant,
+    )
+end
+
+function update_cache!(
+    f::ParametricVectorAffineFunction{T},
+    model::Optimizer,
+) where {T}
+    f.current_constant = parametric_constant(model, f)
+    return nothing
+end
+
+function parametric_constant(
+    model::Optimizer,
+    f::ParametricVectorAffineFunction{T},
+) where {T}
+    # do not add set_function here
+    param_constant = copy(f.c)
+    for term in f.p
+        param_constant[term.output_index] += term.scalar_term.coefficient *
+            model.parameters[p_idx(term.scalar_term.variable)]
+    end
+    return param_constant
+end
+
+function delta_parametric_constant(
+    model::Optimizer,
+    f::ParametricVectorAffineFunction{T},
+) where {T}
+    delta_constant = zeros(T, length(f.c))
+    for term in f.p
+        p = p_idx(term.scalar_term.variable)
+        if !isnan(model.updated_parameters[p])
+            delta_constant[term.output_index] += term.scalar_term.coefficient *
                 (model.updated_parameters[p] - model.parameters[p])
         end
     end
@@ -486,31 +582,4 @@ function quadratic_constraint_cache_map_check(
     # Using this because some custom brodcast method throws errors if
     # inner_idex .∈ cached_constraints is used
     return idx ∈ cached_constraints
-end
-
-# Vector Affine
-function separate_possible_terms_and_calculate_parameter_constant(
-    model::Optimizer,
-    f::MOI.VectorAffineFunction{T},
-    set::S,
-) where {T,S<:MOI.AbstractVectorSet}
-    vars = MOI.VectorAffineTerm{T}[]
-    params = MOI.VectorAffineTerm{T}[]
-    n_dims = length(f.constants)
-    param_constants = zeros(T, n_dims)
-    for term in f.terms
-        oi = term.output_index
-
-        if is_variable_in_model(model, term.scalar_term.variable)
-            push!(vars, term)
-        elseif is_parameter_in_model(model, term.scalar_term.variable)
-            push!(params, term)
-            param_constants[oi] +=
-                term.scalar_term.coefficient *
-                model.parameters[p_idx(term.scalar_term.variable)]
-        else
-            error("Constraint uses a variable that is not in the model")
-        end
-    end
-    return vars, params, param_constants
 end

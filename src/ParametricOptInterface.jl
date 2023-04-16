@@ -110,6 +110,19 @@ mutable struct ParametricAffineFunction{T}
     current_constant::T
 end
 
+mutable struct ParametricVectorAffineFunction{T}
+    # constant * parameter
+    p::Vector{MOI.VectorAffineTerm{T}}
+    # constant * variable
+    v::Vector{MOI.VectorAffineTerm{T}}
+    # constant
+    c::Vector{T}
+    # to avoid unnecessary lookups in updates
+    set_constant::Vector{T}
+    # cache to avoid slow getters
+    current_constant::Vector{T}
+end
+
 """
     Optimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimizer
 
@@ -183,7 +196,9 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     }
 
     # vector affine function data
-    vector_constraint_cache::DoubleDict{Vector{MOI.VectorAffineTerm{T}}}
+    # vector_constraint_cache::DoubleDict{Vector{MOI.VectorAffineTerm{T}}}
+    # Clever cache of data (inner key)
+    vector_affine_constraint_cache::DoubleDict{ParametricVectorAffineFunction{T}}
 
     #
     multiplicative_parameters::Set{Int64}
@@ -239,7 +254,8 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
                 MOI.AbstractFunction,
             }(),
             # vec affine
-            DoubleDict{Vector{MOI.VectorAffineTerm{T}}}(),
+            # DoubleDict{Vector{MOI.VectorAffineTerm{T}}}(),
+            DoubleDict{ParametricVectorAffineFunction{T}}(),
             # other
             Set{Int64}(),
             Vector{T}(),
@@ -279,7 +295,7 @@ function MOI.is_empty(model::Optimizer)
         model.original_objective_cache === nothing &&
         isempty(model.quadratic_objective_cache_product) &&
         #
-        isempty(model.vector_constraint_cache) &&
+        isempty(model.vector_affine_constraint_cache) &&
         #
         isempty(model.multiplicative_parameters) &&
         isempty(model.dual_value_of_parameters) &&
@@ -310,7 +326,7 @@ function MOI.empty!(model::Optimizer{T}) where {T}
     model.original_objective_cache = nothing
     empty!(model.quadratic_objective_cache_product)
     #
-    empty!(model.vector_constraint_cache)
+    empty!(model.vector_affine_constraint_cache)
     #
     empty!(model.multiplicative_parameters)
     empty!(model.dual_value_of_parameters)
@@ -466,14 +482,17 @@ function MOI.modify(
         error("Parametric constraint cannot be modified")
     end
     MOI.modify(model.optimizer, c, chg)
-    MOI.Utilities.modify_function(model.original_objective_cache)
+    MOI.Utilities.modify_function!(model.original_objective_cache, chg)
     return
 end
 
 function MOI.modify(
     model::Optimizer,
     c::MOI.ObjectiveFunction{F},
-    chg::MOI.ScalarConstantChange{T},
+    chg::Union{
+        MOI.ScalarConstantChange{T},
+        MOI.ScalarCoefficientChange{T},
+    },
 ) where {F<:MathOptInterface.AbstractScalarFunction,T}
     if model.quadratic_objective_cache !== nothing ||
         model.affine_objective_cache !== nothing ||
@@ -481,7 +500,7 @@ function MOI.modify(
         error("Parametric objective cannot be modified")
     end
     MOI.modify(model.optimizer, c, chg)
-    MOI.Utilities.modify_function(model.original_objective_cache)
+    MOI.Utilities.modify_function!(model.original_objective_cache, chg)
     return
 end
 
@@ -1155,7 +1174,7 @@ function MOI.set(
         )
         model.affine_objective_cache = pf
     end
-    model.original_objective_cache = f
+    model.original_objective_cache = deepcopy(f)
     return
 end
 
@@ -1299,16 +1318,16 @@ function add_constraint_with_parameters_on_function(
     f::MOI.VectorAffineFunction{T},
     set::MOI.AbstractVectorSet,
 ) where {T}
-    @warn("TODO")
-    vars, params, param_constants =
-        separate_possible_terms_and_calculate_parameter_constant(model, f, set)
-    ci = MOI.add_constraint(
+    pf = ParametricVectorAffineFunction(f)
+    # cache_set_constant!(pf, set) # there is no constant is vector sets
+    update_cache!(pf, model)
+    inner_ci = MOI.add_constraint(
         model.optimizer,
-        MOI.VectorAffineFunction(vars, f.constants + param_constants),
+        current_function(pf),
         set,
     )
-    model.vector_constraint_cache[ci] = params
-    return ci
+    model.vector_affine_constraint_cache[inner_ci] = pf
+    return inner_ci
 end
 
 function add_constraint_with_parameters_on_function(
@@ -1381,11 +1400,22 @@ function MOI.delete(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
 ) where {
-    F<:Union{MOI.VariableIndex,MOI.VectorOfVariables,MOI.VectorAffineFunction},
+    F<:Union{MOI.VariableIndex,MOI.VectorOfVariables},
     S<:MOI.AbstractSet,
 }
-@warn("TODO: MOI.VectorAffineFunction")
     MOI.delete(model.optimizer, c)
+    return
+end
+
+function MOI.delete(
+    model::Optimizer,
+    c::MOI.ConstraintIndex{F,S},
+) where {
+    F<:MOI.VectorAffineFunction,
+    S<:MOI.AbstractSet,
+}
+    MOI.delete(model.optimizer, c)
+    deleteat!(model.vector_affine_constraint_cache, c)
     return
 end
 
@@ -1396,8 +1426,6 @@ function MOI.is_valid(
     F<:Union{MOI.VariableIndex,MOI.VectorOfVariables,MOI.VectorAffineFunction},
     S<:MOI.AbstractSet,
 }
-@warn("TODO: MOI.VectorAffineFunction")
-
     return MOI.is_valid(model.optimizer, c)
 end
 

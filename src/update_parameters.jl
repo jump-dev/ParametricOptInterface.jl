@@ -85,6 +85,39 @@ function update_parametric_affine_constraints!(
     return
 end
 
+function update_parametric_vector_affine_constraints!(model::Optimizer)
+    for (F, S) in keys(model.vector_affine_constraint_cache.dict)
+        vector_affine_constraint_cache_inner =
+            model.vector_affine_constraint_cache[F, S]
+        if !isempty(vector_affine_constraint_cache_inner)
+            # barrier to avoid type instability of inner dicts
+            update_parametric_vector_affine_constraints!(
+                model,
+                vector_affine_constraint_cache_inner,
+            )
+        end
+    end
+    return
+end
+
+function update_parametric_vector_affine_constraints!(
+    model::Optimizer,
+    vector_affine_constraint_cache_inner::DoubleDictInner{F,S,V},
+) where {F<:MOI.VectorAffineFunction{T},S,V} where {T}
+    for (inner_ci, pf) in vector_affine_constraint_cache_inner
+        delta_constant = delta_parametric_constant(model, pf)
+        if !iszero(delta_constant)
+            pf.current_constant .+= delta_constant
+            MOI.modify(
+                model.optimizer,
+                inner_ci,
+                MOI.VectorConstantChange(pf.current_constant)
+            )
+        end
+    end
+    return
+end
+
 function update_parametric_quadratic_constraints!(model::Optimizer)
     for (F, S) in keys(model.quadratic_constraint_cache.dict)
         quadratic_constraint_cache_inner = model.quadratic_constraint_cache[F, S]
@@ -219,81 +252,12 @@ function update_parametric_quadratic_objective!(model::Optimizer{T}) where {T}
     return
 end
 
-# TODO
-# Vector Affine
-function update_parameter_in_vector_affine_constraints!(model::Optimizer)
-    for (F, S) in keys(model.vector_constraint_cache.dict)
-        vector_constraint_cache_inner = model.vector_constraint_cache[F, S]
-        if !isempty(vector_constraint_cache_inner)
-            update_parameter_in_vector_affine_constraints!(
-                model.optimizer,
-                model.parameters,
-                model.updated_parameters,
-                vector_constraint_cache_inner,
-            )
-        end
-    end
-    return model
-end
-
-function update_parameter_in_vector_affine_constraints!(
-    optimizer::OT,
-    parameters::ParamTo{T},
-    updated_parameters::ParamTo{T},
-    vector_constraint_cache_inner::DoubleDictInner{F,S,V},
-) where {OT,T,F,S,V}
-    for (ci, param_array) in vector_constraint_cache_inner
-        update_parameter_in_vector_affine_constraints!(
-            optimizer,
-            ci,
-            param_array,
-            parameters,
-            updated_parameters,
-        )
-    end
-
-    return optimizer
-end
-
-function update_parameter_in_vector_affine_constraints!(
-    optimizer::OT,
-    ci::CI,
-    param_array::Vector{MOI.VectorAffineTerm{T}},
-    parameters::ParamTo{T},
-    updated_parameters::ParamTo{T},
-) where {OT,T,CI}
-    cf = MOI.get(optimizer, MOI.ConstraintFunction(), ci)
-
-    n_dims = length(cf.constants)
-    param_constants = zeros(T, n_dims)
-
-    for term in param_array
-        vi = term.scalar_term.variable
-
-        if !isnan(updated_parameters[p_idx(vi)])
-            param_constants[term.output_index] =
-                term.scalar_term.coefficient *
-                (updated_parameters[p_idx(vi)] - parameters[p_idx(vi)])
-        end
-    end
-
-    if param_constants != zeros(T, n_dims)
-        MOI.modify(
-            optimizer,
-            ci,
-            MOI.VectorConstantChange(cf.constants + param_constants),
-        )
-    end
-
-    return ci
-end
-
 function update_parameters!(model::Optimizer)
     update_parametric_affine_constraints!(model)
+    update_parametric_vector_affine_constraints!(model)
     update_parametric_quadratic_constraints!(model)
     update_parametric_affine_objective!(model)
     update_parametric_quadratic_objective!(model)
-    # update_parameter_in_vector_affine_constraints!(model)
 
     # Update parameters and put NaN to indicate that the parameter has been
     # updated
