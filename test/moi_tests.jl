@@ -1318,7 +1318,6 @@ function test_qp_objective_parameter_times_parameter()
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
-    A = [0.0 1.0; 1.0 0.0]
     a = [1.0, 1.0]
     x = MOI.add_variables(optimizer, 2)
     for x_i in x
@@ -1327,7 +1326,7 @@ function test_qp_objective_parameter_times_parameter()
     y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(1))
     z, cz = MOI.add_constrained_variable(optimizer, POI.Parameter(1))
     quad_terms = MOI.ScalarQuadraticTerm{Float64}[]
-    push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 2], y, z))
+    push!(quad_terms, MOI.ScalarQuadraticTerm(1.0, y, z))
     objective_function = MOI.ScalarQuadraticFunction(
         quad_terms,
         MOI.ScalarAffineTerm.(a, x),
@@ -1347,7 +1346,7 @@ function test_qp_objective_parameter_times_parameter()
         atol = ATOL,
     )
     err = ErrorException(
-        "Cannot calculate the dual of a multiplicative parameter",
+        "Cannot compute the dual of a multiplicative parameter",
     )
     @test_throws err MOI.get(optimizer, MOI.ConstraintDual(), cy)
     @test_throws err MOI.get(optimizer, MOI.ConstraintDual(), cz)

@@ -453,18 +453,25 @@ function delta_parametric_constant(
     end
     for term in f.pp
         p1 = p_idx(term.variable_1)
-        delta_1 = if !isnan(model.updated_parameters[p1])
-            model.updated_parameters[p1] - model.parameters[p1]
-        else
-            0.0
-        end
         p2 = p_idx(term.variable_2)
-        delta_2 = if !isnan(model.updated_parameters[p2])
-            model.updated_parameters[p2] - model.parameters[p2]
-        else
-            0.0
+        isnan_1 = isnan(model.updated_parameters[p1])
+        isnan_2 = isnan(model.updated_parameters[p2])
+        if !isnan_1 || !isnan_2
+            new_1 = ifelse(
+                isnan_1,
+                model.parameters[p1],
+                model.updated_parameters[p1],
+            )
+            new_2 = ifelse(
+                isnan_2,
+                model.parameters[p2],
+                model.updated_parameters[p2],
+            )
+            delta_constant += term.coefficient *
+                (
+                    new_1 * new_2 - model.parameters[p1] * model.parameters[p2]
+                )
         end
-        delta_constant += term.coefficient * delta_1 * delta_2
     end
     return delta_constant
 end
