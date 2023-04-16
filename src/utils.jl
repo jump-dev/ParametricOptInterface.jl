@@ -522,23 +522,8 @@ function cache_set_constant!(
     return
 end
 
-function is_affine(::MOI.ScalarAffineFunction)
-    return true
-end
-
 function is_affine(f::MOI.ScalarQuadraticFunction)
     if isempty(f.quadratic_terms)
-        return true
-    end
-    return false
-end
-
-function is_affine(::ParametricAffineFunction)
-    return true
-end
-
-function is_affine(f::ParametricQuadraticFunction)
-    if isempty(f.vv)
         return true
     end
     return false
