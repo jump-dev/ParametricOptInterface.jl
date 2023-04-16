@@ -109,26 +109,26 @@ function test_jump_constraintfunction_getter()
     c2 = @constraint(model, conq, sum(x .* p) >= 1)
     c3 = @constraint(model, conqa, sum(x .* p) + x[1]^2 + x[1] + p[1] >= 1)
     @test MOI.Utilities.canonical(
-        MOI.get(model, MOI.ConstraintFunction(), c1)
-        ) ≈
-        MOI.Utilities.canonical(
-            MOI.ScalarAffineFunction{Float64}(
-                [
-                    MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(1)),
-                    MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(2)),
-                    MOI.ScalarAffineTerm{Float64}(
-                        1.0,
-                        MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
-                    ),
-                    MOI.ScalarAffineTerm{Float64}(
-                        1.0,
-                        MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 2),
-                    ),
-                ],
-                0.0,
-            )
-        )
-    @test canonical_compare(MOI.get(model, MOI.ConstraintFunction(), c2),
+        MOI.get(model, MOI.ConstraintFunction(), c1),
+    ) ≈ MOI.Utilities.canonical(
+        MOI.ScalarAffineFunction{Float64}(
+            [
+                MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(1)),
+                MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(2)),
+                MOI.ScalarAffineTerm{Float64}(
+                    1.0,
+                    MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+                ),
+                MOI.ScalarAffineTerm{Float64}(
+                    1.0,
+                    MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 2),
+                ),
+            ],
+            0.0,
+        ),
+    )
+    @test canonical_compare(
+        MOI.get(model, MOI.ConstraintFunction(), c2),
         MOI.ScalarQuadraticFunction{Float64}(
             [
                 MOI.ScalarQuadraticTerm{Float64}(
@@ -144,9 +144,10 @@ function test_jump_constraintfunction_getter()
             ],
             [],
             0.0,
-        )
+        ),
     )
-    @test canonical_compare(MOI.get(model, MOI.ConstraintFunction(), c3),
+    @test canonical_compare(
+        MOI.get(model, MOI.ConstraintFunction(), c3),
         MOI.ScalarQuadraticFunction{Float64}(
             [
                 MOI.ScalarQuadraticTerm{Float64}(
@@ -173,11 +174,12 @@ function test_jump_constraintfunction_getter()
                 ),
             ],
             0.0,
-        )
+        ),
     )
     o1 = @objective(model, Min, sum(x) + sum(p))
     F = MOI.get(model, MOI.ObjectiveFunctionType())
-    @test canonical_compare(MOI.get(model, MOI.ObjectiveFunction{F}()),
+    @test canonical_compare(
+        MOI.get(model, MOI.ObjectiveFunction{F}()),
         MOI.ScalarAffineFunction{Float64}(
             [
                 MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(1)),
@@ -192,7 +194,7 @@ function test_jump_constraintfunction_getter()
                 ),
             ],
             0.0,
-        )
+        ),
     )
     o2 = @objective(model, Min, sum(x .* p) + 2)
     F = MOI.get(model, MOI.ObjectiveFunctionType())
@@ -216,7 +218,8 @@ function test_jump_constraintfunction_getter()
     @test canonical_compare(f, f_ref)
     o3 = @objective(model, Min, sum(x .* p) + x[1]^2 + x[1] + p[1])
     F = MOI.get(model, MOI.ObjectiveFunctionType())
-    @test canonical_compare(MOI.get(model, MOI.ObjectiveFunction{F}()),
+    @test canonical_compare(
+        MOI.get(model, MOI.ObjectiveFunction{F}()),
         MOI.ScalarQuadraticFunction{Float64}(
             [
                 MOI.ScalarQuadraticTerm{Float64}(
@@ -243,7 +246,7 @@ function test_jump_constraintfunction_getter()
                 ),
             ],
             0.0,
-        )
+        ),
     )
     return
 end
@@ -874,10 +877,11 @@ function test_jump_direct_qp_objective()
         2index(p) + 3,
     )
     optimize!(model)
-    @test canonical_compare(MOI.get(
-        backend(model),
-        POI.QuadraticObjectiveCoef(),
-        (index(x), index(y)),
+    @test canonical_compare(
+        MOI.get(
+            backend(model),
+            POI.QuadraticObjectiveCoef(),
+            (index(x), index(y)),
         ),
         MOI.ScalarAffineFunction{Int64}(
             MOI.ScalarAffineTerm{Int64}[MOI.ScalarAffineTerm{Int64}(
@@ -885,7 +889,7 @@ function test_jump_direct_qp_objective()
                 MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
             )],
             3,
-        )
+        ),
     )
     @test objective_value(model) ≈ 32 / 3 atol = ATOL
     @test value(x) ≈ 4 / 3 atol = ATOL

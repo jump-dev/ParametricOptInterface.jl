@@ -268,7 +268,7 @@ function test_moi_ipopt()
             "test_model_copy_to_UnsupportedConstraint",
             #  - POI throws a ErrorException if user tries to modify parametric
             #    functions
-            "test_objective_get_ObjectiveFunction_ScalarAffineFunction"
+            "test_objective_get_ObjectiveFunction_ScalarAffineFunction",
         ],
     )
     return
@@ -1345,9 +1345,8 @@ function test_qp_objective_parameter_times_parameter()
         0.0,
         atol = ATOL,
     )
-    err = ErrorException(
-        "Cannot compute the dual of a multiplicative parameter",
-    )
+    err =
+        ErrorException("Cannot compute the dual of a multiplicative parameter")
     @test_throws err MOI.get(optimizer, MOI.ConstraintDual(), cy)
     @test_throws err MOI.get(optimizer, MOI.ConstraintDual(), cz)
     MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(2.0))
