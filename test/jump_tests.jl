@@ -994,7 +994,8 @@ function test_jump_quadratic_interval()
     @variable(model, x >= 0)
     @variable(model, y >= 0)
     @variable(model, p in POI.Parameter(10.0))
-    @constraint(model, -4 <= x - p * y <= -4)
+    @variable(model, q in POI.Parameter(4.0))
+    @constraint(model, 0 <= x - p * y + q <= 0)
     @objective(model, Min, x + y)
     optimize!(model)
     @test value(x) ≈ 0 atol = ATOL
@@ -1003,6 +1004,44 @@ function test_jump_quadratic_interval()
     optimize!(model)
     @test value(x) ≈ 0 atol = ATOL
     @test value(y) ≈ 0.2 atol = ATOL
+    MOI.set(model, POI.ParameterValue(), q, 6.0)
+    optimize!(model)
+    @test value(x) ≈ 0 atol = ATOL
+    @test value(y) ≈ 0.3 atol = ATOL
+    return
+end
+
+function test_jump_quadratic_interval_cached()
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            GLPK.Optimizer(),
+        ),
+        Float64,
+    )
+    optimizer = POI.Optimizer(cached)
+    model = direct_model(optimizer)
+    # optimizer = POI.Optimizer(GLPK.Optimizer())
+    # model = direct_model(optimizer)
+    # model = Model(() -> optimizer)
+    # MOI.set(model, MOI.Silent(), true)
+    @variable(model, x >= 0)
+    @variable(model, y >= 0)
+    @variable(model, p in POI.Parameter(10.0))
+    @variable(model, q in POI.Parameter(4.0))
+    @constraint(model, 0 <= x - p * y + q <= 0)
+    @objective(model, Min, x + y)
+    optimize!(model)
+    @test value(x) ≈ 0 atol = ATOL
+    @test value(y) ≈ 0.4 atol = ATOL
+    MOI.set(model, POI.ParameterValue(), p, 20.0)
+    optimize!(model)
+    @test value(x) ≈ 0 atol = ATOL
+    @test value(y) ≈ 0.2 atol = ATOL
+    MOI.set(model, POI.ParameterValue(), q, 6.0)
+    optimize!(model)
+    @test value(x) ≈ 0 atol = ATOL
+    @test value(y) ≈ 0.3 atol = ATOL
     return
 end
 
