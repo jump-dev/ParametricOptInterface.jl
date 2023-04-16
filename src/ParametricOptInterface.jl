@@ -1426,7 +1426,7 @@ function set_quadratic_product_in_obj!(model::Optimizer{T}) where {T}
         current_function(model.quadratic_objective_cache)
     else
         F = MOI.get(model.original_objective_cache, MOI.ObjectiveFunctionType())
-        MOI.get(model.original_objective_cache, MOI.ObjectiveFunction{F})
+        MOI.get(model.original_objective_cache, MOI.ObjectiveFunction{F}())
     end
     F = typeof(f)
 
