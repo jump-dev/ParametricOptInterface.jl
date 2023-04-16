@@ -183,12 +183,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     # Clever cache of data (at most one can be !== nothing)
     affine_objective_cache::Union{Nothing,ParametricAffineFunction{T}}
     quadratic_objective_cache::Union{Nothing,ParametricQuadraticFunction{T}}
-    original_objective_cache::Union{
-        Nothing,
-        MOI.VariableIndex,
-        MOI.ScalarAffineFunction{T},
-        MOI.ScalarQuadraticFunction{T},
-    }
+    original_objective_cache::MOI.Utilities.ObjectiveContainer{T}
     # Store parametric expressions for product of variables
     quadratic_objective_cache_product::Dict{
         Tuple{MOI.VariableIndex,MOI.VariableIndex},
@@ -248,7 +243,8 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             # objective
             nothing,
             nothing,
-            nothing,
+            # nothing,
+            MOI.Utilities.ObjectiveContainer{T}(),
             Dict{
                 Tuple{MOI.VariableIndex,MOI.VariableIndex},
                 MOI.AbstractFunction,
@@ -292,7 +288,7 @@ function MOI.is_empty(model::Optimizer)
         # obj
         model.affine_objective_cache === nothing &&
         model.quadratic_objective_cache === nothing &&
-        model.original_objective_cache === nothing &&
+        MOI.is_empty(model.original_objective_cache) &&
         isempty(model.quadratic_objective_cache_product) &&
         #
         isempty(model.vector_affine_constraint_cache) &&
@@ -323,7 +319,7 @@ function MOI.empty!(model::Optimizer{T}) where {T}
     # obj
     model.affine_objective_cache = nothing
     model.quadratic_objective_cache = nothing
-    model.original_objective_cache = nothing
+    MOI.empty!(model.original_objective_cache)
     empty!(model.quadratic_objective_cache_product)
     #
     empty!(model.vector_affine_constraint_cache)
@@ -482,7 +478,6 @@ function MOI.modify(
         error("Parametric constraint cannot be modified")
     end
     MOI.modify(model.optimizer, c, chg)
-    MOI.Utilities.modify_function!(model.original_objective_cache, chg)
     return
 end
 
@@ -500,7 +495,7 @@ function MOI.modify(
         error("Parametric objective cannot be modified")
     end
     MOI.modify(model.optimizer, c, chg)
-    MOI.Utilities.modify_function!(model.original_objective_cache, chg)
+    MOI.modify(model.original_objective_cache, c, chg)
     return
 end
 
@@ -727,51 +722,11 @@ function MOI.get(model::Optimizer, attr::MOI.ObjectiveSense)
 end
 
 function MOI.get(model::Optimizer{T}, attr::MOI.ObjectiveFunctionType) where {T}
-    if model.affine_objective_cache !== nothing
-        return MOI.ScalarAffineFunction{T}
-    elseif model.quadratic_objective_cache !== nothing
-        return MOI.ScalarQuadraticFunction{T}
-    end
-    return typeof(model.original_objective_cache)
+    return MOI.get(model.original_objective_cache, attr)
 end
 
-function MOI.get(
-    model::Optimizer,
-    attr::MOI.ObjectiveFunction{MOI.VariableIndex},
-)
-    if !(typeof(model.original_objective_cache) <: MOI.VariableIndex)
-        error("Objective function is of type $(typeof(model.original_objective_cache))")
-    end
-    return model.original_objective_cache
-end
-
-function MOI.get(
-    model::Optimizer,
-    attr::MOI.ObjectiveFunction{MOI.ScalarAffineFunction{T}},
-) where {T}
-    if model.affine_objective_cache !== nothing
-        return original_function(model.affine_objective_cache)
-    end
-    if !(typeof(model.original_objective_cache) <: MOI.ScalarAffineFunction{T})
-        error("Objective function is of type $(typeof(model.original_objective_cache))")
-    end
-    return model.original_objective_cache
-end
-
-function MOI.get(
-    model::Optimizer,
-    attr::MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{T}},
-) where {T}
-    if model.quadratic_objective_cache !== nothing
-        return original_function(model.quadratic_objective_cache)
-    end
-    if !(
-        typeof(model.original_objective_cache) <:
-            MOI.ScalarQuadraticFunction{T}
-        )
-        error("Objective function is of type $(typeof(model.original_objective_cache))")
-    end
-    return model.original_objective_cache
+function MOI.get(model::Optimizer, attr::MOI.ObjectiveFunction)
+    return MOI.get(model.original_objective_cache, attr)
 end
 
 function MOI.get(model::Optimizer, attr::MOI.ResultCount)
@@ -1148,10 +1103,10 @@ function MOI.set(
     return model.constraints_interpretation = value
 end
 
-function empty_objective_function_caches!(model::Optimizer)
+function empty_objective_function_caches!(model::Optimizer{T}) where {T}
     model.affine_objective_cache = nothing
     model.quadratic_objective_cache = nothing
-    model.original_objective_cache = nothing
+    model.original_objective_cache = MOI.Utilities.ObjectiveContainer{T}()
     return
 end
 
@@ -1174,7 +1129,7 @@ function MOI.set(
         )
         model.affine_objective_cache = pf
     end
-    model.original_objective_cache = deepcopy(f)
+    MOI.set(model.original_objective_cache, attr, f)
     return
 end
 
@@ -1206,7 +1161,7 @@ function MOI.set(
         )
         model.quadratic_objective_cache = pf
     end
-    model.original_objective_cache = f
+    MOI.set(model.original_objective_cache, attr, f)
     return
 end
 
@@ -1221,7 +1176,7 @@ function MOI.set(
         error("Variable not in the model")
     end
     MOI.set(model.optimizer, attr, model.variables[v])
-    model.original_objective_cache = v
+    MOI.set(model.original_objective_cache, attr, v)
     return
 end
 
@@ -1382,6 +1337,7 @@ end
 function MOI.delete(model::Optimizer, v::MOI.VariableIndex)
     delete!(model.variables, v)
     MOI.delete(model.optimizer, v)
+    MOI.delete(model.original_objective_cache, v)
     return
 end
 
@@ -1469,7 +1425,8 @@ function set_quadratic_product_in_obj!(model::Optimizer{T}) where {T}
     elseif model.quadratic_objective_cache !== nothing
         current_function(model.quadratic_objective_cache)
     else
-        model.original_objective_cache
+        F = MOI.get(model.original_objective_cache, MOI.ObjectiveFunctionType())
+        MOI.get(model.original_objective_cache, MOI.ObjectiveFunction{F})
     end
     F = typeof(f)
 

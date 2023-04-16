@@ -136,7 +136,7 @@ function MOI.get(
     if !is_additive(model, cp)
         error("Cannot compute the dual of a multiplicative parameter")
     end
-    return model.dual_value_of_parameters[p_val(ci)]
+    return model.dual_value_of_parameters[p_val(cp)]
 end
 
 function is_additive(model::Optimizer, cp::MOI.ConstraintIndex)

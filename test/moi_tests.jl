@@ -266,6 +266,9 @@ function test_moi_ipopt()
             #  - CachingOptimizer does not throw if optimizer not attached
             "test_model_copy_to_UnsupportedAttribute",
             "test_model_copy_to_UnsupportedConstraint",
+            #  - POI throws a ErrorException if user tries to modify parametric
+            #    functions
+            "test_objective_get_ObjectiveFunction_ScalarAffineFunction"
         ],
     )
     return
