@@ -108,89 +108,98 @@ function test_jump_constraintfunction_getter()
     c1 = @constraint(model, con, sum(x) + sum(p) >= 1)
     c2 = @constraint(model, conq, sum(x .* p) >= 1)
     c3 = @constraint(model, conqa, sum(x .* p) + x[1]^2 + x[1] + p[1] >= 1)
-    @test MOI.get(model, MOI.ConstraintFunction(), c1) ≈
-          MOI.ScalarAffineFunction{Float64}(
-        [
-            MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(1)),
-            MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(2)),
-            MOI.ScalarAffineTerm{Float64}(
-                1.0,
-                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
-            ),
-            MOI.ScalarAffineTerm{Float64}(
-                1.0,
-                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 2),
-            ),
-        ],
-        0.0,
+    @test MOI.Utilities.canonical(
+        MOI.get(model, MOI.ConstraintFunction(), c1),
+    ) ≈ MOI.Utilities.canonical(
+        MOI.ScalarAffineFunction{Float64}(
+            [
+                MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(1)),
+                MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(2)),
+                MOI.ScalarAffineTerm{Float64}(
+                    1.0,
+                    MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+                ),
+                MOI.ScalarAffineTerm{Float64}(
+                    1.0,
+                    MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 2),
+                ),
+            ],
+            0.0,
+        ),
     )
-    @test MOI.get(model, MOI.ConstraintFunction(), c2) ≈
-          MOI.ScalarQuadraticFunction{Float64}(
-        [
-            MOI.ScalarQuadraticTerm{Float64}(
-                1.0,
-                MOI.VariableIndex(1),
-                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
-            ),
-            MOI.ScalarQuadraticTerm{Float64}(
-                1.0,
-                MOI.VariableIndex(2),
-                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 2),
-            ),
-        ],
-        [],
-        0.0,
+    @test canonical_compare(
+        MOI.get(model, MOI.ConstraintFunction(), c2),
+        MOI.ScalarQuadraticFunction{Float64}(
+            [
+                MOI.ScalarQuadraticTerm{Float64}(
+                    1.0,
+                    MOI.VariableIndex(1),
+                    MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+                ),
+                MOI.ScalarQuadraticTerm{Float64}(
+                    1.0,
+                    MOI.VariableIndex(2),
+                    MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 2),
+                ),
+            ],
+            [],
+            0.0,
+        ),
     )
-    @test MOI.get(model, MOI.ConstraintFunction(), c3) ≈
-          MOI.ScalarQuadraticFunction{Float64}(
-        [
-            MOI.ScalarQuadraticTerm{Float64}(
-                1.0,
-                MOI.VariableIndex(1),
-                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
-            ),
-            MOI.ScalarQuadraticTerm{Float64}(
-                1.0,
-                MOI.VariableIndex(2),
-                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 2),
-            ),
-            MOI.ScalarQuadraticTerm{Float64}(
-                2.0,
-                MOI.VariableIndex(1),
-                MOI.VariableIndex(1),
-            ),
-        ],
-        [
-            MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(1)),
-            MOI.ScalarAffineTerm{Float64}(
-                1.0,
-                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
-            ),
-        ],
-        0.0,
+    @test canonical_compare(
+        MOI.get(model, MOI.ConstraintFunction(), c3),
+        MOI.ScalarQuadraticFunction{Float64}(
+            [
+                MOI.ScalarQuadraticTerm{Float64}(
+                    1.0,
+                    MOI.VariableIndex(1),
+                    MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+                ),
+                MOI.ScalarQuadraticTerm{Float64}(
+                    1.0,
+                    MOI.VariableIndex(2),
+                    MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 2),
+                ),
+                MOI.ScalarQuadraticTerm{Float64}(
+                    2.0,
+                    MOI.VariableIndex(1),
+                    MOI.VariableIndex(1),
+                ),
+            ],
+            [
+                MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(1)),
+                MOI.ScalarAffineTerm{Float64}(
+                    1.0,
+                    MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+                ),
+            ],
+            0.0,
+        ),
     )
     o1 = @objective(model, Min, sum(x) + sum(p))
     F = MOI.get(model, MOI.ObjectiveFunctionType())
-    @test MOI.get(model, MOI.ObjectiveFunction{F}()) ≈
-          MOI.ScalarAffineFunction{Float64}(
-        [
-            MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(1)),
-            MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(2)),
-            MOI.ScalarAffineTerm{Float64}(
-                1.0,
-                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
-            ),
-            MOI.ScalarAffineTerm{Float64}(
-                1.0,
-                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 2),
-            ),
-        ],
-        0.0,
+    @test canonical_compare(
+        MOI.get(model, MOI.ObjectiveFunction{F}()),
+        MOI.ScalarAffineFunction{Float64}(
+            [
+                MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(1)),
+                MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(2)),
+                MOI.ScalarAffineTerm{Float64}(
+                    1.0,
+                    MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+                ),
+                MOI.ScalarAffineTerm{Float64}(
+                    1.0,
+                    MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 2),
+                ),
+            ],
+            0.0,
+        ),
     )
     o2 = @objective(model, Min, sum(x .* p) + 2)
     F = MOI.get(model, MOI.ObjectiveFunctionType())
-    @test MOI.get(model, MOI.ObjectiveFunction{F}()) ≈
-          MOI.ScalarQuadraticFunction{Float64}(
+    f = MOI.get(model, MOI.ObjectiveFunction{F}())
+    f_ref = MOI.ScalarQuadraticFunction{Float64}(
         [
             MOI.ScalarQuadraticTerm{Float64}(
                 1.0,
@@ -206,35 +215,38 @@ function test_jump_constraintfunction_getter()
         [],
         2.0,
     )
+    @test canonical_compare(f, f_ref)
     o3 = @objective(model, Min, sum(x .* p) + x[1]^2 + x[1] + p[1])
     F = MOI.get(model, MOI.ObjectiveFunctionType())
-    @test MOI.get(model, MOI.ObjectiveFunction{F}()) ≈
-          MOI.ScalarQuadraticFunction{Float64}(
-        [
-            MOI.ScalarQuadraticTerm{Float64}(
-                1.0,
-                MOI.VariableIndex(1),
-                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
-            ),
-            MOI.ScalarQuadraticTerm{Float64}(
-                1.0,
-                MOI.VariableIndex(2),
-                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 2),
-            ),
-            MOI.ScalarQuadraticTerm{Float64}(
-                2.0,
-                MOI.VariableIndex(1),
-                MOI.VariableIndex(1),
-            ),
-        ],
-        [
-            MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(1)),
-            MOI.ScalarAffineTerm{Float64}(
-                1.0,
-                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
-            ),
-        ],
-        0.0,
+    @test canonical_compare(
+        MOI.get(model, MOI.ObjectiveFunction{F}()),
+        MOI.ScalarQuadraticFunction{Float64}(
+            [
+                MOI.ScalarQuadraticTerm{Float64}(
+                    1.0,
+                    MOI.VariableIndex(1),
+                    MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+                ),
+                MOI.ScalarQuadraticTerm{Float64}(
+                    1.0,
+                    MOI.VariableIndex(2),
+                    MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 2),
+                ),
+                MOI.ScalarQuadraticTerm{Float64}(
+                    2.0,
+                    MOI.VariableIndex(1),
+                    MOI.VariableIndex(1),
+                ),
+            ],
+            [
+                MOI.ScalarAffineTerm{Float64}(1.0, MOI.VariableIndex(1)),
+                MOI.ScalarAffineTerm{Float64}(
+                    1.0,
+                    MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+                ),
+            ],
+            0.0,
+        ),
     )
     return
 end
@@ -753,6 +765,7 @@ function test_jump_direct_vector_parameter_affine_nonnegatives()
     )
     optimizer = POI.Optimizer(cached)
     model = direct_model(optimizer)
+    set_silent(model)
     @variable(model, x)
     @variable(model, y)
     @variable(model, t in POI.Parameter(5))
@@ -788,6 +801,7 @@ function test_jump_direct_vector_parameter_affine_nonpositives()
     )
     optimizer = POI.Optimizer(cached)
     model = direct_model(optimizer)
+    set_silent(model)
     @variable(model, x)
     @variable(model, y)
     @variable(model, t in POI.Parameter(5))
@@ -828,6 +842,7 @@ function test_jump_direct_soc_parameters()
     )
     optimizer = POI.Optimizer(cached)
     model = direct_model(optimizer)
+    set_silent(model)
     @variable(model, x)
     @variable(model, y)
     @variable(model, t)
@@ -858,6 +873,10 @@ function test_jump_direct_qp_objective()
     @constraint(model, 2x + y <= 4)
     @constraint(model, x + 2y <= 4)
     @objective(model, Max, (x^2 + y^2) / 2)
+    optimize!(model)
+    @test objective_value(model) ≈ 16 / 9 atol = ATOL
+    @test value(x) ≈ 4 / 3 atol = ATOL
+    @test value(y) ≈ 4 / 3 atol = ATOL
     MOI.set(
         backend(model),
         POI.QuadraticObjectiveCoef(),
@@ -865,16 +884,19 @@ function test_jump_direct_qp_objective()
         2index(p) + 3,
     )
     optimize!(model)
-    @test MOI.get(
-        backend(model),
-        POI.QuadraticObjectiveCoef(),
-        (index(x), index(y)),
-    ) ≈ MOI.ScalarAffineFunction{Int64}(
-        MOI.ScalarAffineTerm{Int64}[MOI.ScalarAffineTerm{Int64}(
-            2,
-            MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
-        )],
-        3,
+    @test canonical_compare(
+        MOI.get(
+            backend(model),
+            POI.QuadraticObjectiveCoef(),
+            (index(x), index(y)),
+        ),
+        MOI.ScalarAffineFunction{Int64}(
+            MOI.ScalarAffineTerm{Int64}[MOI.ScalarAffineTerm{Int64}(
+                2,
+                MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+            )],
+            3,
+        ),
     )
     @test objective_value(model) ≈ 32 / 3 atol = ATOL
     @test value(x) ≈ 4 / 3 atol = ATOL
@@ -882,6 +904,37 @@ function test_jump_direct_qp_objective()
     MOI.set(model, POI.ParameterValue(), p, 2.0)
     optimize!(model)
     @test objective_value(model) ≈ 128 / 9 atol = ATOL
+    @test value(x) ≈ 4 / 3 atol = ATOL
+    @test value(y) ≈ 4 / 3 atol = ATOL
+    MOI.set(
+        backend(model),
+        POI.QuadraticObjectiveCoef(),
+        (index(x), index(y)),
+        nothing,
+    )
+    optimize!(model)
+    @test objective_value(model) ≈ 16 / 9 atol = ATOL
+    @test value(x) ≈ 4 / 3 atol = ATOL
+    @test value(y) ≈ 4 / 3 atol = ATOL
+    # now in reverse order
+    MOI.set(
+        backend(model),
+        POI.QuadraticObjectiveCoef(),
+        (index(y), index(x)),
+        2index(p) + 3,
+    )
+    optimize!(model)
+    @test objective_value(model) ≈ 128 / 9 atol = ATOL
+    @test value(x) ≈ 4 / 3 atol = ATOL
+    @test value(y) ≈ 4 / 3 atol = ATOL
+    MOI.set(
+        backend(model),
+        POI.QuadraticObjectiveCoef(),
+        (index(y), index(x)),
+        nothing,
+    )
+    optimize!(model)
+    @test objective_value(model) ≈ 16 / 9 atol = ATOL
     @test value(x) ≈ 4 / 3 atol = ATOL
     @test value(y) ≈ 4 / 3 atol = ATOL
     return
@@ -931,4 +984,74 @@ function test_jump_direct_rsoc_constraints()
     @test value(x) ≈ 0.0 atol = ATOL
     @test value(y) ≈ 2 atol = ATOL
     return
+end
+
+function test_jump_quadratic_interval()
+    optimizer = POI.Optimizer(GLPK.Optimizer())
+    # model = direct_model(optimizer)
+    model = Model(() -> optimizer)
+    MOI.set(model, MOI.Silent(), true)
+    @variable(model, x >= 0)
+    @variable(model, y >= 0)
+    @variable(model, p in POI.Parameter(10.0))
+    @variable(model, q in POI.Parameter(4.0))
+    @constraint(model, 0 <= x - p * y + q <= 0)
+    @objective(model, Min, x + y)
+    optimize!(model)
+    @test value(x) ≈ 0 atol = ATOL
+    @test value(y) ≈ 0.4 atol = ATOL
+    MOI.set(model, POI.ParameterValue(), p, 20.0)
+    optimize!(model)
+    @test value(x) ≈ 0 atol = ATOL
+    @test value(y) ≈ 0.2 atol = ATOL
+    MOI.set(model, POI.ParameterValue(), q, 6.0)
+    optimize!(model)
+    @test value(x) ≈ 0 atol = ATOL
+    @test value(y) ≈ 0.3 atol = ATOL
+    return
+end
+
+function test_jump_quadratic_interval_cached()
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            GLPK.Optimizer(),
+        ),
+        Float64,
+    )
+    optimizer = POI.Optimizer(cached)
+    model = direct_model(optimizer)
+    # optimizer = POI.Optimizer(GLPK.Optimizer())
+    # model = direct_model(optimizer)
+    # model = Model(() -> optimizer)
+    # MOI.set(model, MOI.Silent(), true)
+    @variable(model, x >= 0)
+    @variable(model, y >= 0)
+    @variable(model, p in POI.Parameter(10.0))
+    @variable(model, q in POI.Parameter(4.0))
+    @constraint(model, 0 <= x - p * y + q <= 0)
+    @objective(model, Min, x + y)
+    optimize!(model)
+    @test value(x) ≈ 0 atol = ATOL
+    @test value(y) ≈ 0.4 atol = ATOL
+    MOI.set(model, POI.ParameterValue(), p, 20.0)
+    optimize!(model)
+    @test value(x) ≈ 0 atol = ATOL
+    @test value(y) ≈ 0.2 atol = ATOL
+    MOI.set(model, POI.ParameterValue(), q, 6.0)
+    optimize!(model)
+    @test value(x) ≈ 0 atol = ATOL
+    @test value(y) ≈ 0.3 atol = ATOL
+    return
+end
+
+function test_affine_parametric_objective()
+    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+    @variable(model, p in POI.Parameter(1.0))
+    @variable(model, 0 <= x <= 1)
+    @objective(model, Max, (p + 0.5) * x)
+    optimize!(model)
+    @test value(x) ≈ 1.0
+    @test objective_value(model) ≈ 1.5
+    @test value(objective_function(model)) ≈ 1.5
 end

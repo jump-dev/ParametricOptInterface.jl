@@ -94,6 +94,8 @@ function test_basic_tests()
     @test MOI.get(optimizer, MOI.ObjectiveSense()) == MOI.MIN_SENSE
     @test MOI.get(optimizer, MOI.VariableName(), x[1]) == ""
     @test MOI.get(optimizer, MOI.ConstraintName(), c1) == ""
+    MOI.set(optimizer, MOI.ConstraintName(), c1, "ctr123")
+    @test MOI.get(optimizer, MOI.ConstraintName(), c1) == "ctr123"
     return
 end
 
@@ -129,7 +131,7 @@ function test_basic_special_cases_of_getters()
     )
     MOI.set(
         optimizer,
-        MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
+        MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
         obj_func,
     )
     MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
@@ -266,6 +268,9 @@ function test_moi_ipopt()
             #  - CachingOptimizer does not throw if optimizer not attached
             "test_model_copy_to_UnsupportedAttribute",
             "test_model_copy_to_UnsupportedConstraint",
+            #  - POI throws a ErrorException if user tries to modify parametric
+            #    functions
+            "test_objective_get_ObjectiveFunction_ScalarAffineFunction",
         ],
     )
     return
@@ -275,6 +280,7 @@ function test_moi_ListOfConstraintTypesPresent()
     N = 10
     ipopt = Ipopt.Optimizer()
     model = POI.Optimizer(ipopt)
+    MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variables(model, N / 2)
     y =
         first.(
@@ -572,6 +578,7 @@ function test_vector_parameter_affine_nonnegatives()
         SCS.Optimizer(),
     )
     model = POI.Optimizer(cached)
+    MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
     t, ct = MOI.add_constrained_variable(model, POI.Parameter(5))
@@ -630,6 +637,7 @@ function test_vector_parameter_affine_nonpositives()
         Float64,
     )
     model = POI.Optimizer(cached)
+    MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
     t, ct = MOI.add_constrained_variable(model, POI.Parameter(5))
@@ -693,6 +701,7 @@ function test_vector_soc_parameters()
         SCS.Optimizer(),
     )
     model = POI.Optimizer(cached)
+    MOI.set(model, MOI.Silent(), true)
     x, y, t = MOI.add_variables(model, 3)
     p, cp = MOI.add_constrained_variable(model, POI.Parameter(0))
     MOI.set(
@@ -778,6 +787,7 @@ function test_vector_soc_no_parameters()
         Float64,
     )
     model = POI.Optimizer(cached)
+    MOI.set(model, MOI.Silent(), true)
     x, y, t = MOI.add_variables(model, 3)
     MOI.set(
         model,
@@ -1315,7 +1325,6 @@ function test_qp_objective_parameter_times_parameter()
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
-    A = [0.0 1.0; 1.0 0.0]
     a = [1.0, 1.0]
     x = MOI.add_variables(optimizer, 2)
     for x_i in x
@@ -1324,7 +1333,7 @@ function test_qp_objective_parameter_times_parameter()
     y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(1))
     z, cz = MOI.add_constrained_variable(optimizer, POI.Parameter(1))
     quad_terms = MOI.ScalarQuadraticTerm{Float64}[]
-    push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 2], y, z))
+    push!(quad_terms, MOI.ScalarQuadraticTerm(1.0, y, z))
     objective_function = MOI.ScalarQuadraticFunction(
         quad_terms,
         MOI.ScalarAffineTerm.(a, x),
@@ -1343,9 +1352,8 @@ function test_qp_objective_parameter_times_parameter()
         0.0,
         atol = ATOL,
     )
-    err = ErrorException(
-        "Cannot calculate the dual of a multiplicative parameter",
-    )
+    err =
+        ErrorException("Cannot compute the dual of a multiplicative parameter")
     @test_throws err MOI.get(optimizer, MOI.ConstraintDual(), cy)
     @test_throws err MOI.get(optimizer, MOI.ConstraintDual(), cz)
     MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(2.0))
