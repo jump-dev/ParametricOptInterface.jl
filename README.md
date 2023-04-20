@@ -35,7 +35,7 @@ Use ParametricOptInterface with JuMP by following this brief example:
 ```julia
 using JuMP, HiGHS
 import ParametricOptInterface as POI
-model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
+model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
 @variable(model, x)
 @variable(model, p in POI.Parameter(1.0))
 @constraint(model, cons, x + p >= 3)
