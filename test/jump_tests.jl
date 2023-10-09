@@ -1055,3 +1055,12 @@ function test_affine_parametric_objective()
     @test objective_value(model) ≈ 1.5
     @test value(objective_function(model)) ≈ 1.5
 end
+
+function test_abstract_optimizer_attributes()
+    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+    set_attribute(model, "tm_lim", 60 * 1000)
+    attr = MOI.RawOptimizerAttribute("tm_lim")
+    @test MOI.supports(unsafe_backend(model), attr)
+    @test get_attribute(model, "tm_lim") ≈ 60 * 1000
+    return
+end
