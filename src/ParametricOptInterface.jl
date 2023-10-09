@@ -689,6 +689,13 @@ function MOI.get(model::Optimizer, ::MOI.RawStatusString)
     return MOI.get(model.optimizer, MOI.RawStatusString())
 end
 
+function MOI.get(model::Optimizer, attr::MOI.AbstractOptimizerAttribute)
+    return MOI.get(model.optimizer, attr)
+end
+function MOI.set(model::Optimizer, attr::MOI.AbstractOptimizerAttribute, value)
+    return MOI.set(model.optimizer, attr, value)
+end
+
 function MOI.get(model::Optimizer, ::MOI.NumberOfConstraints{F,S}) where {F,S}
     return length(MOI.get(model, MOI.ListOfConstraintIndices{F,S}()))
 end
