@@ -1060,4 +1060,5 @@ function test_abstract_optimizer_attributes()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
     set_attribute(model, "tm_lim", 60 * 1000)
     @test get_attribute(model, "tm_lim") ≈ 60 * 1000
+    return
 end
