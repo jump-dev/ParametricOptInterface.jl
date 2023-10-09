@@ -689,11 +689,17 @@ function MOI.get(model::Optimizer, ::MOI.RawStatusString)
     return MOI.get(model.optimizer, MOI.RawStatusString())
 end
 
+function MOI.supports(model::Optimizer, attr::MOI.AbstractOptimizerAttribute)
+    return MOI.supports(model.optimizer, attr)
+end
+
 function MOI.get(model::Optimizer, attr::MOI.AbstractOptimizerAttribute)
     return MOI.get(model.optimizer, attr)
 end
+
 function MOI.set(model::Optimizer, attr::MOI.AbstractOptimizerAttribute, value)
-    return MOI.set(model.optimizer, attr, value)
+    MOI.set(model.optimizer, attr, value)
+    return
 end
 
 function MOI.get(model::Optimizer, ::MOI.NumberOfConstraints{F,S}) where {F,S}
