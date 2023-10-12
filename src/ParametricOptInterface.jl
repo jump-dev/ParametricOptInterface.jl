@@ -801,7 +801,7 @@ function MOI.get(
         return inner_index
     end
 
-    cache_map_check = quadratic_constraint_cache_map_check(model, inner_index)
+    cache_map_check = quadratic_constraint_cache_map_check.(model, inner_index)
     return inner_index[cache_map_check]
 end
 
