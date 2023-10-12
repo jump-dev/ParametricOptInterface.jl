@@ -299,9 +299,18 @@ function test_moi_ListOfConstraintTypesPresent()
         ),
         MOI.GreaterThan(1.0),
     )
+
+    MOI.add_constraint(
+        model,
+        MOI.ScalarAffineFunction(MOI.ScalarAffineTerm{Float64}.(1.0, x), 0.0),
+        MOI.GreaterThan(1.0),
+    )
+
     list_ctrs_types = MOI.get(model, MOI.ListOfConstraintTypesPresent())
-    @test list_ctrs_types ==
-          [(MOI.ScalarQuadraticFunction{Float64}, MOI.GreaterThan{Float64})]
+    @test Set(list_ctrs_types) == Set([
+        (MOI.ScalarQuadraticFunction{Float64}, MOI.GreaterThan{Float64}),
+        (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
+    ])
     return
 end
 

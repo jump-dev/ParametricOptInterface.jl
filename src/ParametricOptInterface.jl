@@ -752,6 +752,7 @@ function MOI.get(model::Optimizer, ::MOI.ListOfConstraintTypesPresent)
     end
 
     cache_keys = collect(keys(model.quadratic_outer_to_inner))
+    cache_vals = collect(values(model.quadratic_outer_to_inner))
     constraints = Set{Tuple{DataType,DataType}}()
 
     for (F, S) in inner_ctrs
@@ -759,9 +760,18 @@ function MOI.get(model::Optimizer, ::MOI.ListOfConstraintTypesPresent)
             MOI.get(model.optimizer, MOI.ListOfConstraintIndices{F,S}())
         cache_map_check =
             quadratic_constraint_cache_map_check.(model, inner_index)
-        for type in typeof.(cache_keys[cache_map_check])
-            push!(constraints, (type.parameters[1], type.parameters[2]))
+
+        # If the inner constraint is in the quadratic-cache,
+        # show the wrapper's constraint type
+        for (i, is_in_quadratic_cache) in enumerate(cache_map_check)
+            if is_in_quadratic_cache
+                _inner_index = inner_index[i]
+                cached_key = cache_keys[findfirst(==(_inner_index), cache_vals)]
+                type = typeof(cached_key)
+                push!(constraints, (type.parameters[1], type.parameters[2]))
+            end
         end
+
         # If not all the constraints are cached then also push the original type
         # since there was a function with no parameters of that type
         if !all(cache_map_check)
@@ -791,7 +801,7 @@ function MOI.get(
         return inner_index
     end
 
-    cache_map_check = quadratic_constraint_cache_map_check(mode, inner_index)
+    cache_map_check = quadratic_constraint_cache_map_check(model, inner_index)
     return inner_index[cache_map_check]
 end
 
