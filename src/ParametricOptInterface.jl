@@ -787,7 +787,7 @@ function MOI.add_constrained_variable(model::Optimizer, set::Parameter)
     cp = MOI.ConstraintIndex{MOI.VariableIndex,Parameter}(
         model.last_parameter_index_added,
     )
-    _add_to_constraint_map!(model, ci)
+    _add_to_constraint_map!(model, cp)
     MOI.Utilities.CleverDicts.add_item(model.updated_parameters, NaN)
     update_number_of_parameters!(model)
     return p, cp

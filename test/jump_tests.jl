@@ -308,7 +308,10 @@ function test_jump_direct_interpret_parameteric_bounds()
     @objective(model, Min, sum(x))
     optimize!(model)
     @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
-          Tuple{Type,Type}[(MOI.VariableIndex, MOI.GreaterThan{Float64})]
+          Tuple{Type,Type}[
+            (MOI.VariableIndex, POI.Parameter),
+            (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
+            ]
     @test MOI.get(
         backend(model).optimizer,
         MOI.ListOfConstraintTypesPresent(),
