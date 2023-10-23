@@ -322,7 +322,6 @@ function decomposed_model(PARAM; print_timer_outputs::Bool = true)
     return best_sol[1]
 end
 
-
 println("ParameterJuMP")
 GC.gc()
 β1 = decomposed_model(0; print_timer_outputs = false);
