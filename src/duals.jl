@@ -83,11 +83,11 @@ function compute_parameters_in_ci!(
     return
 end
 
-# this one seem to be the same as the next
 function update_duals_from_objective!(model::Optimizer{T}, pf) where {T}
+    is_min = MOI.get(model.optimizer, MOI.ObjectiveSense()) == MOI.MIN_SENSE
     for param in pf.p
-        model.dual_value_of_parameters[p_val(param.variable)] -=
-            param.coefficient
+        model.dual_value_of_parameters[p_val(param.variable)] +=
+            ifelse(is_min, 1, -1) * param.coefficient
     end
     return
 end

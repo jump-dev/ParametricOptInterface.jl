@@ -534,7 +534,7 @@ function cache_multiplicative_params!(
     f::ParametricQuadraticFunction{T},
 ) where {T}
     for term in f.pv
-        push!(model.multiplicative_parameters, term.variable_2.value)
+        push!(model.multiplicative_parameters, term.variable_1.value)
     end
     # TODO compute these duals might be feasible
     for term in f.pp

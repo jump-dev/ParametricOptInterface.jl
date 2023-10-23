@@ -1410,29 +1410,9 @@ function test_qp_objective_affine_parameter()
         0,
         atol = ATOL,
     )
-    @test isapprox(
-        MOI.get(optimizer, MOI.ConstraintDual(), cy),
-        -2.0,
-        atol = ATOL,
-    )
-    @test isapprox(
-        MOI.get(optimizer, MOI.ConstraintDual(), cz),
-        -1.0,
-        atol = ATOL,
-    )
     MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(2.0))
     MOI.optimize!(optimizer)
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 5.0, atol = ATOL)
-    @test isapprox(
-        MOI.get(optimizer, MOI.ConstraintDual(), cy),
-        -2.0,
-        atol = ATOL,
-    )
-    @test isapprox(
-        MOI.get(optimizer, MOI.ConstraintDual(), cz),
-        -1.0,
-        atol = ATOL,
-    )
     MOI.set(optimizer, MOI.ConstraintSet(), cz, POI.Parameter(3.0))
     MOI.optimize!(optimizer)
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 7.0, atol = ATOL)

@@ -500,6 +500,41 @@ function test_jump_dual_basic()
     return
 end
 
+function test_jump_dual_multiplicative_fail()
+    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+    @variable(model, x)
+    @variable(model, p in POI.Parameter(1.0))
+    @constraint(model, cons, x * p >= 3)
+    @objective(model, Min, 2x)
+    optimize!(model)
+    @test_throws ErrorException(
+        "Cannot compute the dual of a multiplicative parameter",
+    ) MOI.get(model, POI.ParameterDual(), p)
+    return
+end
+
+function test_jump_dual_objective_min()
+    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+    @variable(model, x)
+    @variable(model, p in POI.Parameter(1.0))
+    @constraint(model, cons, x >= 3 * p)
+    @objective(model, Min, 2x + p)
+    optimize!(model)
+    @test MOI.get(model, POI.ParameterDual(), p) == 7
+    return
+end
+
+function test_jump_dual_objective_max()
+    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+    @variable(model, x)
+    @variable(model, p in POI.Parameter(1.0))
+    @constraint(model, cons, x >= 3 * p)
+    @objective(model, Max, -2x + p)
+    optimize!(model)
+    @test MOI.get(model, POI.ParameterDual(), p) == 5
+    return
+end
+
 function test_jump_dual_multiple_parameters_1()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
     @variable(model, x[1:6] in POI.Parameter.(ones(6) .* 4.0))

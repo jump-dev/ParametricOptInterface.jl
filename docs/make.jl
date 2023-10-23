@@ -21,12 +21,16 @@ makedocs(
     pages = [
         "Home" => "index.md",
         "manual.md",
-        "Examples" => ["Examples/example.md","Examples/benders.md", "Examples/markowitz.md"],
-        "reference.md"
+        "Examples" => [
+            "Examples/example.md",
+            "Examples/benders.md",
+            "Examples/markowitz.md",
+        ],
+        "reference.md",
     ],
 )
 
 deploydocs(
     repo = "github.com/jump-dev/ParametricOptInterface.jl.git",
-    push_preview = true
+    push_preview = true,
 )
