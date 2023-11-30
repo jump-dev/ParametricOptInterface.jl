@@ -16,23 +16,6 @@ const PARAMETER_INDEX_THRESHOLD = Int64(4_611_686_018_427_387_904) # div(typemax
 const SIMPLE_SCALAR_SETS{T} =
     Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}}
 
-# """
-#     Parameter(val::Float64)
-
-# The `Parameter` structure stores the numerical value associated to a given
-# parameter.
-
-# ## Example
-
-# ```julia-repl
-# julia> MathOptInterface.Parameter(5.0)
-# MathOptInterface.Parameter(5.0)
-# ```
-# """
-# struct Parameter <: MOI.AbstractScalarSet
-#     val::Float64
-# end
-
 # Utilities for using a CleverDict in Parameters
 struct ParameterIndex
     index::Int64
