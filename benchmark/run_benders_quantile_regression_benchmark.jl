@@ -142,7 +142,7 @@ function slave_model(PARAM, K)
         @variable(slave, β[i = 1:N_Candidates] == 0, Param())
     elseif PARAM == 1
         # Create parameters
-        @variable(slave, β[i = 1:N_Candidates] in POI.Parameter.(0))
+        @variable(slave, β[i = 1:N_Candidates] in MOI.Parameter.(0.0))
     else
         # Create fixed variables
         @variables(slave, begin

@@ -24,14 +24,14 @@ end
 
 function poi_add_parameters(N::Int)
     model = POI.Optimizer(MOI.Utilities.Model{Float64}())
-    MOI.add_constrained_variable.(model, POI.Parameter.(ones(N)))
+    MOI.add_constrained_variable.(model, MOI.Parameter.(ones(N)))
     return nothing
 end
 
 function poi_add_parameters_and_variables(N::Int)
     model = POI.Optimizer(MOI.Utilities.Model{Float64}())
     MOI.add_variables(model, N / 2)
-    MOI.add_constrained_variable.(model, POI.Parameter.(ones(Int(N / 2))))
+    MOI.add_constrained_variable.(model, MOI.Parameter.(ones(Int(N / 2))))
     return nothing
 end
 
@@ -39,7 +39,7 @@ function poi_add_parameters_and_variables_alternating(N::Int)
     model = POI.Optimizer(MOI.Utilities.Model{Float64}())
     for i in 1:Int(N / 2)
         MOI.add_variable(model)
-        MOI.add_constrained_variable(model, POI.Parameter(1))
+        MOI.add_constrained_variable(model, MOI.Parameter(1.0))
     end
     return nothing
 end
@@ -77,7 +77,7 @@ function poi_add_saf_variables_and_parameters_ctr(N::Int, M::Int)
         first.(
             MOI.add_constrained_variable.(
                 model,
-                POI.Parameter.(ones(Int(N / 2))),
+                MOI.Parameter.(ones(Int(N / 2))),
             )
         )
     for _ in 1:M
@@ -103,7 +103,7 @@ function poi_add_saf_variables_and_parameters_ctr_parameter_update(
         first.(
             MOI.add_constrained_variable.(
                 model,
-                POI.Parameter.(ones(Int(N / 2))),
+                MOI.Parameter.(ones(Int(N / 2))),
             )
         )
     for _ in 1:M
@@ -162,7 +162,7 @@ function poi_add_sqf_variables_parameters_ctr(N::Int, M::Int)
         first.(
             MOI.add_constrained_variable.(
                 model,
-                POI.Parameter.(ones(Int(N / 2))),
+                MOI.Parameter.(ones(Int(N / 2))),
             )
         )
     for _ in 1:M
@@ -186,7 +186,7 @@ function poi_add_sqf_variables_parameters_ctr_parameter_update(N::Int, M::Int)
         first.(
             MOI.add_constrained_variable.(
                 model,
-                POI.Parameter.(ones(Int(N / 2))),
+                MOI.Parameter.(ones(Int(N / 2))),
             )
         )
     for _ in 1:M
@@ -212,7 +212,7 @@ function poi_add_sqf_parameters_parameters_ctr(N::Int, M::Int)
         first.(
             MOI.add_constrained_variable.(
                 model,
-                POI.Parameter.(ones(Int(N / 2))),
+                MOI.Parameter.(ones(Int(N / 2))),
             )
         )
     for _ in 1:M
@@ -236,7 +236,7 @@ function poi_add_sqf_parameters_parameters_ctr_parameter_update(N::Int, M::Int)
         first.(
             MOI.add_constrained_variable.(
                 model,
-                POI.Parameter.(ones(Int(N / 2))),
+                MOI.Parameter.(ones(Int(N / 2))),
             )
         )
     for _ in 1:M
@@ -288,7 +288,7 @@ function poi_add_saf_variables_and_parameters_obj(N::Int, M::Int)
         first.(
             MOI.add_constrained_variable.(
                 model,
-                POI.Parameter.(ones(Int(N / 2))),
+                MOI.Parameter.(ones(Int(N / 2))),
             )
         )
     for _ in 1:M
@@ -314,7 +314,7 @@ function poi_add_saf_variables_and_parameters_obj_parameter_update(
         first.(
             MOI.add_constrained_variable.(
                 model,
-                POI.Parameter.(ones(Int(N / 2))),
+                MOI.Parameter.(ones(Int(N / 2))),
             )
         )
     for _ in 1:M
@@ -375,7 +375,7 @@ function poi_add_sqf_variables_parameters_obj(N::Int, M::Int)
         first.(
             MOI.add_constrained_variable.(
                 model,
-                POI.Parameter.(ones(Int(N / 2))),
+                MOI.Parameter.(ones(Int(N / 2))),
             )
         )
     for _ in 1:M
@@ -399,7 +399,7 @@ function poi_add_sqf_variables_parameters_obj_parameter_update(N::Int, M::Int)
         first.(
             MOI.add_constrained_variable.(
                 model,
-                POI.Parameter.(ones(Int(N / 2))),
+                MOI.Parameter.(ones(Int(N / 2))),
             )
         )
     for _ in 1:M
@@ -427,7 +427,7 @@ function poi_add_sqf_parameters_parameters_obj(N::Int, M::Int)
         first.(
             MOI.add_constrained_variable.(
                 model,
-                POI.Parameter.(ones(Int(N / 2))),
+                MOI.Parameter.(ones(Int(N / 2))),
             )
         )
     for _ in 1:M
@@ -451,7 +451,7 @@ function poi_add_sqf_parameters_parameters_obj_parameter_update(N::Int, M::Int)
         first.(
             MOI.add_constrained_variable.(
                 model,
-                POI.Parameter.(ones(Int(N / 2))),
+                MOI.Parameter.(ones(Int(N / 2))),
             )
         )
     for _ in 1:M

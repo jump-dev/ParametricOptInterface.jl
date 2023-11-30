@@ -16,22 +16,22 @@ const PARAMETER_INDEX_THRESHOLD = Int64(4_611_686_018_427_387_904) # div(typemax
 const SIMPLE_SCALAR_SETS{T} =
     Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}}
 
-"""
-    Parameter(val::Float64)
+# """
+#     Parameter(val::Float64)
 
-The `Parameter` structure stores the numerical value associated to a given
-parameter.
+# The `Parameter` structure stores the numerical value associated to a given
+# parameter.
 
-## Example
+# ## Example
 
-```julia-repl
-julia> ParametricOptInterface.Parameter(5)
-ParametricOptInterface.Parameter(5)
-```
-"""
-struct Parameter <: MOI.AbstractScalarSet
-    val::Float64
-end
+# ```julia-repl
+# julia> MathOptInterface.Parameter(5.0)
+# MathOptInterface.Parameter(5.0)
+# ```
+# """
+# struct Parameter <: MOI.AbstractScalarSet
+#     val::Float64
+# end
 
 # Utilities for using a CleverDict in Parameters
 struct ParameterIndex
@@ -642,6 +642,17 @@ function MOI.get(
         return MOI.get(model.optimizer, attr, ci)
     end
 end
+function MOI.get(
+    model::Optimizer{T},
+    ::MOI.ConstraintFunction,
+    cp::MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}},
+) where {T}
+    p = MOI.VariableIndex(cp.value)
+    if !is_parameter_in_model(model, p)
+        error("Parameter not in the model")
+    end
+    return p
+end
 
 function MOI.get(
     model::Optimizer,
@@ -751,7 +762,9 @@ function MOI.get(
     model::Optimizer,
     ::MOI.ListOfConstraintIndices{F,S},
 ) where {S,F}
-    return collect(values(model.constraint_outer_to_inner[F, S]))
+    list = collect(values(model.constraint_outer_to_inner[F, S]))
+    sort!(list, lt = (x, y)->(x.value < y.value))
+    return list
 end
 
 function MOI.get(
@@ -761,7 +774,10 @@ function MOI.get(
     return length(model.constraint_outer_to_inner[F, S])
 end
 
-function MOI.supports_add_constrained_variable(::Optimizer, ::Type{Parameter})
+function MOI.supports_add_constrained_variable(
+    ::Optimizer{T},
+    ::Type{MOI.Parameter{T}},
+) where {T}
     return true
 end
 
@@ -780,11 +796,11 @@ function MOI.add_variable(model::Optimizer)
     )
 end
 
-function MOI.add_constrained_variable(model::Optimizer, set::Parameter)
+function MOI.add_constrained_variable(model::Optimizer{T}, set::MOI.Parameter{T}) where {T}
     next_parameter_index!(model)
     p = MOI.VariableIndex(model.last_parameter_index_added)
-    MOI.Utilities.CleverDicts.add_item(model.parameters, set.val)
-    cp = MOI.ConstraintIndex{MOI.VariableIndex,Parameter}(
+    MOI.Utilities.CleverDicts.add_item(model.parameters, set.value)
+    cp = MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}}(
         model.last_parameter_index_added,
     )
     _add_to_constraint_map!(model, cp)
@@ -951,16 +967,32 @@ function MOI.get(
 end
 
 function MOI.set(
-    model::Optimizer,
+    model::Optimizer{T},
     ::MOI.ConstraintSet,
-    cp::MOI.ConstraintIndex{MOI.VariableIndex,Parameter},
-    set::Parameter,
-)
+    cp::MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}},
+    set::MOI.Parameter{T},
+) where {T}
     p = MOI.VariableIndex(cp.value)
     if !is_parameter_in_model(model, p)
         error("Parameter not in the model")
     end
-    return model.updated_parameters[p_idx(p)] = set.val
+    return model.updated_parameters[p_idx(p)] = set.value
+end
+
+function MOI.get(
+    model::Optimizer{T},
+    ::MOI.ConstraintSet,
+    cp::MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}},
+) where {T}
+    p = MOI.VariableIndex(cp.value)
+    if !is_parameter_in_model(model, p)
+        error("Parameter not in the model")
+    end
+    val = model.updated_parameters[p_idx(p)]
+    if isnan(val)
+        return MOI.Parameter{T}(model.parameters[p_idx(p)])
+    end
+    return MOI.Parameter{T}(val)
 end
 
 """
@@ -987,8 +1019,8 @@ function MOI.set(
     var::MOI.VariableIndex,
     val::Float64,
 )
-    ci = MOI.ConstraintIndex{MOI.VariableIndex,Parameter}(var.value)
-    set = MOI.set(opt, MOI.ConstraintSet(), ci, Parameter(val))
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{Float64}}(var.value)
+    set = MOI.set(opt, MOI.ConstraintSet(), ci, MOI.Parameter(val))
     return nothing
 end
 
@@ -998,8 +1030,8 @@ function MOI.set(
     var::MOI.VariableIndex,
     val::Float64,
 )
-    ci = MOI.ConstraintIndex{MOI.VariableIndex,Parameter}(var.value)
-    set = MOI.set(model, MOI.ConstraintSet(), ci, Parameter(val))
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{Float64}}(var.value)
+    set = MOI.set(model, MOI.ConstraintSet(), ci, MOI.Parameter(val))
     return nothing
 end
 
@@ -1026,9 +1058,9 @@ function MOI.get(
     ::ParameterValue,
     var::MOI.VariableIndex,
 )
-    ci = MOI.ConstraintIndex{MOI.VariableIndex,Parameter}(var.value)
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{Float64}}(var.value)
     set = MOI.get(opt, MOI.ConstraintSet(), ci)
-    return set.val
+    return set.value
 end
 
 function MOI.get(model::Optimizer, ::ParameterValue, var::MOI.VariableIndex)
@@ -1309,6 +1341,23 @@ function MOI.delete(model::Optimizer, v::MOI.VariableIndex)
     MOI.delete(model.original_objective_cache, v)
     # TODO - what happens if the variable was in a SAF that was converted to bounds?
     # solution: do not allow if that is the case (requires going trhought the scalar affine cache)
+    # TODO - deleting a variable also deletes constraints
+    for (F, S) in MOI.Utilities.DoubleDicts.nonempty_outer_keys(model.constraint_outer_to_inner)
+        _delete_variable_index_constraint(model.constraint_outer_to_inner, F, S, v.value)
+    end
+    return
+end
+
+function _delete_variable_index_constraint(d, F, S, v)
+    return
+end
+function _delete_variable_index_constraint(d, F::Type{MOI.VariableIndex}, S, value)
+    inner = d[F, S]
+    for k in keys(inner)
+        if k.value == value
+            delete!(inner, k)
+        end
+    end
     return
 end
 
@@ -1335,14 +1384,14 @@ function MOI.delete(
 ) where {F<:MOI.ScalarAffineFunction,S<:MOI.AbstractSet}
     if haskey(model.affine_outer_to_inner, c)
         ci_inner = model.affine_outer_to_inner[c]  
-        deleteat!(model.affine_outer_to_inner, c)
-        deleteat!(model.affine_constraint_cache, c)
-        deleteat!(model.affine_constraint_cache_set, c)
+        delete!(model.affine_outer_to_inner, c)
+        delete!(model.affine_constraint_cache, c)
+        delete!(model.affine_constraint_cache_set, c)
         MOI.delete(model.optimizer, ci_inner)
     else
         MOI.delete(model.optimizer, c)
     end
-    deleteat!(model.constraint_outer_to_inner, c)
+    delete!(model.constraint_outer_to_inner, c)
     return
 end
 
@@ -1351,6 +1400,7 @@ function MOI.delete(
     c::MOI.ConstraintIndex{F,S},
 ) where {F<:Union{MOI.VariableIndex,MOI.VectorOfVariables},S<:MOI.AbstractSet}
     MOI.delete(model.optimizer, c)
+    delete!(model.constraint_outer_to_inner, c)
     return
 end
 
@@ -1359,6 +1409,7 @@ function MOI.delete(
     c::MOI.ConstraintIndex{F,S},
 ) where {F<:MOI.VectorAffineFunction,S<:MOI.AbstractSet}
     MOI.delete(model.optimizer, c)
+    delete!(model.constraint_outer_to_inner, c)
     deleteat!(model.vector_affine_constraint_cache, c)
     return
 end
@@ -1520,13 +1571,13 @@ function _poi_default_copy_to(dest::T, src::MOI.ModelLike) where {T}
             Any[
                 MOI.get(src, MOI.ListOfConstraintIndices{F,S}()) for
                 (F, S) in MOI.get(src, MOI.ListOfConstraintTypesPresent()) if
-                MOI.Utilities._is_variable_function(F) && S != Parameter
+                MOI.Utilities._is_variable_function(F) && S != MOI.Parameter{Float64}
             ],
             Any[MOI.Utilities._try_constrain_variables_on_creation(
                 dest,
                 src,
                 index_map,
-                Parameter,
+                MOI.Parameter{Float64},
             )],
         )
     else

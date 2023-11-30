@@ -26,12 +26,12 @@ for x_i in x
 end
 ```
 
-Now, let's consider 3 [`ParametricOptInterface.Parameter`](@ref). Two of them, `y`, `z`, will be placed in the constraints and one, `w`, in the objective function. We'll start all three of them with a value equal to `0`:
+Now, let's consider 3 `MathOptInterface.Parameter`. Two of them, `y`, `z`, will be placed in the constraints and one, `w`, in the objective function. We'll start all three of them with a value equal to `0`:
 
 ```@example moi1
-w, cw = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
-y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
-z, cz = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
+w, cw = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+z, cz = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
 ```
 
 Let's add the constraints. Notice that we treat parameters and variables in the same way when building the functions that will be placed in some set to create a constraint (`Function-in-Set`):
@@ -146,12 +146,12 @@ We declare the variable `x` as in a typical `JuMP` model:
 @variable(model, x[i = 1:2] >= 0)
 ```
 
-Now, let's consider 3 [`ParametricOptInterface.Parameter`](@ref). Two of them, `y`, `z`, will be placed in the constraints and one, `w`, in the objective function. We'll start all three of them with a value equal to `0`:
+Now, let's consider 3 `MathOptInterface.Parameter`. Two of them, `y`, `z`, will be placed in the constraints and one, `w`, in the objective function. We'll start all three of them with a value equal to `0`:
 
 ```@example jump1
-@variable(model, y in ParametricOptInterface.Parameter(0))
-@variable(model, z in ParametricOptInterface.Parameter(0))
-@variable(model, w in ParametricOptInterface.Parameter(0))
+@variable(model, y in MathOptInterface.Parameter(0.0))
+@variable(model, z in MathOptInterface.Parameter(0.0))
+@variable(model, w in MathOptInterface.Parameter(0.0))
 ```
 
 Let's add the constraints. Notice that we treat parameters the same way we treat variables when writing the model:
@@ -246,9 +246,9 @@ const POI = ParametricOptInterface
 
 model = Model(() -> ParametricOptInterface.Optimizer(HiGHS.Optimizer()))
 @variable(model, x[i = 1:3] >= 0)
-@variable(model, p1[i = 1:3] in ParametricOptInterface.Parameter(0))
-@variable(model, p2[i = 1:3] in ParametricOptInterface.Parameter.([1, 10, 45]))
-@variable(model, p3[i = 1:3] in ParametricOptInterface.Parameter.(ones(3)))
+@variable(model, p1[i = 1:3] in MathOptInterface.Parameter(0.0))
+@variable(model, p2[i = 1:3] in MathOptInterface.Parameter.([1, 10, 45]))
+@variable(model, p3[i = 1:3] in MathOptInterface.Parameter.(ones(3)))
 ```
 
 ## JuMP Example - Dealing with parametric expressions as variable bounds
@@ -263,7 +263,7 @@ const POI = ParametricOptInterface
 
 model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
 @variable(model, x)
-@variable(model, p in POI.Parameter(0.0))
+@variable(model, p in MOI.Parameter(0.0))
 @constraint(model, x >= p)
 ```
 
@@ -288,7 +288,7 @@ const POI = ParametricOptInterface
 
 model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
 @variable(model, x)
-@variable(model, p in POI.Parameter(0.0))
+@variable(model, p in MOI.Parameter(0.0))
 
 # Indicate that all the new constraints will be valid variable bounds
 MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
@@ -357,7 +357,7 @@ To multiply a parameter in a quadratic term, the user will
 need to use the `POI.QuadraticObjectiveCoef` model attribute.
 
 ```@example moi2
-p = first(MOI.add_constrained_variable.(optimizer, POI.Parameter(1.0)))
+p = first(MOI.add_constrained_variable.(optimizer, MOI.Parameter(1.0)))
 MOI.set(optimizer, POI.QuadraticObjectiveCoef(), (x,y), p)
 ```
 
@@ -403,7 +403,7 @@ model = direct_model(optimizer)
 
 @variable(model, x >= 0)
 @variable(model, y >= 0)
-@variable(model, p in POI.Parameter(1.0))
+@variable(model, p in MOI.Parameter(1.0))
 @constraint(model, 2x + y <= 4)
 @constraint(model, x + 2y <= 4)
 @objective(model, Max, (x^2 + y^2)/2)
@@ -447,7 +447,7 @@ POI currently works with NLPs when users wish to add the parameters to the non-N
 ```julia
 @variable(model, x)
 @variable(model, y)
-@variable(model, z in POI.Parameter(10))
+@variable(model, z in MOI.Parameter(10))
 @constraint(model, x + y >= z)
 @NLobjective(model, Min, x^2 + y^2)
 ```
@@ -457,7 +457,7 @@ but does not work with models that have parameters on the NL expressions like th
 ```julia
 @variable(model, x)
 @variable(model, y)
-@variable(model, z in POI.Parameter(10))
+@variable(model, z in MOI.Parameter(10))
 @constraint(model, x + y >= z)
 @NLobjective(model, Min, x^2 + y^2 + z) # There is a parameter here
 ```
@@ -481,7 +481,7 @@ POI_cached_optimizer() = POI.Optimizer(cached())
 model = Model(() -> POI_cached_optimizer())
 @variable(model, x)
 @variable(model, y)
-@variable(model, z in POI.Parameter(10))
+@variable(model, z in MOI.Parameter(10))
 @constraint(model, x + y >= z)
 @NLobjective(model, Min, x^2 + y^2)
 ```
@@ -493,7 +493,7 @@ If users wish to make modifications on variable bounds the POI interface will he
 ```julia
 model = Model(() -> POI.Optimizer(Ipopt.Optimizer()))
 @variable(model, x)
-@variable(model, z in POI.Parameter(10))
+@variable(model, z in MOI.Parameter(10))
 MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
 @constraint(model, x >= z)
 @NLobjective(model, Min, x^2)

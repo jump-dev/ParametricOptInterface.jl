@@ -153,7 +153,7 @@ function inner_model(K)
 
     # create the regression coefficient representation
     # Create parameters
-    β = [@variable(inner, set = POI.Parameter(0)) for i in 1:N_Candidates]
+    β = [@variable(inner, set = MOI.Parameter(0.0)) for i in 1:N_Candidates]
     for (i, βi) in enumerate(β)
         set_name(βi, "β[$i]")
     end
