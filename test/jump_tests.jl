@@ -308,10 +308,10 @@ function test_jump_direct_interpret_parameteric_bounds()
     @objective(model, Min, sum(x))
     optimize!(model)
     @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
-        Tuple{Type,Type}[
-            (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
-            (MOI.VariableIndex, MOI.Parameter{Float64}),
-            ]
+          Tuple{Type,Type}[
+        (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
+        (MOI.VariableIndex, MOI.Parameter{Float64}),
+    ]
     @test MOI.get(
         backend(model).optimizer,
         MOI.ListOfConstraintTypesPresent(),
@@ -332,16 +332,17 @@ function test_jump_direct_interpret_parameteric_bounds_no_interpretation()
     @objective(model, Min, sum(x))
     optimize!(model)
     @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
-    Tuple{Type,Type}[
-        (MOI.ScalarAffineFunction{Float64},MOI.GreaterThan{Float64}),
-        (MOI.VariableIndex,MOI.Parameter{Float64}),
+          Tuple{Type,Type}[
+        (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
+        (MOI.VariableIndex, MOI.Parameter{Float64}),
     ]
     @test MOI.get(
         backend(model).optimizer,
         MOI.ListOfConstraintTypesPresent(),
-    ) == Tuple{Type,Type}[
-        (MOI.ScalarAffineFunction{Float64},MOI.GreaterThan{Float64}),
-    ]
+    ) == Tuple{Type,Type}[(
+        MOI.ScalarAffineFunction{Float64},
+        MOI.GreaterThan{Float64},
+    ),]
     @test objective_value(model) == -2
     MOI.set(model, POI.ParameterValue(), p[1], 4.0)
     optimize!(model)
