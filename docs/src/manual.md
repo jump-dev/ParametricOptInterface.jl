@@ -56,15 +56,15 @@ optimizer = POI.Optimizer(HiGHS.Optimizer())
 
 ### Parameters
 
-A `MathOptInterface.Parameter` is a set used to define a variable with a fixed value that
-can be changed by the user. It is analogous to `MathOptInterface.EqualTo`, but can be used
+A `MOI.Parameter` is a set used to define a variable with a fixed value that
+can be changed by the user. It is analogous to `MOI.EqualTo`, but can be used
 by special methods like the ones in this package to remove the fixed variable from the
 optimization problem. This permits the usage of multiplicative parameters in lienar models
 and might speedup solves since the number of variables is reduced.
 
 ### Adding a new parameter to a model
 
-To add a parameter to a model, we must use the `MOI.add_constrained_variable()` function, passing as its arguments the model and a `MathOptInterface.Parameter` with its given value:
+To add a parameter to a model, we must use the `MOI.add_constrained_variable()` function, passing as its arguments the model and a `MOI.Parameter` with its given value:
 
 ```julia
 y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
@@ -72,7 +72,7 @@ y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
 
 ### Changing the parameter value
 
-To change a given parameter's value, access its `VariableIndex` and set it to the new value using the `MathOptInterface.Parameter` structure.
+To change a given parameter's value, access its `VariableIndex` and set it to the new value using the `MOI.Parameter` structure.
 
 ```julia
 MOI.set(optimizer, POI.ParameterValue(), y, MOI.Parameter(2.0))

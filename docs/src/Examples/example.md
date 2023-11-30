@@ -26,7 +26,7 @@ for x_i in x
 end
 ```
 
-Now, let's consider 3 `MathOptInterface.Parameter`. Two of them, `y`, `z`, will be placed in the constraints and one, `w`, in the objective function. We'll start all three of them with a value equal to `0`:
+Now, let's consider 3 `MOI.Parameter`. Two of them, `y`, `z`, will be placed in the constraints and one, `w`, in the objective function. We'll start all three of them with a value equal to `0`:
 
 ```@example moi1
 w, cw = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
@@ -146,12 +146,12 @@ We declare the variable `x` as in a typical `JuMP` model:
 @variable(model, x[i = 1:2] >= 0)
 ```
 
-Now, let's consider 3 `MathOptInterface.Parameter`. Two of them, `y`, `z`, will be placed in the constraints and one, `w`, in the objective function. We'll start all three of them with a value equal to `0`:
+Now, let's consider 3 `MOI.Parameter`. Two of them, `y`, `z`, will be placed in the constraints and one, `w`, in the objective function. We'll start all three of them with a value equal to `0`:
 
 ```@example jump1
-@variable(model, y in MathOptInterface.Parameter(0.0))
-@variable(model, z in MathOptInterface.Parameter(0.0))
-@variable(model, w in MathOptInterface.Parameter(0.0))
+@variable(model, y in MOI.Parameter(0.0))
+@variable(model, z in MOI.Parameter(0.0))
+@variable(model, w in MOI.Parameter(0.0))
 ```
 
 Let's add the constraints. Notice that we treat parameters the same way we treat variables when writing the model:
@@ -246,9 +246,9 @@ const POI = ParametricOptInterface
 
 model = Model(() -> ParametricOptInterface.Optimizer(HiGHS.Optimizer()))
 @variable(model, x[i = 1:3] >= 0)
-@variable(model, p1[i = 1:3] in MathOptInterface.Parameter(0.0))
-@variable(model, p2[i = 1:3] in MathOptInterface.Parameter.([1, 10, 45]))
-@variable(model, p3[i = 1:3] in MathOptInterface.Parameter.(ones(3)))
+@variable(model, p1[i = 1:3] in MOI.Parameter(0.0))
+@variable(model, p2[i = 1:3] in MOI.Parameter.([1, 10, 45]))
+@variable(model, p3[i = 1:3] in MOI.Parameter.(ones(3)))
 ```
 
 ## JuMP Example - Dealing with parametric expressions as variable bounds
@@ -267,7 +267,7 @@ model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
 @constraint(model, x >= p)
 ```
 
-Since parameters are treated like variables JuMP lowers this to MathOptInterface as `x - p >= 0` which is not a variable bound but a linear constraint.This means that the current representation of this problem at the solver level is:
+Since parameters are treated like variables JuMP lowers this to MOI as `x - p >= 0` which is not a variable bound but a linear constraint.This means that the current representation of this problem at the solver level is:
 
 ```math
 \begin{align}
@@ -343,7 +343,7 @@ MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
 obj_func = MOI.ScalarQuadraticFunction(
     [MOI.ScalarQuadraticTerm(1.0, x, x)
     MOI.ScalarQuadraticTerm(1.0, y, y)],
-    MathOptInterface.ScalarAffineTerm{Float64}[],
+    MOI.ScalarAffineTerm{Float64}[],
     0.0,
 )
 MOI.set(
