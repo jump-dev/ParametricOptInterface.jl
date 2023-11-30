@@ -259,15 +259,20 @@ function test_jump_interpret_parameteric_bounds()
     @constraint(model, [i in 1:2], x[i] >= p[i])
     @objective(model, Min, sum(x))
     optimize!(model)
-    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
-          Tuple{Type,Type}[
+    expected = Tuple{Type,Type}[
         (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
         (MOI.VariableIndex, MOI.Parameter{Float64}),
     ]
-    @test MOI.get(
+    result = MOI.get(model, MOI.ListOfConstraintTypesPresent())
+    @test Set(result) == Set(expected)
+    @test length(result) == length(expected)
+    expected = Tuple{Type,Type}[(MOI.VariableIndex, MOI.GreaterThan{Float64})]
+    result = MOI.get(
         backend(model).optimizer.model.optimizer,
         MOI.ListOfConstraintTypesPresent(),
-    ) == Tuple{Type,Type}[(MOI.VariableIndex, MOI.GreaterThan{Float64})]
+    )
+    @test Set(result) == Set(expected)
+    @test length(result) == length(expected)
     @test objective_value(model) == -2
     MOI.set(model, POI.ParameterValue(), p[1], 4.0)
     optimize!(model)
@@ -283,15 +288,20 @@ function test_jump_interpret_parameteric_bounds_expression()
     @constraint(model, [i in 1:2], x[i] >= p[i] + p[1])
     @objective(model, Min, sum(x))
     optimize!(model)
-    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
-          Tuple{Type,Type}[
+    expected = Tuple{Type,Type}[
         (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
         (MOI.VariableIndex, MOI.Parameter{Float64}),
     ]
-    @test MOI.get(
+    result = MOI.get(model, MOI.ListOfConstraintTypesPresent())
+    @test Set(result) == Set(expected)
+    @test length(result) == length(expected)
+    expected = Tuple{Type,Type}[(MOI.VariableIndex, MOI.GreaterThan{Float64})]
+    result = MOI.get(
         backend(model).optimizer.model.optimizer,
         MOI.ListOfConstraintTypesPresent(),
-    ) == Tuple{Type,Type}[(MOI.VariableIndex, MOI.GreaterThan{Float64})]
+    )
+    @test Set(result) == Set(expected)
+    @test length(result) == length(expected)
     @test objective_value(model) == -4
     MOI.set(model, POI.ParameterValue(), p[1], 4.0)
     optimize!(model)
@@ -307,15 +317,18 @@ function test_jump_direct_interpret_parameteric_bounds()
     @constraint(model, [i in 1:2], x[i] >= p[i])
     @objective(model, Min, sum(x))
     optimize!(model)
-    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
-          Tuple{Type,Type}[
+    expected = Tuple{Type,Type}[
         (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
         (MOI.VariableIndex, MOI.Parameter{Float64}),
     ]
-    @test MOI.get(
-        backend(model).optimizer,
-        MOI.ListOfConstraintTypesPresent(),
-    ) == Tuple{Type,Type}[(MOI.VariableIndex, MOI.GreaterThan{Float64})]
+    result = MOI.get(model, MOI.ListOfConstraintTypesPresent())
+    @test Set(result) == Set(expected)
+    @test length(result) == length(expected)
+    expected = Tuple{Type,Type}[(MOI.VariableIndex, MOI.GreaterThan{Float64})]
+    result =
+        MOI.get(backend(model).optimizer, MOI.ListOfConstraintTypesPresent())
+    @test Set(result) == Set(expected)
+    @test length(result) == length(expected)
     @test objective_value(model) == -2
     MOI.set(model, POI.ParameterValue(), p[1], 4.0)
     optimize!(model)
@@ -331,18 +344,21 @@ function test_jump_direct_interpret_parameteric_bounds_no_interpretation()
     @constraint(model, [i in 1:2], x[i] >= p[i])
     @objective(model, Min, sum(x))
     optimize!(model)
-    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
-          Tuple{Type,Type}[
+    expected = Tuple{Type,Type}[
         (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
         (MOI.VariableIndex, MOI.Parameter{Float64}),
     ]
-    @test MOI.get(
-        backend(model).optimizer,
-        MOI.ListOfConstraintTypesPresent(),
-    ) == Tuple{Type,Type}[(
+    result = MOI.get(model, MOI.ListOfConstraintTypesPresent())
+    @test Set(result) == Set(expected)
+    @test length(result) == length(expected)
+    expected = Tuple{Type,Type}[(
         MOI.ScalarAffineFunction{Float64},
         MOI.GreaterThan{Float64},
     ),]
+    result =
+        MOI.get(backend(model).optimizer, MOI.ListOfConstraintTypesPresent())
+    @test Set(result) == Set(expected)
+    @test length(result) == length(expected)
     @test objective_value(model) == -2
     MOI.set(model, POI.ParameterValue(), p[1], 4.0)
     optimize!(model)

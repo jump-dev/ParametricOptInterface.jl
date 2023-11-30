@@ -299,11 +299,13 @@ function test_moi_ListOfConstraintTypesPresent()
         ),
         MOI.GreaterThan(1.0),
     )
-    list_ctrs_types = MOI.get(model, MOI.ListOfConstraintTypesPresent())
-    @test list_ctrs_types == [
+    result = MOI.get(model, MOI.ListOfConstraintTypesPresent())
+    expected = [
         (MOI.ScalarQuadraticFunction{Float64}, MOI.GreaterThan{Float64}),
         (MOI.VariableIndex, MOI.Parameter{Float64}),
     ]
+    @test Set(result) == Set(expected)
+    @test length(result) == length(expected)
     return
 end
 
