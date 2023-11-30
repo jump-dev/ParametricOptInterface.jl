@@ -129,7 +129,7 @@ function MOI.get(
 end
 
 function is_additive(model::Optimizer, cp::MOI.ConstraintIndex)
-    if p_val(cp) in model.multiplicative_parameters
+    if cp.value in model.multiplicative_parameters
         return false
     end
     return true
