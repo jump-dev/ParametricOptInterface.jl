@@ -107,7 +107,11 @@ struct ParameterDual <: MOI.AbstractVariableAttribute end
 
 MOI.is_set_by_optimize(::ParametricOptInterface.ParameterDual) = true
 
-function MOI.get(model::Optimizer{T}, ::ParameterDual, v::MOI.VariableIndex) where {T}
+function MOI.get(
+    model::Optimizer{T},
+    ::ParameterDual,
+    v::MOI.VariableIndex,
+) where {T}
     if !is_additive(
         model,
         MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}}(v.value),

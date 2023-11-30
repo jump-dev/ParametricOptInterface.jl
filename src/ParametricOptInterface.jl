@@ -753,8 +753,9 @@ function MOI.get(model::Optimizer, attr::MOI.ResultCount)
 end
 
 function MOI.get(model::Optimizer, ::MOI.ListOfConstraintTypesPresent)
-    constraint_types =
-        MOI.Utilities.DoubleDicts.nonempty_outer_keys(model.constraint_outer_to_inner)
+    constraint_types = MOI.Utilities.DoubleDicts.nonempty_outer_keys(
+        model.constraint_outer_to_inner,
+    )
     return collect(constraint_types)
 end
 
@@ -763,14 +764,11 @@ function MOI.get(
     ::MOI.ListOfConstraintIndices{F,S},
 ) where {S,F}
     list = collect(values(model.constraint_outer_to_inner[F, S]))
-    sort!(list, lt = (x, y)->(x.value < y.value))
+    sort!(list, lt = (x, y) -> (x.value < y.value))
     return list
 end
 
-function MOI.get(
-    model::Optimizer,
-    ::MOI.NumberOfConstraints{F,S},
-) where {S,F}
+function MOI.get(model::Optimizer, ::MOI.NumberOfConstraints{F,S}) where {S,F}
     return length(model.constraint_outer_to_inner[F, S])
 end
 
@@ -796,7 +794,10 @@ function MOI.add_variable(model::Optimizer)
     )
 end
 
-function MOI.add_constrained_variable(model::Optimizer{T}, set::MOI.Parameter{T}) where {T}
+function MOI.add_constrained_variable(
+    model::Optimizer{T},
+    set::MOI.Parameter{T},
+) where {T}
     next_parameter_index!(model)
     p = MOI.VariableIndex(model.last_parameter_index_added)
     MOI.Utilities.CleverDicts.add_item(model.parameters, set.value)
@@ -1019,7 +1020,8 @@ function MOI.set(
     var::MOI.VariableIndex,
     val::Float64,
 )
-    ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{Float64}}(var.value)
+    ci =
+        MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{Float64}}(var.value)
     set = MOI.set(opt, MOI.ConstraintSet(), ci, MOI.Parameter(val))
     return nothing
 end
@@ -1030,7 +1032,8 @@ function MOI.set(
     var::MOI.VariableIndex,
     val::Float64,
 )
-    ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{Float64}}(var.value)
+    ci =
+        MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{Float64}}(var.value)
     set = MOI.set(model, MOI.ConstraintSet(), ci, MOI.Parameter(val))
     return nothing
 end
@@ -1058,7 +1061,8 @@ function MOI.get(
     ::ParameterValue,
     var::MOI.VariableIndex,
 )
-    ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{Float64}}(var.value)
+    ci =
+        MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{Float64}}(var.value)
     set = MOI.get(opt, MOI.ConstraintSet(), ci)
     return set.value
 end
@@ -1342,8 +1346,15 @@ function MOI.delete(model::Optimizer, v::MOI.VariableIndex)
     # TODO - what happens if the variable was in a SAF that was converted to bounds?
     # solution: do not allow if that is the case (requires going trhought the scalar affine cache)
     # TODO - deleting a variable also deletes constraints
-    for (F, S) in MOI.Utilities.DoubleDicts.nonempty_outer_keys(model.constraint_outer_to_inner)
-        _delete_variable_index_constraint(model.constraint_outer_to_inner, F, S, v.value)
+    for (F, S) in MOI.Utilities.DoubleDicts.nonempty_outer_keys(
+        model.constraint_outer_to_inner,
+    )
+        _delete_variable_index_constraint(
+            model.constraint_outer_to_inner,
+            F,
+            S,
+            v.value,
+        )
     end
     return
 end
@@ -1351,7 +1362,12 @@ end
 function _delete_variable_index_constraint(d, F, S, v)
     return
 end
-function _delete_variable_index_constraint(d, F::Type{MOI.VariableIndex}, S, value)
+function _delete_variable_index_constraint(
+    d,
+    F::Type{MOI.VariableIndex},
+    S,
+    value,
+)
     inner = d[F, S]
     for k in keys(inner)
         if k.value == value
@@ -1366,7 +1382,7 @@ function MOI.delete(
     c::MOI.ConstraintIndex{F,S},
 ) where {F<:MOI.ScalarQuadraticFunction,S<:MOI.AbstractSet}
     if haskey(model.quadratic_outer_to_inner, c)
-        ci_inner = model.quadratic_outer_to_inner[c]  
+        ci_inner = model.quadratic_outer_to_inner[c]
         deleteat!(model.quadratic_outer_to_inner, c)
         deleteat!(model.quadratic_constraint_cache, c)
         deleteat!(model.quadratic_constraint_cache_set, c)
@@ -1383,7 +1399,7 @@ function MOI.delete(
     c::MOI.ConstraintIndex{F,S},
 ) where {F<:MOI.ScalarAffineFunction,S<:MOI.AbstractSet}
     if haskey(model.affine_outer_to_inner, c)
-        ci_inner = model.affine_outer_to_inner[c]  
+        ci_inner = model.affine_outer_to_inner[c]
         delete!(model.affine_outer_to_inner, c)
         delete!(model.affine_constraint_cache, c)
         delete!(model.affine_constraint_cache_set, c)
@@ -1571,7 +1587,8 @@ function _poi_default_copy_to(dest::T, src::MOI.ModelLike) where {T}
             Any[
                 MOI.get(src, MOI.ListOfConstraintIndices{F,S}()) for
                 (F, S) in MOI.get(src, MOI.ListOfConstraintTypesPresent()) if
-                MOI.Utilities._is_variable_function(F) && S != MOI.Parameter{Float64}
+                MOI.Utilities._is_variable_function(F) &&
+                    S != MOI.Parameter{Float64}
             ],
             Any[MOI.Utilities._try_constrain_variables_on_creation(
                 dest,
