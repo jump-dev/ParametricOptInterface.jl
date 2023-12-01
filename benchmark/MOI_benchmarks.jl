@@ -117,7 +117,7 @@ function generate_poi_problem(model, data::PMedianData, add_parameters::Bool)
     if add_parameters
         d, cd = MOI.add_constrained_variable(
             model,
-            POI.Parameter(data.num_facilities),
+            MOI.Parameter(data.num_facilities),
         )
     end
 

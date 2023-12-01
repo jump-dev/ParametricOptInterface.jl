@@ -47,7 +47,7 @@ function first_model(μ,Σ)
     
     N = length(μ)
     @variable(portfolio, x[1:N] >= 0)
-    @variable(portfolio, γ in POI.Parameter(0.0))
+    @variable(portfolio, γ in MOI.Parameter(0.0))
 
     @objective(portfolio, Max, γ*dot(μ,x) - x' * Σ * x)
     @constraint(portfolio, sum(x) == 1)

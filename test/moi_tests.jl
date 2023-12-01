@@ -16,9 +16,9 @@ function test_basic_tests()
     optimizer = POI.Optimizer(GLPK.Optimizer())
     MOI.set(optimizer, MOI.Silent(), true)
     x = MOI.add_variables(optimizer, 2)
-    y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
+    y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
     z = MOI.VariableIndex(4)
-    cz = MOI.ConstraintIndex{MOI.VariableIndex,POI.Parameter}(4)
+    cz = MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{Float64}}(4)
     for x_i in x
         MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
@@ -59,12 +59,12 @@ function test_basic_tests()
           MOI.VariableIndex[MOI.VariableIndex(1), MOI.VariableIndex(2)]
     @test MOI.get(optimizer, POI.ListOfParameterIndices()) ==
           POI.ParameterIndex[POI.ParameterIndex(1)]
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(1.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(1.0))
     @test_throws ErrorException("Parameter not in the model") MOI.set(
         optimizer,
         MOI.ConstraintSet(),
         cz,
-        POI.Parameter(1.0),
+        MOI.Parameter(1.0),
     )
     MOI.optimize!(optimizer)
     @test MOI.get(optimizer, MOI.ObjectiveValue()) == 2
@@ -112,7 +112,7 @@ function test_basic_special_cases_of_getters()
     for x_i in x
         MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
-    y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
+    y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
     quad_terms = MOI.ScalarQuadraticTerm{Float64}[]
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 1], x[1], y))
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 2], x[1], y))
@@ -286,7 +286,7 @@ function test_moi_ListOfConstraintTypesPresent()
         first.(
             MOI.add_constrained_variable.(
                 model,
-                POI.Parameter.(ones(Int(N / 2))),
+                MOI.Parameter.(ones(Int(N / 2))),
             ),
         )
 
@@ -299,9 +299,13 @@ function test_moi_ListOfConstraintTypesPresent()
         ),
         MOI.GreaterThan(1.0),
     )
-    list_ctrs_types = MOI.get(model, MOI.ListOfConstraintTypesPresent())
-    @test list_ctrs_types ==
-          [(MOI.ScalarQuadraticFunction{Float64}, MOI.GreaterThan{Float64})]
+    result = MOI.get(model, MOI.ListOfConstraintTypesPresent())
+    expected = [
+        (MOI.ScalarQuadraticFunction{Float64}, MOI.GreaterThan{Float64}),
+        (MOI.VariableIndex, MOI.Parameter{Float64}),
+    ]
+    @test Set(result) == Set(expected)
+    @test length(result) == length(expected)
     return
 end
 
@@ -314,9 +318,9 @@ function test_production_problem_example()
     b2 = 4.0
     x = MOI.add_variables(optimizer, length(c))
     @test typeof(x[1]) == MOI.VariableIndex
-    w, cw = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
-    y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
-    z, cz = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
+    w, cw = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    z, cz = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
     @test MOI.get(optimizer, MOI.VariablePrimal(), w) == 0
     for x_i in x
         MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
@@ -355,9 +359,9 @@ function test_production_problem_example()
     MOI.get(optimizer, MOI.VariablePrimal(), w)
     MOI.get(optimizer, MOI.VariablePrimal(), y)
     MOI.get(optimizer, MOI.VariablePrimal(), z)
-    MOI.set(optimizer, MOI.ConstraintSet(), cw, POI.Parameter(2.0))
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(1.0))
-    MOI.set(optimizer, MOI.ConstraintSet(), cz, POI.Parameter(1.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cw, MOI.Parameter(2.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(1.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(1.0))
     MOI.optimize!(optimizer)
     @test MOI.get(optimizer, MOI.VariablePrimal(), w) == 2.0
     @test MOI.get(optimizer, MOI.VariablePrimal(), y) == 1.0
@@ -367,14 +371,14 @@ function test_production_problem_example()
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cy), 5 / 3, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cz), 2 / 3, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cw), -3.0, atol = ATOL)
-    MOI.set(optimizer, MOI.ConstraintSet(), cw, POI.Parameter(0.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cw, MOI.Parameter(0.0))
     MOI.optimize!(optimizer)
     @test MOI.get(optimizer, MOI.VariablePrimal(), w) == 0.0
     @test MOI.get(optimizer, MOI.VariablePrimal(), y) == 1.0
     @test MOI.get(optimizer, MOI.VariablePrimal(), z) == 1.0
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 7, atol = ATOL)
     @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [1.0, 1.0]
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(-5.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(-5.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 12.0, atol = ATOL)
     @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [3.0, 0.0]
@@ -392,9 +396,9 @@ function test_production_problem_example_duals()
     b2 = 4.0
     x = MOI.add_variables(optimizer, length(c))
     @test typeof(x[1]) == MOI.VariableIndex
-    w, cw = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
-    y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
-    z, cz = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
+    w, cw = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    z, cz = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
     @test MOI.get(optimizer, MOI.VariablePrimal(), w) == 0
     for x_i in x
         MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
@@ -440,23 +444,23 @@ function test_production_problem_example_duals()
         -0.5 * MOI.get(optimizer, MOI.ConstraintDual(), ci2),
         atol = 1e-4,
     )
-    MOI.set(optimizer, MOI.ConstraintSet(), cw, POI.Parameter(2.0))
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(1.0))
-    MOI.set(optimizer, MOI.ConstraintSet(), cz, POI.Parameter(1.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cw, MOI.Parameter(2.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(1.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(1.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 7.0, atol = ATOL)
     @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cy), 9.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cz), 0.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cw), -2.0, atol = ATOL)
-    MOI.set(optimizer, MOI.ConstraintSet(), cw, POI.Parameter(0.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cw, MOI.Parameter(0.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 3.0, atol = ATOL)
     @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cy), 9.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cz), 0.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cw), -2.0, atol = ATOL)
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(-5.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(-5.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 14.0, atol = ATOL)
     @test ≈(
@@ -485,9 +489,9 @@ function test_production_problem_example_parameters_for_duals_and_intervals()
     b2 = 4.0
     x = MOI.add_variables(optimizer, length(c))
     @test typeof(x[1]) == MOI.VariableIndex
-    w, cw = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
-    y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
-    z, cz = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
+    w, cw = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    z, cz = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
     @test MOI.get(optimizer, MOI.VariablePrimal(), w) == 0
     for x_i in x
         MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
@@ -533,23 +537,23 @@ function test_production_problem_example_parameters_for_duals_and_intervals()
         -0.5 * MOI.get(optimizer, MOI.ConstraintDual(), ci2),
         atol = 1e-4,
     )
-    MOI.set(optimizer, MOI.ConstraintSet(), cw, POI.Parameter(2.0))
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(1.0))
-    MOI.set(optimizer, MOI.ConstraintSet(), cz, POI.Parameter(1.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cw, MOI.Parameter(2.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(1.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(1.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 7.0, atol = ATOL)
     @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cy), 9.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cz), 0.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cw), -2.0, atol = ATOL)
-    MOI.set(optimizer, MOI.ConstraintSet(), cw, POI.Parameter(0.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cw, MOI.Parameter(0.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 3.0, atol = ATOL)
     @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cy), 9.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cz), 0.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cw), -2.0, atol = ATOL)
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(-5.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(-5.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 14.0, atol = ATOL)
     @test ≈(
@@ -581,7 +585,7 @@ function test_vector_parameter_affine_nonnegatives()
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
-    t, ct = MOI.add_constrained_variable(model, POI.Parameter(5))
+    t, ct = MOI.add_constrained_variable(model, MOI.Parameter(5.0))
     A = [1.0 0 -1; 0 1 -1]
     b = [1.0; 2]
     terms =
@@ -640,7 +644,7 @@ function test_vector_parameter_affine_nonpositives()
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
-    t, ct = MOI.add_constrained_variable(model, POI.Parameter(5))
+    t, ct = MOI.add_constrained_variable(model, MOI.Parameter(5.0))
     A = [-1.0 0 1; 0 -1 1]
     b = [-1.0; -2]
     terms =
@@ -703,7 +707,7 @@ function test_vector_soc_parameters()
     model = POI.Optimizer(cached)
     MOI.set(model, MOI.Silent(), true)
     x, y, t = MOI.add_variables(model, 3)
-    p, cp = MOI.add_constrained_variable(model, POI.Parameter(0))
+    p, cp = MOI.add_constrained_variable(model, MOI.Parameter(0.0))
     MOI.set(
         model,
         MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
@@ -911,7 +915,7 @@ function test_qp_parameter_in_affine_constraint()
     G = [2.0 3.0 1.0; 1.0 1.0 1.0]
     h = [4.0; 3.0]
     x = MOI.add_variables(optimizer, 2)
-    y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
+    y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
     quad_terms = MOI.ScalarQuadraticTerm{Float64}[]
     for i in 1:2
         for j in i:2 # indexes (i,j), (j,i) will be mirrored. specify only one kind
@@ -943,7 +947,7 @@ function test_qp_parameter_in_affine_constraint()
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 12.5, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 5.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), -2.0, atol = ATOL)
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(1.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(1.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 5.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 3.0, atol = ATOL)
@@ -962,8 +966,8 @@ function test_qp_parameter_in_quadratic_constraint()
     G = [2.0 3.0 1.0 0.0; 1.0 1.0 0.0 1.0]
     h = [4.0; 3.0]
     x = MOI.add_variables(optimizer, 2)
-    y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
-    w, cw = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
+    y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    w, cw = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
     quad_terms = MOI.ScalarQuadraticTerm{Float64}[]
     for i in 1:2
         for j in i:2 # indexes (i,j), (j,i) will be mirrored. specify only one kind
@@ -1001,8 +1005,8 @@ function test_qp_parameter_in_quadratic_constraint()
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 12.5, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 5.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), -2.0, atol = ATOL)
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(1.0))
-    MOI.set(optimizer, MOI.ConstraintSet(), cw, POI.Parameter(2.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(1.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cw, MOI.Parameter(2.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 5.7142, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 2.1428, atol = ATOL)
@@ -1027,7 +1031,7 @@ function test_qp_variable_times_variable_plus_parameter()
     for x_i in x
         MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
-    y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
+    y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
     quad_terms = MOI.ScalarQuadraticTerm{Float64}[]
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 1], x[1], x[1]))
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 2], x[1], x[2]))
@@ -1056,7 +1060,7 @@ function test_qp_variable_times_variable_plus_parameter()
         -MOI.get(optimizer, MOI.ConstraintDual(), cons_index),
         atol = ATOL,
     )
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(2.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(2.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 8.6609, atol = ATOL)
     return
@@ -1075,7 +1079,7 @@ function test_qp_variable_times_variable_plus_parameter_duals()
     for x_i in x
         MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
-    y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
+    y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
     quad_terms = MOI.ScalarQuadraticTerm{Float64}[]
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 1], x[1], x[1]))
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 2], x[1], x[2]))
@@ -1106,7 +1110,7 @@ function test_qp_variable_times_variable_plus_parameter_duals()
         -2 * MOI.get(optimizer, MOI.ConstraintDual(), cons_index),
         atol = ATOL,
     )
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(2.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(2.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 8.2376, atol = ATOL)
     return
@@ -1126,7 +1130,7 @@ function test_qp_parameter_times_variable()
         MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
     MOI.add_constraint(optimizer, x[1], MOI.LessThan(20.0))
-    y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
+    y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
     quad_terms = MOI.ScalarQuadraticTerm{Float64}[]
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 1], x[1], x[1]))
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 2], x[1], y))
@@ -1149,7 +1153,7 @@ function test_qp_parameter_times_variable()
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 30.25, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 0.5, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 29.25, atol = ATOL)
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(2.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(2.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 22.0, atol = ATOL)
     return
@@ -1169,7 +1173,7 @@ function test_qp_variable_times_parameter()
         MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
     MOI.add_constraint(optimizer, x[1], MOI.LessThan(20.0))
-    y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
+    y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
     quad_terms = MOI.ScalarQuadraticTerm{Float64}[]
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[2, 2], y, y))
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 2], y, x[1]))
@@ -1192,7 +1196,7 @@ function test_qp_variable_times_parameter()
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 30.25, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 0.5, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 29.25, atol = ATOL)
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(2.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(2.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 22.0, atol = ATOL)
     return
@@ -1212,8 +1216,8 @@ function test_qp_parameter_times_parameter()
         MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
     MOI.add_constraint(optimizer, x[1], MOI.LessThan(20.0))
-    y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
-    z, cz = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
+    y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    z, cz = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
     quad_terms = MOI.ScalarQuadraticTerm{Float64}[]
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 1], y, y))
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 2], y, z))
@@ -1244,14 +1248,14 @@ function test_qp_parameter_times_parameter()
         10.0,
         atol = ATOL,
     )
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(2.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(2.0))
     MOI.optimize!(optimizer)
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 42.0, atol = ATOL)
-    MOI.set(optimizer, MOI.ConstraintSet(), cz, POI.Parameter(1.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(1.0))
     MOI.optimize!(optimizer)
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 36.0, atol = ATOL)
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(-1.0))
-    MOI.set(optimizer, MOI.ConstraintSet(), cz, POI.Parameter(-1.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(-1.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(-1.0))
     MOI.optimize!(optimizer)
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 45.0, atol = ATOL)
     return
@@ -1268,7 +1272,7 @@ function test_qp_quadratic_constant()
     G = [2.0 3.0; 1.0 1.0]
     h = [4.0; 3.0]
     x = MOI.add_variables(optimizer, 2)
-    y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
+    y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
     quad_terms = MOI.ScalarQuadraticTerm{Float64}[]
     for i in 1:2
         for j in i:2 # indexes (i,j), (j,i) will be mirrored. specify only one kind
@@ -1311,7 +1315,7 @@ function test_qp_quadratic_constant()
         -2.0,
         atol = ATOL,
     )
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(1.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(1.0))
     MOI.optimize!(optimizer)
     # @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 5.7142, atol = ATOL)
     # @test isapprox.(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 2.1428, atol = ATOL)
@@ -1330,8 +1334,8 @@ function test_qp_objective_parameter_times_parameter()
     for x_i in x
         MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
-    y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(1))
-    z, cz = MOI.add_constrained_variable(optimizer, POI.Parameter(1))
+    y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(1.0))
+    z, cz = MOI.add_constrained_variable(optimizer, MOI.Parameter(1.0))
     quad_terms = MOI.ScalarQuadraticTerm{Float64}[]
     push!(quad_terms, MOI.ScalarQuadraticTerm(1.0, y, z))
     objective_function = MOI.ScalarQuadraticFunction(
@@ -1356,10 +1360,10 @@ function test_qp_objective_parameter_times_parameter()
         ErrorException("Cannot compute the dual of a multiplicative parameter")
     @test_throws err MOI.get(optimizer, MOI.ConstraintDual(), cy)
     @test_throws err MOI.get(optimizer, MOI.ConstraintDual(), cz)
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(2.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(2.0))
     MOI.optimize!(optimizer)
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 2.0, atol = ATOL)
-    MOI.set(optimizer, MOI.ConstraintSet(), cz, POI.Parameter(3.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(3.0))
     MOI.optimize!(optimizer)
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 6.0, atol = ATOL)
     MOI.set(optimizer, POI.ParameterValue(), y, 5)
@@ -1386,8 +1390,8 @@ function test_qp_objective_affine_parameter()
     for x_i in x
         MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
-    y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(1))
-    z, cz = MOI.add_constrained_variable(optimizer, POI.Parameter(1))
+    y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(1.0))
+    z, cz = MOI.add_constrained_variable(optimizer, MOI.Parameter(1.0))
     quad_terms = MOI.ScalarQuadraticTerm{Float64}[]
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 1], x[1], x[1]))
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 2], x[1], x[2]))
@@ -1410,14 +1414,14 @@ function test_qp_objective_affine_parameter()
         0,
         atol = ATOL,
     )
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(2.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(2.0))
     MOI.optimize!(optimizer)
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 5.0, atol = ATOL)
-    MOI.set(optimizer, MOI.ConstraintSet(), cz, POI.Parameter(3.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(3.0))
     MOI.optimize!(optimizer)
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 7.0, atol = ATOL)
-    MOI.set(optimizer, MOI.ConstraintSet(), cy, POI.Parameter(5.0))
-    MOI.set(optimizer, MOI.ConstraintSet(), cz, POI.Parameter(5.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(5.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(5.0))
     MOI.optimize!(optimizer)
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 15.0, atol = ATOL)
     return
@@ -1429,7 +1433,7 @@ function test_qp_objective_parameter_in_quadratic_part()
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
     z = MOI.add_variable(model)
-    p = first(MOI.add_constrained_variable.(model, POI.Parameter(1.0)))
+    p = first(MOI.add_constrained_variable.(model, MOI.Parameter(1.0)))
     MOI.add_constraint(model, x, MOI.GreaterThan(0.0))
     MOI.add_constraint(model, y, MOI.GreaterThan(0.0))
     cons1 =
@@ -1479,7 +1483,7 @@ function test_qp_objective_parameter_in_quadratic_part()
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
-    p = first(MOI.add_constrained_variable.(model, POI.Parameter(1.0)))
+    p = first(MOI.add_constrained_variable.(model, MOI.Parameter(1.0)))
     MOI.add_constraint(model, x, MOI.GreaterThan(0.0))
     MOI.add_constraint(model, y, MOI.GreaterThan(0.0))
     cons1 =
@@ -1517,7 +1521,7 @@ function test_qp_objective_parameter_in_quadratic_part()
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
-    p = first(MOI.add_constrained_variable.(model, POI.Parameter(1.0)))
+    p = first(MOI.add_constrained_variable.(model, MOI.Parameter(1.0)))
     MOI.add_constraint(model, x, MOI.GreaterThan(0.0))
     MOI.add_constraint(model, y, MOI.GreaterThan(0.0))
     cons1 =
@@ -1543,7 +1547,7 @@ function test_qp_objective_parameter_in_quadratic_part()
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
-    p = first(MOI.add_constrained_variable.(model, POI.Parameter(1.0)))
+    p = first(MOI.add_constrained_variable.(model, MOI.Parameter(1.0)))
     MOI.add_constraint(model, x, MOI.GreaterThan(0.0))
     MOI.add_constraint(model, y, MOI.GreaterThan(0.0))
     cons1 =

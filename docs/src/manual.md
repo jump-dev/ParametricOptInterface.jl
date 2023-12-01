@@ -56,22 +56,26 @@ optimizer = POI.Optimizer(HiGHS.Optimizer())
 
 ### Parameters
 
-A [`ParametricOptInterface.Parameter`](@ref) is a variable with a fixed value that can be changed by the user.
+A `MOI.Parameter` is a set used to define a variable with a fixed value that
+can be changed by the user. It is analogous to `MOI.EqualTo`, but can be used
+by special methods like the ones in this package to remove the fixed variable from the
+optimization problem. This permits the usage of multiplicative parameters in lienar models
+and might speedup solves since the number of variables is reduced.
 
 ### Adding a new parameter to a model
 
-To add a parameter to a model, we must use the `MOI.add_constrained_variable()` function, passing as its arguments the model and a [`ParametricOptInterface.Parameter`](@ref) with its given value:
+To add a parameter to a model, we must use the `MOI.add_constrained_variable()` function, passing as its arguments the model and a `MOI.Parameter` with its given value:
 
 ```julia
-y, cy = MOI.add_constrained_variable(optimizer, POI.Parameter(0))
+y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
 ```
 
 ### Changing the parameter value
 
-To change a given parameter's value, access its `VariableIndex` and set it to the new value using the [`ParametricOptInterface.Parameter`](@ref) structure.
+To change a given parameter's value, access its `VariableIndex` and set it to the new value using the `MOI.Parameter` structure.
 
 ```julia
-MOI.set(optimizer, POI.ParameterValue(), y, POI.Parameter(2.0))
+MOI.set(optimizer, POI.ParameterValue(), y, MOI.Parameter(2.0))
 ```
 
 ### Retrieving the dual of a parameter

@@ -7,9 +7,9 @@ function test_jump_direct_affine_parameters()
     optimizer = POI.Optimizer(GLPK.Optimizer())
     model = direct_model(optimizer)
     @variable(model, x[i = 1:2] >= 0)
-    @variable(model, y in POI.Parameter(0))
-    @variable(model, w in POI.Parameter(0))
-    @variable(model, z in POI.Parameter(0))
+    @variable(model, y in MOI.Parameter(0.0))
+    @variable(model, w in MOI.Parameter(0.0))
+    @variable(model, z in MOI.Parameter(0.0))
     @constraint(model, 2 * x[1] + x[2] + y <= 4)
     @constraint(model, 1 * x[1] + 2 * x[2] + z <= 4)
     @objective(model, Max, 4 * x[1] + 3 * x[2] + w)
@@ -30,9 +30,9 @@ function test_jump_direct_parameter_times_variable()
     optimizer = POI.Optimizer(GLPK.Optimizer())
     model = direct_model(optimizer)
     @variable(model, x[i = 1:2] >= 0)
-    @variable(model, y in POI.Parameter(0))
-    @variable(model, w in POI.Parameter(0))
-    @variable(model, z in POI.Parameter(0))
+    @variable(model, y in MOI.Parameter(0.0))
+    @variable(model, w in MOI.Parameter(0.0))
+    @variable(model, z in MOI.Parameter(0.0))
     @constraint(model, 2 * x[1] + x[2] + y <= 4)
     @constraint(model, (1 + y) * x[1] + 2 * x[2] + z <= 4)
     @objective(model, Max, 4 * x[1] + 3 * x[2] + w)
@@ -52,9 +52,9 @@ end
 function test_jump_affine_parameters()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
     @variable(model, x[i = 1:2] >= 0)
-    @variable(model, y in POI.Parameter(0))
-    @variable(model, w in POI.Parameter(0))
-    @variable(model, z in POI.Parameter(0))
+    @variable(model, y in MOI.Parameter(0.0))
+    @variable(model, w in MOI.Parameter(0.0))
+    @variable(model, z in MOI.Parameter(0.0))
     @constraint(model, 2 * x[1] + x[2] + y <= 4)
     @constraint(model, 1 * x[1] + 2 * x[2] + z <= 4)
     @objective(model, Max, 4 * x[1] + 3 * x[2] + w)
@@ -74,9 +74,9 @@ end
 function test_jump_parameter_times_variable()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
     @variable(model, x[i = 1:2] >= 0)
-    @variable(model, y in POI.Parameter(0))
-    @variable(model, w in POI.Parameter(0))
-    @variable(model, z in POI.Parameter(0))
+    @variable(model, y in MOI.Parameter(0.0))
+    @variable(model, w in MOI.Parameter(0.0))
+    @variable(model, z in MOI.Parameter(0.0))
     @test MOI.get(model, POI.ParameterValue(), y) == 0
     @constraint(model, 2 * x[1] + x[2] + y <= 4)
     @constraint(model, (1 + y) * x[1] + 2 * x[2] + z <= 4)
@@ -104,7 +104,7 @@ function test_jump_constraintfunction_getter()
         ),
     )
     vx = @variable(model, x[i = 1:2])
-    vp = @variable(model, p[i = 1:2] in POI.Parameter.(-1))
+    vp = @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
     c1 = @constraint(model, con, sum(x) + sum(p) >= 1)
     c2 = @constraint(model, conq, sum(x .* p) >= 1)
     c3 = @constraint(model, conqa, sum(x .* p) + x[1]^2 + x[1] + p[1] >= 1)
@@ -255,19 +255,24 @@ function test_jump_interpret_parameteric_bounds()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i = 1:2])
-    @variable(model, p[i = 1:2] in POI.Parameter.(-1))
+    @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
     @constraint(model, [i in 1:2], x[i] >= p[i])
     @objective(model, Min, sum(x))
     optimize!(model)
-    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
-          Tuple{Type,Type}[
+    expected = Tuple{Type,Type}[
         (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
-        (MOI.VariableIndex, POI.Parameter),
+        (MOI.VariableIndex, MOI.Parameter{Float64}),
     ]
-    @test MOI.get(
+    result = MOI.get(model, MOI.ListOfConstraintTypesPresent())
+    @test Set(result) == Set(expected)
+    @test length(result) == length(expected)
+    expected = Tuple{Type,Type}[(MOI.VariableIndex, MOI.GreaterThan{Float64})]
+    result = MOI.get(
         backend(model).optimizer.model.optimizer,
         MOI.ListOfConstraintTypesPresent(),
-    ) == Tuple{Type,Type}[(MOI.VariableIndex, MOI.GreaterThan{Float64})]
+    )
+    @test Set(result) == Set(expected)
+    @test length(result) == length(expected)
     @test objective_value(model) == -2
     MOI.set(model, POI.ParameterValue(), p[1], 4.0)
     optimize!(model)
@@ -279,19 +284,24 @@ function test_jump_interpret_parameteric_bounds_expression()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i = 1:2])
-    @variable(model, p[i = 1:2] in POI.Parameter.(-1))
+    @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
     @constraint(model, [i in 1:2], x[i] >= p[i] + p[1])
     @objective(model, Min, sum(x))
     optimize!(model)
-    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
-          Tuple{Type,Type}[
+    expected = Tuple{Type,Type}[
         (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
-        (MOI.VariableIndex, POI.Parameter),
+        (MOI.VariableIndex, MOI.Parameter{Float64}),
     ]
-    @test MOI.get(
+    result = MOI.get(model, MOI.ListOfConstraintTypesPresent())
+    @test Set(result) == Set(expected)
+    @test length(result) == length(expected)
+    expected = Tuple{Type,Type}[(MOI.VariableIndex, MOI.GreaterThan{Float64})]
+    result = MOI.get(
         backend(model).optimizer.model.optimizer,
         MOI.ListOfConstraintTypesPresent(),
-    ) == Tuple{Type,Type}[(MOI.VariableIndex, MOI.GreaterThan{Float64})]
+    )
+    @test Set(result) == Set(expected)
+    @test length(result) == length(expected)
     @test objective_value(model) == -4
     MOI.set(model, POI.ParameterValue(), p[1], 4.0)
     optimize!(model)
@@ -303,16 +313,22 @@ function test_jump_direct_interpret_parameteric_bounds()
     model = direct_model(POI.Optimizer(GLPK.Optimizer()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i = 1:2])
-    @variable(model, p[i = 1:2] in POI.Parameter.(-1))
+    @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
     @constraint(model, [i in 1:2], x[i] >= p[i])
     @objective(model, Min, sum(x))
     optimize!(model)
-    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
-          Tuple{Type,Type}[(MOI.VariableIndex, MOI.GreaterThan{Float64})]
-    @test MOI.get(
-        backend(model).optimizer,
-        MOI.ListOfConstraintTypesPresent(),
-    ) == Tuple{Type,Type}[(MOI.VariableIndex, MOI.GreaterThan{Float64})]
+    expected = Tuple{Type,Type}[
+        (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
+        (MOI.VariableIndex, MOI.Parameter{Float64}),
+    ]
+    result = MOI.get(model, MOI.ListOfConstraintTypesPresent())
+    @test Set(result) == Set(expected)
+    @test length(result) == length(expected)
+    expected = Tuple{Type,Type}[(MOI.VariableIndex, MOI.GreaterThan{Float64})]
+    result =
+        MOI.get(backend(model).optimizer, MOI.ListOfConstraintTypesPresent())
+    @test Set(result) == Set(expected)
+    @test length(result) == length(expected)
     @test objective_value(model) == -2
     MOI.set(model, POI.ParameterValue(), p[1], 4.0)
     optimize!(model)
@@ -324,22 +340,25 @@ function test_jump_direct_interpret_parameteric_bounds_no_interpretation()
     model = direct_model(POI.Optimizer(GLPK.Optimizer()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_CONSTRAINTS)
     @variable(model, x[i = 1:2])
-    @variable(model, p[i = 1:2] in POI.Parameter.(-1))
+    @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
     @constraint(model, [i in 1:2], x[i] >= p[i])
     @objective(model, Min, sum(x))
     optimize!(model)
-    @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
-          Tuple{Type,Type}[(
+    expected = Tuple{Type,Type}[
+        (MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}),
+        (MOI.VariableIndex, MOI.Parameter{Float64}),
+    ]
+    result = MOI.get(model, MOI.ListOfConstraintTypesPresent())
+    @test Set(result) == Set(expected)
+    @test length(result) == length(expected)
+    expected = Tuple{Type,Type}[(
         MOI.ScalarAffineFunction{Float64},
         MOI.GreaterThan{Float64},
-    )]
-    @test MOI.get(
-        backend(model).optimizer,
-        MOI.ListOfConstraintTypesPresent(),
-    ) == Tuple{Type,Type}[(
-        MOI.ScalarAffineFunction{Float64},
-        MOI.GreaterThan{Float64},
-    )]
+    ),]
+    result =
+        MOI.get(backend(model).optimizer, MOI.ListOfConstraintTypesPresent())
+    @test Set(result) == Set(expected)
+    @test length(result) == length(expected)
     @test objective_value(model) == -2
     MOI.set(model, POI.ParameterValue(), p[1], 4.0)
     optimize!(model)
@@ -351,7 +370,7 @@ function test_jump_direct_interpret_parameteric_bounds_change()
     model = direct_model(POI.Optimizer(GLPK.Optimizer()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i = 1:2])
-    @variable(model, p[i = 1:2] in POI.Parameter.(-1))
+    @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
     @constraint(model, [i in 1:2], x[i] >= p[i])
     @test_throws ErrorException @constraint(model, [i in 1:2], 2x[i] >= p[i])
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_CONSTRAINTS)
@@ -369,7 +388,7 @@ function test_jump_direct_interpret_parameteric_bounds_both()
     model = direct_model(POI.Optimizer(GLPK.Optimizer()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.BOUNDS_AND_CONSTRAINTS)
     @variable(model, x[i = 1:2])
-    @variable(model, p[i = 1:2] in POI.Parameter.(-1))
+    @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
     @constraint(model, [i in 1:2], x[i] >= p[i])
     @constraint(model, [i in 1:2], 2x[i] >= p[i])
     @objective(model, Min, sum(x))
@@ -385,7 +404,7 @@ function test_jump_direct_interpret_parameteric_bounds_invalid()
     model = direct_model(POI.Optimizer(GLPK.Optimizer()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i = 1:2])
-    @variable(model, p[i = 1:2] in POI.Parameter.(-1))
+    @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
     @test_throws ErrorException @constraint(
         model,
         [i in 1:2],
@@ -405,7 +424,7 @@ function test_jump_set_variable_start_value()
     optimizer = POI.Optimizer(cached)
     model = direct_model(optimizer)
     @variable(model, x >= 0)
-    @variable(model, p in POI.Parameter(0))
+    @variable(model, p in MOI.Parameter(0.0))
     set_start_value(x, 1.0)
     @test start_value(x) == 1
     err = ErrorException(
@@ -420,7 +439,7 @@ function test_jump_direct_get_parameter_value()
     model = direct_model(POI.Optimizer(GLPK.Optimizer()))
     @variable(model, x, lower_bound = 0.0, upper_bound = 10.0)
     @variable(model, y, binary = true)
-    @variable(model, z, set = POI.Parameter(10))
+    @variable(model, z, set = MOI.Parameter(10.0))
     c = @constraint(model, 19.0 * x - z + 22.0 * y <= 1.0)
     @objective(model, Min, x + y)
     @test MOI.get(model, POI.ParameterValue(), z) == 10
@@ -431,7 +450,7 @@ function test_jump_get_parameter_value()
     model = Model(() -> ParametricOptInterface.Optimizer(GLPK.Optimizer()))
     @variable(model, x, lower_bound = 0.0, upper_bound = 10.0)
     @variable(model, y, binary = true)
-    @variable(model, z, set = POI.Parameter(10))
+    @variable(model, z, set = MOI.Parameter(10))
     c = @constraint(model, 19.0 * x - z + 22.0 * y <= 1.0)
     @objective(model, Min, x + y)
     @test MOI.get(model, POI.ParameterValue(), z) == 10
@@ -449,7 +468,7 @@ function test_jump_sdp_scalar_parameter()
     optimizer = POI.Optimizer(cached)
     m = direct_model(optimizer)
     set_silent(m)
-    @variable(m, p in POI.Parameter(0))
+    @variable(m, p in MOI.Parameter(0.0))
     @variable(m, x[1:2, 1:2], Symmetric)
     @objective(m, Min, x[1, 1] + x[2, 2])
     @constraint(m, LinearAlgebra.Symmetric(x .- [1+p 0; 0 1+p]) in PSDCone())
@@ -473,7 +492,7 @@ function test_jump_sdp_matrix_parameter()
     m = direct_model(optimizer)
     set_silent(m)
     P1 = [1 2; 2 3]
-    @variable(m, p[1:2, 1:2] in POI.Parameter.(P1))
+    @variable(m, p[1:2, 1:2] in MOI.Parameter.(P1))
     @variable(m, x[1:2, 1:2], Symmetric)
     @objective(m, Min, x[1, 1] + x[2, 2])
     @constraint(m, LinearAlgebra.Symmetric(x - p) in PSDCone())
@@ -488,7 +507,7 @@ end
 
 function test_jump_dual_basic()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
-    @variable(model, x[1:2] in POI.Parameter.(ones(2) .* 4.0))
+    @variable(model, x[1:2] in MOI.Parameter.(ones(2) .* 4.0))
     @variable(model, y[1:6])
     @constraint(model, ctr1, 3 * y[1] >= 2 - 7 * x[1])
     @objective(model, Min, 5 * y[1])
@@ -503,7 +522,7 @@ end
 function test_jump_dual_multiplicative_fail()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
     @variable(model, x)
-    @variable(model, p in POI.Parameter(1.0))
+    @variable(model, p in MOI.Parameter(1.0))
     @constraint(model, cons, x * p >= 3)
     @objective(model, Min, 2x)
     optimize!(model)
@@ -516,7 +535,7 @@ end
 function test_jump_dual_objective_min()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
     @variable(model, x)
-    @variable(model, p in POI.Parameter(1.0))
+    @variable(model, p in MOI.Parameter(1.0))
     @constraint(model, cons, x >= 3 * p)
     @objective(model, Min, 2x + p)
     optimize!(model)
@@ -527,7 +546,7 @@ end
 function test_jump_dual_objective_max()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
     @variable(model, x)
-    @variable(model, p in POI.Parameter(1.0))
+    @variable(model, p in MOI.Parameter(1.0))
     @constraint(model, cons, x >= 3 * p)
     @objective(model, Max, -2x + p)
     optimize!(model)
@@ -537,7 +556,7 @@ end
 
 function test_jump_dual_multiple_parameters_1()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
-    @variable(model, x[1:6] in POI.Parameter.(ones(6) .* 4.0))
+    @variable(model, x[1:6] in MOI.Parameter.(ones(6) .* 4.0))
     @variable(model, y[1:6])
     @constraint(model, ctr1, 3 * y[1] >= 2 - 7 * x[3])
     @constraint(model, ctr2, 3 * y[1] >= 2 - 7 * x[3])
@@ -571,7 +590,7 @@ end
 
 function test_jump_duals_LessThan()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
-    @variable(model, α in POI.Parameter(-1.0))
+    @variable(model, α in MOI.Parameter(-1.0))
     @variable(model, x)
     cref = @constraint(model, x ≤ α)
     @objective(model, Max, x)
@@ -590,7 +609,7 @@ end
 
 function test_jump_duals_EqualTo()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
-    @variable(model, α in POI.Parameter(-1.0))
+    @variable(model, α in MOI.Parameter(-1.0))
     @variable(model, x)
     cref = @constraint(model, x == α)
     @objective(model, Max, x)
@@ -608,7 +627,7 @@ end
 
 function test_jump_duals_GreaterThan()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
-    @variable(model, α in POI.Parameter(1.0))
+    @variable(model, α in MOI.Parameter(1.0))
     MOI.set(model, POI.ParameterValue(), α, -1.0)
     @variable(model, x)
     cref = @constraint(model, x >= α)
@@ -627,7 +646,7 @@ end
 
 function test_jump_dual_multiple_parameters_2()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
-    @variable(model, α[1:10] in POI.Parameter.(ones(10)))
+    @variable(model, α[1:10] in MOI.Parameter.(ones(10)))
     @variable(model, x)
     cref = @constraint(model, x == sum(2 * α[i] for i in 1:10))
     @objective(model, Min, x)
@@ -640,7 +659,7 @@ end
 
 function test_jump_dual_mixing_params_and_vars_1()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
-    @variable(model, α[1:5] in POI.Parameter.(ones(5)))
+    @variable(model, α[1:5] in MOI.Parameter.(ones(5)))
     @variable(model, x)
     cref = @constraint(model, sum(x for i in 1:5) == sum(2 * α[i] for i in 1:5))
     @objective(model, Min, x)
@@ -653,7 +672,7 @@ end
 
 function test_jump_dual_mixing_params_and_vars_2()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
-    @variable(model, α[1:5] in POI.Parameter.(ones(5)))
+    @variable(model, α[1:5] in MOI.Parameter.(ones(5)))
     @variable(model, x)
     cref = @constraint(model, 0.0 == sum(-x + 2 * α[i] for i in 1:5))
     @objective(model, Min, x)
@@ -666,7 +685,7 @@ end
 
 function test_jump_dual_mixing_params_and_vars_3()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
-    @variable(model, α[1:5] in POI.Parameter.(ones(5)))
+    @variable(model, α[1:5] in MOI.Parameter.(ones(5)))
     @variable(model, x)
     cref = @constraint(model, 0.0 == sum(-x + 2.0 + 2 * α[i] for i in 1:5))
     @objective(model, Min, x)
@@ -679,7 +698,7 @@ end
 
 function test_jump_dual_add_after_solve()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
-    @variable(model, α in POI.Parameter(1.0))
+    @variable(model, α in MOI.Parameter(1.0))
     MOI.set(model, POI.ParameterValue(), α, -1.0)
     @variable(model, x)
     cref = @constraint(model, x <= α)
@@ -688,7 +707,7 @@ function test_jump_dual_add_after_solve()
     @test JuMP.value(x) == -1.0
     @test JuMP.dual(cref) == -1.0
     @test MOI.get(model, POI.ParameterDual(), α) == -1.0
-    @variable(model, b in POI.Parameter(-2.0))
+    @variable(model, b in MOI.Parameter(-2.0))
     cref = @constraint(model, x <= b)
     JuMP.optimize!(model)
     @test JuMP.value(x) == -2.0
@@ -700,7 +719,7 @@ end
 
 function test_jump_dual_add_ctr_alaternative()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
-    @variable(model, α in POI.Parameter(-1.0))
+    @variable(model, α in MOI.Parameter(-1.0))
     @variable(model, x)
     exp = x - α
     cref = @constraint(model, exp ≤ 0)
@@ -714,7 +733,7 @@ end
 
 function test_jump_dual_delete_constraint()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
-    @variable(model, α in POI.Parameter(-1.0))
+    @variable(model, α in MOI.Parameter(-1.0))
     @variable(model, x)
     cref1 = @constraint(model, x ≤ α / 2)
     cref2 = @constraint(model, x ≤ α)
@@ -749,7 +768,7 @@ function test_jump_nlp()
     model = Model(() -> POI_cached_optimizer())
     @variable(model, x)
     @variable(model, y)
-    @variable(model, z in ParametricOptInterface.Parameter(10))
+    @variable(model, z in MOI.Parameter(10.0))
     @constraint(model, x + y >= z)
     @NLobjective(model, Min, x^2 + y^2)
     optimize!(model)
@@ -764,7 +783,7 @@ function test_jump_nlp()
     MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     model = Model(() -> ParametricOptInterface.Optimizer(ipopt))
     @variable(model, x)
-    @variable(model, z in ParametricOptInterface.Parameter(10))
+    @variable(model, z in MOI.Parameter(10.0))
     MOI.set(
         model,
         ParametricOptInterface.ConstraintsInterpretation(),
@@ -803,7 +822,7 @@ function test_jump_direct_vector_parameter_affine_nonnegatives()
     set_silent(model)
     @variable(model, x)
     @variable(model, y)
-    @variable(model, t in POI.Parameter(5))
+    @variable(model, t in MOI.Parameter(5.0))
     @constraint(model, [(x - t + 1), (y - t + 2)...] in MOI.Nonnegatives(2))
     @objective(model, Min, x + y)
     optimize!(model)
@@ -839,7 +858,7 @@ function test_jump_direct_vector_parameter_affine_nonpositives()
     set_silent(model)
     @variable(model, x)
     @variable(model, y)
-    @variable(model, t in POI.Parameter(5))
+    @variable(model, t in MOI.Parameter(5.0))
     @constraint(model, [(-x + t - 1), (-y + t - 2)...] in MOI.Nonpositives(2))
     @objective(model, Min, x + y)
     optimize!(model)
@@ -881,7 +900,7 @@ function test_jump_direct_soc_parameters()
     @variable(model, x)
     @variable(model, y)
     @variable(model, t)
-    @variable(model, p in POI.Parameter(0))
+    @variable(model, p in MOI.Parameter(0.0))
     @constraint(model, [y - 1 / √2] in MOI.Nonnegatives(1))
     @constraint(model, [t - 1] in MOI.Zeros(1))
     @constraint(model, [t, (x - p), y...] in SecondOrderCone())
@@ -904,7 +923,7 @@ function test_jump_direct_qp_objective()
     MOI.set(model, MOI.Silent(), true)
     @variable(model, x >= 0)
     @variable(model, y >= 0)
-    @variable(model, p in POI.Parameter(1.0))
+    @variable(model, p in MOI.Parameter(1.0))
     @constraint(model, 2x + y <= 4)
     @constraint(model, x + 2y <= 4)
     @objective(model, Max, (x^2 + y^2) / 2)
@@ -1003,7 +1022,7 @@ function test_jump_direct_rsoc_constraints()
     @variable(model, x)
     @variable(model, y)
     @variable(model, t)
-    @variable(model, p in POI.Parameter(0))
+    @variable(model, p in MOI.Parameter(0.0))
     @constraint(model, [y - 1 / √2] in MOI.Nonnegatives(1))
     @constraint(model, [t - 1] in MOI.Zeros(1))
     @constraint(model, [t, x, y - p] in RotatedSecondOrderCone())
@@ -1028,8 +1047,8 @@ function test_jump_quadratic_interval()
     MOI.set(model, MOI.Silent(), true)
     @variable(model, x >= 0)
     @variable(model, y >= 0)
-    @variable(model, p in POI.Parameter(10.0))
-    @variable(model, q in POI.Parameter(4.0))
+    @variable(model, p in MOI.Parameter(10.0))
+    @variable(model, q in MOI.Parameter(4.0))
     @constraint(model, 0 <= x - p * y + q <= 0)
     @objective(model, Min, x + y)
     optimize!(model)
@@ -1062,8 +1081,8 @@ function test_jump_quadratic_interval_cached()
     # MOI.set(model, MOI.Silent(), true)
     @variable(model, x >= 0)
     @variable(model, y >= 0)
-    @variable(model, p in POI.Parameter(10.0))
-    @variable(model, q in POI.Parameter(4.0))
+    @variable(model, p in MOI.Parameter(10.0))
+    @variable(model, q in MOI.Parameter(4.0))
     @constraint(model, 0 <= x - p * y + q <= 0)
     @objective(model, Min, x + y)
     optimize!(model)
@@ -1082,7 +1101,7 @@ end
 
 function test_affine_parametric_objective()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
-    @variable(model, p in POI.Parameter(1.0))
+    @variable(model, p in MOI.Parameter(1.0))
     @variable(model, 0 <= x <= 1)
     @objective(model, Max, (p + 0.5) * x)
     optimize!(model)
