@@ -3,7 +3,7 @@
 # Use of this source code is governed by an MIT-style license that can be found
 # in the LICENSE.md file or at https://opensource.org/licenses/MIT.
 
-function test_basic_tests()
+function test_basic_tests(convex_solver, ipopt_solver)
     """
         min x₁ + y
             x₁ + y = 2
@@ -13,7 +13,7 @@ function test_basic_tests()
             x* = {2-y,0}
             obj = 2
     """
-    optimizer = POI.Optimizer(GLPK.Optimizer())
+    optimizer = POI.Optimizer(convex_solver())
     MOI.set(optimizer, MOI.Silent(), true)
     x = MOI.add_variables(optimizer, 2)
     y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
@@ -99,8 +99,8 @@ function test_basic_tests()
     return
 end
 
-function test_basic_special_cases_of_getters()
-    ipopt = Ipopt.Optimizer()
+function test_basic_special_cases_of_getters(convex_solver, ipopt_solver)
+    ipopt = ipopt_solver()
     MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
@@ -141,7 +141,7 @@ function test_basic_special_cases_of_getters()
     return
 end
 
-function test_modification_multiple()
+function test_modification_multiple(convex_solver, ipopt_solver)
     model = POI.Optimizer(MOI.Utilities.Model{Float64}())
     x = MOI.add_variables(model, 3)
     saf = MOI.ScalarAffineFunction(
@@ -197,11 +197,11 @@ function test_modification_multiple()
     return
 end
 
-function test_moi_glpk()
+function test_moi_glpk(convex_solver, ipopt_solver)
     # TODO see why tests error or fail
     MOI.Test.runtests(
         MOI.Bridges.full_bridge_optimizer(
-            POI.Optimizer(GLPK.Optimizer()),
+            POI.Optimizer(convex_solver()),
             Float64,
         ),
         MOI.Test.Config();
@@ -216,11 +216,11 @@ function test_moi_glpk()
     return
 end
 
-function test_moi_ipopt()
+function test_moi_ipopt(convex_solver, ipopt_solver)
     model = MOI.Utilities.CachingOptimizer(
         MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
         MOI.Bridges.full_bridge_optimizer(
-            POI.Optimizer(Ipopt.Optimizer()),
+            POI.Optimizer(ipopt_solver()),
             Float64,
         ),
     )
@@ -276,9 +276,9 @@ function test_moi_ipopt()
     return
 end
 
-function test_moi_ListOfConstraintTypesPresent()
+function test_moi_ListOfConstraintTypesPresent(convex_solver, ipopt_solver)
     N = 10
-    ipopt = Ipopt.Optimizer()
+    ipopt = ipopt_solver()
     model = POI.Optimizer(ipopt)
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variables(model, N / 2)
@@ -309,8 +309,8 @@ function test_moi_ListOfConstraintTypesPresent()
     return
 end
 
-function test_production_problem_example()
-    optimizer = POI.Optimizer(GLPK.Optimizer())
+function test_production_problem_example(convex_solver, ipopt_solver)
+    optimizer = POI.Optimizer(convex_solver())
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 1.0]
     A2 = [1.0, 2.0, 1.0]
@@ -387,8 +387,8 @@ function test_production_problem_example()
     return
 end
 
-function test_production_problem_example_duals()
-    optimizer = POI.Optimizer(GLPK.Optimizer())
+function test_production_problem_example_duals(convex_solver, ipopt_solver)
+    optimizer = POI.Optimizer(convex_solver())
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 3.0]
     A2 = [1.0, 2.0, 0.5]
@@ -473,11 +473,11 @@ function test_production_problem_example_duals()
     return
 end
 
-function test_production_problem_example_parameters_for_duals_and_intervals()
+function test_production_problem_example_parameters_for_duals_and_intervals(convex_solver, ipopt_solver)
     cached = MOI.Bridges.full_bridge_optimizer(
         MOI.Utilities.CachingOptimizer(
             MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            GLPK.Optimizer(),
+            convex_solver(),
         ),
         Float64,
     )
@@ -566,7 +566,7 @@ function test_production_problem_example_parameters_for_duals_and_intervals()
     return
 end
 
-function test_vector_parameter_affine_nonnegatives()
+function test_vector_parameter_affine_nonnegatives(convex_solver, ipopt_solver)
     """
         min x + y
             x - t + 1 >= 0
@@ -622,7 +622,7 @@ function test_vector_parameter_affine_nonnegatives()
     return
 end
 
-function test_vector_parameter_affine_nonpositives()
+function test_vector_parameter_affine_nonpositives(convex_solver, ipopt_solver)
     """
         min x + y
             - x + t - 1 ≤ 0
@@ -681,7 +681,7 @@ function test_vector_parameter_affine_nonpositives()
     return
 end
 
-function test_vector_soc_parameters()
+function test_vector_soc_parameters(convex_solver, ipopt_solver)
     """
         Problem SOC2 from MOI
 
@@ -764,7 +764,7 @@ function test_vector_soc_parameters()
 end
 
 # TODO(odow): What is this doing here!!!
-function test_vector_soc_no_parameters()
+function test_vector_soc_no_parameters(convex_solver, ipopt_solver)
     """
         Problem SOC2 from MOI
 
@@ -825,8 +825,8 @@ function test_vector_soc_no_parameters()
     return
 end
 
-function test_qp_no_parameters_1()
-    ipopt = Ipopt.Optimizer()
+function test_qp_no_parameters_1(convex_solver, ipopt_solver)
+    ipopt = ipopt_solver()
     MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
@@ -867,8 +867,8 @@ function test_qp_no_parameters_1()
     return
 end
 
-function test_qp_no_parameters_2()
-    ipopt = Ipopt.Optimizer()
+function test_qp_no_parameters_2(convex_solver, ipopt_solver)
+    ipopt = ipopt_solver()
     MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
@@ -904,8 +904,8 @@ function test_qp_no_parameters_2()
     return
 end
 
-function test_qp_parameter_in_affine_constraint()
-    ipopt = Ipopt.Optimizer()
+function test_qp_parameter_in_affine_constraint(convex_solver, ipopt_solver)
+    ipopt = ipopt_solver()
     MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
@@ -955,8 +955,8 @@ function test_qp_parameter_in_affine_constraint()
     return
 end
 
-function test_qp_parameter_in_quadratic_constraint()
-    ipopt = Ipopt.Optimizer()
+function test_qp_parameter_in_quadratic_constraint(convex_solver, ipopt_solver)
+    ipopt = ipopt_solver()
     MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
@@ -1018,8 +1018,8 @@ function test_qp_parameter_in_quadratic_constraint()
     return
 end
 
-function test_qp_variable_times_variable_plus_parameter()
-    ipopt = Ipopt.Optimizer()
+function test_qp_variable_times_variable_plus_parameter(convex_solver, ipopt_solver)
+    ipopt = ipopt_solver()
     MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
@@ -1066,8 +1066,8 @@ function test_qp_variable_times_variable_plus_parameter()
     return
 end
 
-function test_qp_variable_times_variable_plus_parameter_duals()
-    ipopt = Ipopt.Optimizer()
+function test_qp_variable_times_variable_plus_parameter_duals(convex_solver, ipopt_solver)
+    ipopt = ipopt_solver()
     MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
@@ -1116,8 +1116,8 @@ function test_qp_variable_times_variable_plus_parameter_duals()
     return
 end
 
-function test_qp_parameter_times_variable()
-    ipopt = Ipopt.Optimizer()
+function test_qp_parameter_times_variable(convex_solver, ipopt_solver)
+    ipopt = ipopt_solver()
     MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
@@ -1159,8 +1159,8 @@ function test_qp_parameter_times_variable()
     return
 end
 
-function test_qp_variable_times_parameter()
-    ipopt = Ipopt.Optimizer()
+function test_qp_variable_times_parameter(convex_solver, ipopt_solver)
+    ipopt = ipopt_solver()
     MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
@@ -1202,8 +1202,8 @@ function test_qp_variable_times_parameter()
     return
 end
 
-function test_qp_parameter_times_parameter()
-    ipopt = Ipopt.Optimizer()
+function test_qp_parameter_times_parameter(convex_solver, ipopt_solver)
+    ipopt = ipopt_solver()
     MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
@@ -1261,8 +1261,8 @@ function test_qp_parameter_times_parameter()
     return
 end
 
-function test_qp_quadratic_constant()
-    ipopt = Ipopt.Optimizer()
+function test_qp_quadratic_constant(convex_solver, ipopt_solver)
+    ipopt = ipopt_solver()
     MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
@@ -1323,8 +1323,8 @@ function test_qp_quadratic_constant()
     return
 end
 
-function test_qp_objective_parameter_times_parameter()
-    ipopt = Ipopt.Optimizer()
+function test_qp_objective_parameter_times_parameter(convex_solver, ipopt_solver)
+    ipopt = ipopt_solver()
     MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
@@ -1378,8 +1378,8 @@ function test_qp_objective_parameter_times_parameter()
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 25.0, atol = ATOL)
 end
 
-function test_qp_objective_affine_parameter()
-    ipopt = Ipopt.Optimizer()
+function test_qp_objective_affine_parameter(convex_solver, ipopt_solver)
+    ipopt = ipopt_solver()
     MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
@@ -1427,8 +1427,8 @@ function test_qp_objective_affine_parameter()
     return
 end
 
-function test_qp_objective_parameter_in_quadratic_part()
-    model = POI.Optimizer(Ipopt.Optimizer())
+function test_qp_objective_parameter_in_quadratic_part(convex_solver, ipopt_solver)
+    model = POI.Optimizer(ipopt_solver())
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
@@ -1479,7 +1479,7 @@ function test_qp_objective_parameter_in_quadratic_part()
     @test MOI.get(model, MOI.ObjectiveValue()) ≈ 128 / 9 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 4 / 3 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 4 / 3 atol = ATOL
-    model = POI.Optimizer(Ipopt.Optimizer())
+    model = POI.Optimizer(ipopt_solver())
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
@@ -1517,7 +1517,7 @@ function test_qp_objective_parameter_in_quadratic_part()
     @test MOI.get(model, MOI.ObjectiveValue()) ≈ 77 / 9 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 4 / 3 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 4 / 3 atol = ATOL
-    model = POI.Optimizer(Ipopt.Optimizer())
+    model = POI.Optimizer(ipopt_solver())
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
@@ -1543,7 +1543,7 @@ function test_qp_objective_parameter_in_quadratic_part()
     @test MOI.get(model, MOI.ObjectiveValue()) ≈ 44 / 9 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 4 / 3 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 4 / 3 atol = ATOL
-    model = POI.Optimizer(Ipopt.Optimizer())
+    model = POI.Optimizer(ipopt_solver())
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)

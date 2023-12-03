@@ -13,9 +13,14 @@ import SCS
 import LinearAlgebra
 import ParametricOptInterface
 
+using DiffOpt
+
 const POI = ParametricOptInterface
 
 const ATOL = 1e-4
+
+convex_solver = () -> DiffOpt.diff_optimizer(GLPK.Optimizer)
+ipopt_solver = Ipopt.Optimizer
 
 function canonical_compare(f1, f2)
     return MOI.Utilities.canonical(f1) ≈ MOI.Utilities.canonical(f2)
@@ -27,7 +32,7 @@ include("jump_tests.jl")
 for name in names(@__MODULE__; all = true)
     if startswith("$name", "test_")
         @testset "$(name)" begin
-            getfield(@__MODULE__, name)()
+            getfield(@__MODULE__, name)(convex_solver, ipopt_solver)
         end
     end
 end

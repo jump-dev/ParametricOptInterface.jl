@@ -3,8 +3,8 @@
 # Use of this source code is governed by an MIT-style license that can be found
 # in the LICENSE.md file or at https://opensource.org/licenses/MIT.
 
-function test_jump_direct_affine_parameters()
-    optimizer = POI.Optimizer(GLPK.Optimizer())
+function test_jump_direct_affine_parameters(convex_solver, ipopt_solver)
+    optimizer = POI.Optimizer(convex_solver())
     model = direct_model(optimizer)
     @variable(model, x[i = 1:2] >= 0)
     @variable(model, y in MOI.Parameter(0.0))
@@ -26,8 +26,8 @@ function test_jump_direct_affine_parameters()
     return
 end
 
-function test_jump_direct_parameter_times_variable()
-    optimizer = POI.Optimizer(GLPK.Optimizer())
+function test_jump_direct_parameter_times_variable(convex_solver, ipopt_solver)
+    optimizer = POI.Optimizer(convex_solver())
     model = direct_model(optimizer)
     @variable(model, x[i = 1:2] >= 0)
     @variable(model, y in MOI.Parameter(0.0))
@@ -49,8 +49,8 @@ function test_jump_direct_parameter_times_variable()
     return
 end
 
-function test_jump_affine_parameters()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_jump_affine_parameters(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     @variable(model, x[i = 1:2] >= 0)
     @variable(model, y in MOI.Parameter(0.0))
     @variable(model, w in MOI.Parameter(0.0))
@@ -71,8 +71,8 @@ function test_jump_affine_parameters()
     return
 end
 
-function test_jump_parameter_times_variable()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_jump_parameter_times_variable(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     @variable(model, x[i = 1:2] >= 0)
     @variable(model, y in MOI.Parameter(0.0))
     @variable(model, w in MOI.Parameter(0.0))
@@ -94,7 +94,7 @@ function test_jump_parameter_times_variable()
     return
 end
 
-function test_jump_constraintfunction_getter()
+function test_jump_constraintfunction_getter(convex_solver, ipopt_solver)
     model = direct_model(
         POI.Optimizer(
             MOI.Utilities.CachingOptimizer(
@@ -251,8 +251,8 @@ function test_jump_constraintfunction_getter()
     return
 end
 
-function test_jump_interpret_parameteric_bounds()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_jump_interpret_parameteric_bounds(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i = 1:2])
     @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
@@ -280,8 +280,8 @@ function test_jump_interpret_parameteric_bounds()
     return
 end
 
-function test_jump_interpret_parameteric_bounds_expression()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_jump_interpret_parameteric_bounds_expression(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i = 1:2])
     @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
@@ -309,8 +309,8 @@ function test_jump_interpret_parameteric_bounds_expression()
     return
 end
 
-function test_jump_direct_interpret_parameteric_bounds()
-    model = direct_model(POI.Optimizer(GLPK.Optimizer()))
+function test_jump_direct_interpret_parameteric_bounds(convex_solver, ipopt_solver)
+    model = direct_model(POI.Optimizer(convex_solver()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i = 1:2])
     @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
@@ -336,8 +336,8 @@ function test_jump_direct_interpret_parameteric_bounds()
     return
 end
 
-function test_jump_direct_interpret_parameteric_bounds_no_interpretation()
-    model = direct_model(POI.Optimizer(GLPK.Optimizer()))
+function test_jump_direct_interpret_parameteric_bounds_no_interpretation(convex_solver, ipopt_solver)
+    model = direct_model(POI.Optimizer(convex_solver()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_CONSTRAINTS)
     @variable(model, x[i = 1:2])
     @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
@@ -366,8 +366,8 @@ function test_jump_direct_interpret_parameteric_bounds_no_interpretation()
     return
 end
 
-function test_jump_direct_interpret_parameteric_bounds_change()
-    model = direct_model(POI.Optimizer(GLPK.Optimizer()))
+function test_jump_direct_interpret_parameteric_bounds_change(convex_solver, ipopt_solver)
+    model = direct_model(POI.Optimizer(convex_solver()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i = 1:2])
     @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
@@ -384,8 +384,8 @@ function test_jump_direct_interpret_parameteric_bounds_change()
     return
 end
 
-function test_jump_direct_interpret_parameteric_bounds_both()
-    model = direct_model(POI.Optimizer(GLPK.Optimizer()))
+function test_jump_direct_interpret_parameteric_bounds_both(convex_solver, ipopt_solver)
+    model = direct_model(POI.Optimizer(convex_solver()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.BOUNDS_AND_CONSTRAINTS)
     @variable(model, x[i = 1:2])
     @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
@@ -400,8 +400,8 @@ function test_jump_direct_interpret_parameteric_bounds_both()
     return
 end
 
-function test_jump_direct_interpret_parameteric_bounds_invalid()
-    model = direct_model(POI.Optimizer(GLPK.Optimizer()))
+function test_jump_direct_interpret_parameteric_bounds_invalid(convex_solver, ipopt_solver)
+    model = direct_model(POI.Optimizer(convex_solver()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i = 1:2])
     @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
@@ -413,11 +413,11 @@ function test_jump_direct_interpret_parameteric_bounds_invalid()
     return
 end
 
-function test_jump_set_variable_start_value()
+function test_jump_set_variable_start_value(convex_solver, ipopt_solver)
     cached = MOI.Bridges.full_bridge_optimizer(
         MOI.Utilities.CachingOptimizer(
             MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            GLPK.Optimizer(),
+            convex_solver(),
         ),
         Float64,
     )
@@ -435,8 +435,8 @@ function test_jump_set_variable_start_value()
     return
 end
 
-function test_jump_direct_get_parameter_value()
-    model = direct_model(POI.Optimizer(GLPK.Optimizer()))
+function test_jump_direct_get_parameter_value(convex_solver, ipopt_solver)
+    model = direct_model(POI.Optimizer(convex_solver()))
     @variable(model, x, lower_bound = 0.0, upper_bound = 10.0)
     @variable(model, y, binary = true)
     @variable(model, z, set = MOI.Parameter(10.0))
@@ -446,8 +446,8 @@ function test_jump_direct_get_parameter_value()
     return
 end
 
-function test_jump_get_parameter_value()
-    model = Model(() -> ParametricOptInterface.Optimizer(GLPK.Optimizer()))
+function test_jump_get_parameter_value(convex_solver, ipopt_solver)
+    model = Model(() -> ParametricOptInterface.Optimizer(convex_solver()))
     @variable(model, x, lower_bound = 0.0, upper_bound = 10.0)
     @variable(model, y, binary = true)
     @variable(model, z, set = MOI.Parameter(10))
@@ -457,7 +457,7 @@ function test_jump_get_parameter_value()
     return
 end
 
-function test_jump_sdp_scalar_parameter()
+function test_jump_sdp_scalar_parameter(convex_solver, ipopt_solver)
     cached = MOI.Bridges.full_bridge_optimizer(
         MOI.Utilities.CachingOptimizer(
             MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
@@ -480,7 +480,7 @@ function test_jump_sdp_scalar_parameter()
     return
 end
 
-function test_jump_sdp_matrix_parameter()
+function test_jump_sdp_matrix_parameter(convex_solver, ipopt_solver)
     cached = MOI.Bridges.full_bridge_optimizer(
         MOI.Utilities.CachingOptimizer(
             MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
@@ -505,8 +505,8 @@ function test_jump_sdp_matrix_parameter()
     return
 end
 
-function test_jump_dual_basic()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_jump_dual_basic(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     @variable(model, x[1:2] in MOI.Parameter.(ones(2) .* 4.0))
     @variable(model, y[1:6])
     @constraint(model, ctr1, 3 * y[1] >= 2 - 7 * x[1])
@@ -519,8 +519,8 @@ function test_jump_dual_basic()
     return
 end
 
-function test_jump_dual_multiplicative_fail()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_jump_dual_multiplicative_fail(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))
     @constraint(model, cons, x * p >= 3)
@@ -532,8 +532,8 @@ function test_jump_dual_multiplicative_fail()
     return
 end
 
-function test_jump_dual_objective_min()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_jump_dual_objective_min(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))
     @constraint(model, cons, x >= 3 * p)
@@ -543,8 +543,8 @@ function test_jump_dual_objective_min()
     return
 end
 
-function test_jump_dual_objective_max()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_jump_dual_objective_max(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))
     @constraint(model, cons, x >= 3 * p)
@@ -554,8 +554,8 @@ function test_jump_dual_objective_max()
     return
 end
 
-function test_jump_dual_multiple_parameters_1()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_jump_dual_multiple_parameters_1(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     @variable(model, x[1:6] in MOI.Parameter.(ones(6) .* 4.0))
     @variable(model, y[1:6])
     @constraint(model, ctr1, 3 * y[1] >= 2 - 7 * x[3])
@@ -588,8 +588,8 @@ function test_jump_dual_multiple_parameters_1()
     return
 end
 
-function test_jump_duals_LessThan()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_jump_duals_LessThan(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     @variable(model, α in MOI.Parameter(-1.0))
     @variable(model, x)
     cref = @constraint(model, x ≤ α)
@@ -607,8 +607,8 @@ function test_jump_duals_LessThan()
     return
 end
 
-function test_jump_duals_EqualTo()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_jump_duals_EqualTo(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     @variable(model, α in MOI.Parameter(-1.0))
     @variable(model, x)
     cref = @constraint(model, x == α)
@@ -625,8 +625,8 @@ function test_jump_duals_EqualTo()
     return
 end
 
-function test_jump_duals_GreaterThan()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_jump_duals_GreaterThan(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     @variable(model, α in MOI.Parameter(1.0))
     MOI.set(model, POI.ParameterValue(), α, -1.0)
     @variable(model, x)
@@ -644,8 +644,8 @@ function test_jump_duals_GreaterThan()
     return
 end
 
-function test_jump_dual_multiple_parameters_2()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_jump_dual_multiple_parameters_2(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     @variable(model, α[1:10] in MOI.Parameter.(ones(10)))
     @variable(model, x)
     cref = @constraint(model, x == sum(2 * α[i] for i in 1:10))
@@ -657,8 +657,8 @@ function test_jump_dual_multiple_parameters_2()
     return
 end
 
-function test_jump_dual_mixing_params_and_vars_1()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_jump_dual_mixing_params_and_vars_1(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     @variable(model, α[1:5] in MOI.Parameter.(ones(5)))
     @variable(model, x)
     cref = @constraint(model, sum(x for i in 1:5) == sum(2 * α[i] for i in 1:5))
@@ -670,8 +670,8 @@ function test_jump_dual_mixing_params_and_vars_1()
     return
 end
 
-function test_jump_dual_mixing_params_and_vars_2()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_jump_dual_mixing_params_and_vars_2(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     @variable(model, α[1:5] in MOI.Parameter.(ones(5)))
     @variable(model, x)
     cref = @constraint(model, 0.0 == sum(-x + 2 * α[i] for i in 1:5))
@@ -683,8 +683,8 @@ function test_jump_dual_mixing_params_and_vars_2()
     return
 end
 
-function test_jump_dual_mixing_params_and_vars_3()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_jump_dual_mixing_params_and_vars_3(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     @variable(model, α[1:5] in MOI.Parameter.(ones(5)))
     @variable(model, x)
     cref = @constraint(model, 0.0 == sum(-x + 2.0 + 2 * α[i] for i in 1:5))
@@ -696,8 +696,8 @@ function test_jump_dual_mixing_params_and_vars_3()
     return
 end
 
-function test_jump_dual_add_after_solve()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_jump_dual_add_after_solve(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     @variable(model, α in MOI.Parameter(1.0))
     MOI.set(model, POI.ParameterValue(), α, -1.0)
     @variable(model, x)
@@ -717,8 +717,8 @@ function test_jump_dual_add_after_solve()
     return
 end
 
-function test_jump_dual_add_ctr_alaternative()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_jump_dual_add_ctr_alaternative(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     @variable(model, α in MOI.Parameter(-1.0))
     @variable(model, x)
     exp = x - α
@@ -731,8 +731,8 @@ function test_jump_dual_add_ctr_alaternative()
     return
 end
 
-function test_jump_dual_delete_constraint()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_jump_dual_delete_constraint(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     @variable(model, α in MOI.Parameter(-1.0))
     @variable(model, x)
     cref1 = @constraint(model, x ≤ α / 2)
@@ -753,8 +753,8 @@ function test_jump_dual_delete_constraint()
     return
 end
 
-function test_jump_nlp()
-    ipopt = Ipopt.Optimizer()
+function test_jump_nlp(convex_solver, ipopt_solver)
+    ipopt = ipopt_solver()
     MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     cached =
         () -> MOI.Bridges.full_bridge_optimizer(
@@ -779,7 +779,7 @@ function test_jump_nlp()
     optimize!(model)
     @test objective_value(model) ≈ 2 atol = 1e-3
     @test value(x) ≈ 1
-    ipopt = Ipopt.Optimizer()
+    ipopt = ipopt_solver()
     MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
     model = Model(() -> ParametricOptInterface.Optimizer(ipopt))
     @variable(model, x)
@@ -802,7 +802,7 @@ function test_jump_nlp()
     return
 end
 
-function test_jump_direct_vector_parameter_affine_nonnegatives()
+function test_jump_direct_vector_parameter_affine_nonnegatives(convex_solver, ipopt_solver)
     """
         min x + y
             x - t + 1 >= 0
@@ -835,7 +835,7 @@ function test_jump_direct_vector_parameter_affine_nonnegatives()
     return
 end
 
-function test_jump_direct_vector_parameter_affine_nonpositives()
+function test_jump_direct_vector_parameter_affine_nonpositives(convex_solver, ipopt_solver)
     """
         min x + y
             - x + t - 1 ≤ 0
@@ -871,7 +871,7 @@ function test_jump_direct_vector_parameter_affine_nonpositives()
     return
 end
 
-function test_jump_direct_soc_parameters()
+function test_jump_direct_soc_parameters(convex_solver, ipopt_solver)
     """
         Problem SOC2 from MOI
 
@@ -917,8 +917,8 @@ function test_jump_direct_soc_parameters()
     return
 end
 
-function test_jump_direct_qp_objective()
-    optimizer = POI.Optimizer(Ipopt.Optimizer())
+function test_jump_direct_qp_objective(convex_solver, ipopt_solver)
+    optimizer = POI.Optimizer(ipopt_solver())
     model = direct_model(optimizer)
     MOI.set(model, MOI.Silent(), true)
     @variable(model, x >= 0)
@@ -994,7 +994,7 @@ function test_jump_direct_qp_objective()
     return
 end
 
-function test_jump_direct_rsoc_constraints()
+function test_jump_direct_rsoc_constraints(convex_solver, ipopt_solver)
     """
         Problem RSOC
         min  x
@@ -1040,8 +1040,8 @@ function test_jump_direct_rsoc_constraints()
     return
 end
 
-function test_jump_quadratic_interval()
-    optimizer = POI.Optimizer(GLPK.Optimizer())
+function test_jump_quadratic_interval(convex_solver, ipopt_solver)
+    optimizer = POI.Optimizer(convex_solver())
     # model = direct_model(optimizer)
     model = Model(() -> optimizer)
     MOI.set(model, MOI.Silent(), true)
@@ -1065,17 +1065,17 @@ function test_jump_quadratic_interval()
     return
 end
 
-function test_jump_quadratic_interval_cached()
+function test_jump_quadratic_interval_cached(convex_solver, ipopt_solver)
     cached = MOI.Bridges.full_bridge_optimizer(
         MOI.Utilities.CachingOptimizer(
             MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            GLPK.Optimizer(),
+            convex_solver(),
         ),
         Float64,
     )
     optimizer = POI.Optimizer(cached)
     model = direct_model(optimizer)
-    # optimizer = POI.Optimizer(GLPK.Optimizer())
+    # optimizer = POI.Optimizer(convex_solver())
     # model = direct_model(optimizer)
     # model = Model(() -> optimizer)
     # MOI.set(model, MOI.Silent(), true)
@@ -1099,8 +1099,8 @@ function test_jump_quadratic_interval_cached()
     return
 end
 
-function test_affine_parametric_objective()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+function test_affine_parametric_objective(convex_solver, ipopt_solver)
+    model = Model(() -> POI.Optimizer(convex_solver()))
     @variable(model, p in MOI.Parameter(1.0))
     @variable(model, 0 <= x <= 1)
     @objective(model, Max, (p + 0.5) * x)
@@ -1110,7 +1110,7 @@ function test_affine_parametric_objective()
     @test value(objective_function(model)) ≈ 1.5
 end
 
-function test_abstract_optimizer_attributes()
+function test_abstract_optimizer_attributes(convex_solver, ipopt_solver)
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
     set_attribute(model, "tm_lim", 60 * 1000)
     attr = MOI.RawOptimizerAttribute("tm_lim")
