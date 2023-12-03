@@ -221,10 +221,6 @@ function _add_to_constraint_map!(model::Optimizer, ci)
     model.constraint_outer_to_inner[ci] = ci
     return
 end
-function _add_to_constraint_map!(model::Optimizer, ci_in, ci_out)
-    model.constraint_outer_to_inner[ci_out] = ci_in
-    return
-end
 
 function MOI.supports(
     model::Optimizer,

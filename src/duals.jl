@@ -8,12 +8,12 @@ function _compute_dual_of_parameters!(model::Optimizer{T}) where {T}
         zeros(T, model.number_of_parameters_in_model)
     _update_duals_from_affine_constraints!(model)
     _update_duals_from_vector_affine_constraints!(model)
-    update_duals_from_quadratic_constraints!(model)
+    _update_duals_from_quadratic_constraints!(model)
     if model.affine_objective_cache !== nothing
-        update_duals_from_objective!(model, model.affine_objective_cache)
+        _update_duals_from_objective!(model, model.affine_objective_cache)
     end
     if model.quadratic_objective_cache !== nothing
-        update_duals_from_objective!(model, model.quadratic_objective_cache)
+        _update_duals_from_objective!(model, model.quadratic_objective_cache)
     end
     return
 end
@@ -37,7 +37,7 @@ function _update_duals_from_vector_affine_constraints!(model::Optimizer)
     return
 end
 
-function update_duals_from_quadratic_constraints!(model::Optimizer)
+function _update_duals_from_quadratic_constraints!(model::Optimizer)
     for (F, S) in keys(model.quadratic_constraint_cache.dict)
         quadratic_constraint_cache_inner =
             model.quadratic_constraint_cache[F, S]
@@ -83,7 +83,7 @@ function _compute_parameters_in_ci!(
     return
 end
 
-function update_duals_from_objective!(model::Optimizer{T}, pf) where {T}
+function _update_duals_from_objective!(model::Optimizer{T}, pf) where {T}
     is_min = MOI.get(model.optimizer, MOI.ObjectiveSense()) == MOI.MIN_SENSE
     for param in pf.p
         model.dual_value_of_parameters[p_val(param.variable)] +=
