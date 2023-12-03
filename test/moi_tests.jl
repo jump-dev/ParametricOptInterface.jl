@@ -336,7 +336,7 @@ function test_production_problem_example()
     )
     MOI.add_constraint(optimizer, cons2, MOI.LessThan(b2))
     @test cons1.terms[1].coefficient == 2
-    @test POI.is_parameter_in_model(optimizer, cons2.terms[3].variable)
+    @test POI._parameter_in_model(optimizer, cons2.terms[3].variable)
     obj_func = MOI.ScalarAffineFunction(
         MOI.ScalarAffineTerm.([c[1], c[2], 3.0], [x[1], x[2], w]),
         0.0,
@@ -414,7 +414,7 @@ function test_production_problem_example_duals()
     )
     ci2 = MOI.add_constraint(optimizer, cons2, MOI.LessThan(b2))
     @test cons1.terms[1].coefficient == 2
-    @test POI.is_parameter_in_model(optimizer, cons2.terms[3].variable)
+    @test POI._parameter_in_model(optimizer, cons2.terms[3].variable)
     obj_func = MOI.ScalarAffineFunction(
         MOI.ScalarAffineTerm.([c[1], c[2], 2.0], [x[1], x[2], w]),
         0.0,
@@ -507,7 +507,7 @@ function test_production_problem_example_parameters_for_duals_and_intervals()
     )
     ci2 = MOI.add_constraint(optimizer, cons2, MOI.LessThan(b2))
     @test cons1.terms[1].coefficient == 2
-    @test POI.is_parameter_in_model(optimizer, cons2.terms[3].variable)
+    @test POI._parameter_in_model(optimizer, cons2.terms[3].variable)
     obj_func = MOI.ScalarAffineFunction(
         MOI.ScalarAffineTerm.([c[1], c[2], 2.0], [x[1], x[2], w]),
         0.0,
