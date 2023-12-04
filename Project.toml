@@ -5,6 +5,7 @@ version = "0.7.0"
 
 [deps]
 MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
+DiffOpt = "930fe3bc-9c6b-11ea-2d94-6184641e85e7"
 
 [compat]
 GLPK = "1"
