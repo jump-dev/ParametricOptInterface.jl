@@ -1212,12 +1212,17 @@ function test_qp_parameter_times_parameter()
     a = [1.0, 1.0]
     c = [2.0, 1.0]
     x = MOI.add_variables(optimizer, 2)
+    # x1 >= 0, x2 >= 0
     for x_i in x
         MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
+    # x1 <= 20
     MOI.add_constraint(optimizer, x[1], MOI.LessThan(20.0))
+    # y == 0
     y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    # z == 0
     z, cz = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    # x1 + x2 + y^2 + yz + z^2 <= 30
     quad_terms = MOI.ScalarQuadraticTerm{Float64}[]
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 1], y, y))
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 2], y, z))
@@ -1228,6 +1233,7 @@ function test_qp_parameter_times_parameter()
         0.0,
     )
     MOI.add_constraint(optimizer, constraint_function, MOI.LessThan(30.0))
+    # max 2x1 + x2
     obj_func =
         MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(c, [x[1], x[2]]), 0.0)
     MOI.set(
@@ -1248,16 +1254,28 @@ function test_qp_parameter_times_parameter()
         10.0,
         atol = ATOL,
     )
+    # now x1 + x2 + y^2 + yz + z^2 <= 30
+    # implies x1 + x2 <= 26
     MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(2.0))
     MOI.optimize!(optimizer)
-    @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 42.0, atol = ATOL)
+    # hence x1 = 20, x2 = 6
+    # and obj = 46
+    @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 46.0, atol = ATOL)
     MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(1.0))
+    # now x1 + x2 + y^2 + yz + z^2 <= 30
+    # implies x1 + x2 <= 30 - 4 - 2 - 1 = 23
+    # hence x1 = 20, x2 = 3
+    # and obj = 43
     MOI.optimize!(optimizer)
-    @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 36.0, atol = ATOL)
+    @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 43.0, atol = ATOL)
     MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(-1.0))
     MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(-1.0))
+    # now x1 + x2 + y^2 + yz + z^2 <= 30
+    # implies x1 + x2 <= 30 -1 -1 -1 = 27
+    # hence x1 = 20, x2 = 7
+    # and obj = 47
     MOI.optimize!(optimizer)
-    @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 45.0, atol = ATOL)
+    @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 47.0, atol = ATOL)
     return
 end
 
