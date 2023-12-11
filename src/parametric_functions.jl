@@ -174,7 +174,10 @@ function _parametric_constant(
     end
     for term in f.pp
         param_constant +=
-            term.coefficient *
+            (
+                term.coefficient /
+                ifelse(term.variable_1 == term.variable_2, 2, 1)
+            ) *
             model.parameters[p_idx(term.variable_1)] *
             model.parameters[p_idx(term.variable_2)]
     end
@@ -211,7 +214,10 @@ function _delta_parametric_constant(
                 model.updated_parameters[p2],
             )
             delta_constant +=
-                term.coefficient *
+                (
+                    term.coefficient /
+                    ifelse(term.variable_1 == term.variable_2, 2, 1)
+                ) *
                 (new_1 * new_2 - model.parameters[p1] * model.parameters[p2])
         end
     end
