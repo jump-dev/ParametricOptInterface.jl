@@ -315,10 +315,12 @@ function _quadratic_constraint_get_reverse!(
             value_1 = get!(model.parameter_output_backward, p_1, 0.0)
             value_2 = get!(model.parameter_output_backward, p_2, 0.0)
             model.parameter_output_backward[p_1] =
-                value_1 + term.coefficient * grad_pf_cte * model.parameters[p_2] /
+                value_1 +
+                term.coefficient * grad_pf_cte * model.parameters[p_2] /
                 ifelse(term.variable_1 === term.variable_2, 2, 1)
             model.parameter_output_backward[p_2] =
-                value_2 + term.coefficient * grad_pf_cte * model.parameters[p_1] /
+                value_2 +
+                term.coefficient * grad_pf_cte * model.parameters[p_1] /
                 ifelse(term.variable_1 === term.variable_2, 2, 1)
         end
         for term in pf.pv
@@ -366,10 +368,12 @@ function _quadratic_objective_get_reverse!(model::Optimizer{T}) where {T}
         value_1 = get!(model.parameter_output_backward, p_1, 0.0)
         value_2 = get!(model.parameter_output_backward, p_2, 0.0)
         model.parameter_output_backward[p_1] =
-            value_1 + term.coefficient * grad_pf_cte * model.parameters[p_2] /
+            value_1 +
+            term.coefficient * grad_pf_cte * model.parameters[p_2] /
             ifelse(term.variable_1 === term.variable_2, 2, 1)
         model.parameter_output_backward[p_2] =
-            value_2 + term.coefficient * grad_pf_cte * model.parameters[p_1] /
+            value_2 +
+            term.coefficient * grad_pf_cte * model.parameters[p_1] /
             ifelse(term.variable_1 === term.variable_2, 2, 1)
     end
     for term in pf.pv
