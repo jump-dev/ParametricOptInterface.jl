@@ -220,6 +220,31 @@ function test_quadratic_rhs_changes()
                 atol = 1e-10,
             )
         end
+        for dir_x = 0:3
+            MOI.set(model, DiffOpt.ReverseVariablePrimal(), x, dir_x)
+            DiffOpt.reverse_differentiate!(model)
+            @test isapprox(MOI.get(model, POI.ReverseParameter(), p),
+                dir_x * 3 * q_val / (11 * t_val),
+                atol = 1e-10,
+            )
+            @test isapprox(MOI.get(model, POI.ReverseParameter(), q),
+                dir_x * 3 * p_val / (11 * t_val),
+                atol = 1e-10,
+            )
+            @test isapprox(MOI.get(model, POI.ReverseParameter(), r),
+                dir_x * 10 * r_val / (11 * t_val),
+                atol = 1e-10,
+            )
+            @test isapprox(MOI.get(model, POI.ReverseParameter(), s),
+                dir_x * 7 / (11 * t_val),
+                atol = 1e-10,
+            )
+            @test isapprox(MOI.get(model, POI.ReverseParameter(), t),
+                dir_x * (- (1 + 3 * p_val * q_val + 5 * r_val ^ 2 + 7 * s_val) /
+                    (11 * t_val ^ 2)),
+                atol = 1e-10,
+            )
+        end
     end
     return
 end

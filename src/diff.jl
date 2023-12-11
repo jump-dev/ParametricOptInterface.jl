@@ -314,14 +314,16 @@ function _quadratic_constraint_get_reverse!(
             p_2 = p_idx(term.variable_2)
             value_1 = get!(model.parameter_output_backward, p_1, 0.0)
             value_2 = get!(model.parameter_output_backward, p_2, 0.0)
+            # TODO: why there is no factor of 2 here????
+            # ANS: probably because it was SET
             model.parameter_output_backward[p_1] =
                 value_1 +
                 term.coefficient * grad_pf_cte * model.parameters[p_2] /
-                ifelse(term.variable_1 === term.variable_2, 2, 1)
+                ifelse(term.variable_1 === term.variable_2, 1, 1)
             model.parameter_output_backward[p_2] =
                 value_2 +
                 term.coefficient * grad_pf_cte * model.parameters[p_1] /
-                ifelse(term.variable_1 === term.variable_2, 2, 1)
+                ifelse(term.variable_1 === term.variable_2, 1, 1)
         end
         for term in pf.pv
             p = p_idx(term.variable_1)
@@ -479,3 +481,5 @@ function MOI.get(
     JuMP.check_belongs_to_model(var_ref, model)
     return _moi_get_result(JuMP.backend(model), attr, JuMP.index(var_ref))
 end
+
+# TODO: ignore ops that are 0
