@@ -274,7 +274,6 @@ function _affine_constraint_get_reverse!(
             value = get!(model.parameter_output_backward, p, 0.0)
             model.parameter_output_backward[p] =
                 value + term.coefficient * grad_pf_cte
-            # TODO: check sign
         end
     end
     return

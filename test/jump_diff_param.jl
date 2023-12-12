@@ -4,13 +4,11 @@ using JuMP
 using DiffOpt
 using Test
 import ParametricOptInterface as POI
-using GLPK
-using Ipopt
 using HiGHS
 using SCS
 
 function test_diff_rhs()
-    model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(GLPK.Optimizer())))
+    model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(HiGHS.Optimizer())))
     set_silent(model)
     @variable(model, x)
     @variable(model, p in MOI.Parameter(3.0))
@@ -87,7 +85,7 @@ function test_diff_vector_rhs()
 end
 
 function test_affine_changes()
-    model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(GLPK.Optimizer())))
+    model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(HiGHS.Optimizer())))
     set_silent(model)
     p_val = 3.0
     pc_val = 1.0
@@ -152,7 +150,7 @@ function test_affine_changes()
 end
 
 function test_affine_changes_compact()
-    model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(GLPK.Optimizer())))
+    model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(HiGHS.Optimizer())))
     set_silent(model)
     p_val = 3.0
     pc_val = 1.0
@@ -189,7 +187,7 @@ function test_affine_changes_compact()
 end
 
 function test_quadratic_rhs_changes()
-    model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(GLPK.Optimizer())))
+    model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(HiGHS.Optimizer())))
     set_silent(model)
     p_val = 2.0
     q_val = 2.0
@@ -281,7 +279,7 @@ function test_quadratic_rhs_changes()
 end
 
 function test_affine_changes_compact_max()
-    model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(GLPK.Optimizer())))
+    model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(HiGHS.Optimizer())))
     set_silent(model)
     p_val = 3.0
     pc_val = 1.0
@@ -310,7 +308,7 @@ function test_affine_changes_compact_max()
 end
 
 function test_diff_affine_objective()
-    model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(GLPK.Optimizer())))
+    model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(HiGHS.Optimizer())))
     set_silent(model)
     p_val = 3.0
     @variable(model, x)
@@ -336,7 +334,7 @@ function test_diff_affine_objective()
 end
 
 function test_diff_quadratic_objective()
-    model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(GLPK.Optimizer())))
+    model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(HiGHS.Optimizer())))
     set_silent(model)
     p_val = 3.0
     @variable(model, x)
@@ -391,7 +389,7 @@ function test_quadratic_objective_qp()
 end
 
 function test_diff_errors()
-    model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(GLPK.Optimizer())))
+    model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(HiGHS.Optimizer())))
     set_silent(model)
     @variable(model, x)
     @variable(model, p in MOI.Parameter(3.0))
@@ -407,5 +405,3 @@ function test_diff_errors()
 
     return
 end
-
-# TODO: make highs support obj change
