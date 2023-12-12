@@ -1203,7 +1203,13 @@ function test_qp_variable_times_parameter()
     @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 29.25, atol = ATOL)
     MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(2.0))
     MOI.optimize!(optimizer)
-    @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 22.0, atol = ATOL)
+    # this implies: x1 + x2 + x1^2 + x1*y + y^2 <= 30
+    # becomes: 2 * x1 + x2 + x1^2 <= 30 - 4 = 26
+    # then x1 = 0 and x2 = 26 and obj = 26
+    # is x1 = eps >= 0, x2 = 26 - 2 * eps - eps^2 and
+    # obj = 26 - 2 * eps - eps^2 + 2 * eps = 26 - eps ^2 (eps == 0 to maximize)
+    MOI.optimize!(optimizer)
+    @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 26.0, atol = ATOL)
     return
 end
 
