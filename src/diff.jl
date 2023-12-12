@@ -170,9 +170,26 @@ function _quadratic_objective_set_forward!(model::Optimizer{T}) where {T}
     return
 end
 
+function _empty_input_cache!(model::Optimizer)
+    _empty_input_cache!(model.optimizer)
+    return
+end
+function _empty_input_cache!(model::MOI.Bridges.AbstractBridgeOptimizer)
+    _empty_input_cache!(model.model)
+    return
+end
+function _empty_input_cache!(model::MOI.Utilities.CachingOptimizer)
+    _empty_input_cache!(model.optimizer)
+    return
+end
+function _empty_input_cache!(model::DiffOpt.Optimizer)
+    empty!(model.input_cache)
+    return
+end
+
 function DiffOpt.forward_differentiate!(model::Optimizer{T}) where {T}
     # TODO: add a reset option
-    empty!(model.optimizer.input_cache)
+    _empty_input_cache!(model)
     for (F, S) in MOI.Utilities.DoubleDicts.nonempty_outer_keys(
         model.affine_constraint_cache,
     )

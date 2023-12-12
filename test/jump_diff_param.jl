@@ -7,9 +7,11 @@ import ParametricOptInterface as POI
 using GLPK
 using Ipopt
 using HiGHS
+using SCS
 
 function test_diff_rhs()
     model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(GLPK.Optimizer())))
+    set_silent(model)
     @variable(model, x)
     @variable(model, p in MOI.Parameter(3.0))
     @constraint(model, cons, x >= 3 * p)
@@ -51,8 +53,42 @@ function test_diff_rhs()
     return
 end
 
+function test_diff_vector_rhs()
+    model = direct_model(POI.Optimizer(DiffOpt.diff_optimizer(SCS.Optimizer)))
+    set_silent(model)
+    @variable(model, x)
+    @variable(model, p in MOI.Parameter(3.0))
+    @constraint(model, cons, [x - 3 * p] in MOI.Zeros(1))
+
+    # FIXME
+    @constraint(model, fake_soc, [0, 0, 0] in SecondOrderCone())
+
+    @objective(model, Min, 2x)
+    optimize!(model)
+    @test isapprox(MOI.get(model, MOI.VariablePrimal(), x), 9, atol = 1e-3)
+    # the function is
+    # x(p) = 3p, hence x'(p) = 3
+    # differentiate w.r.t. p
+    for p_val in 0:3
+        MOI.set(model, POI.ParameterValue(), p, p_val)
+        optimize!(model)
+        @test isapprox(MOI.get(model, MOI.VariablePrimal(), x), 3 * p_val, atol = 1e-3)
+        for direction in 0:3  
+            MOI.set(model, POI.ForwardParameter(), p, direction)
+            DiffOpt.forward_differentiate!(model)
+            @test isapprox(MOI.get(model, DiffOpt.ForwardVariablePrimal(), x), direction * 3, atol = 1e-3)
+            # reverse mode
+            MOI.set(model, DiffOpt.ReverseVariablePrimal(), x, direction)
+            DiffOpt.reverse_differentiate!(model)
+            @test isapprox(MOI.get(model, POI.ReverseParameter(), p), direction * 3, atol = 1e-3)
+        end
+    end
+    return
+end
+
 function test_affine_changes()
     model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(GLPK.Optimizer())))
+    set_silent(model)
     p_val = 3.0
     pc_val = 1.0
     @variable(model, x)
@@ -117,6 +153,7 @@ end
 
 function test_affine_changes_compact()
     model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(GLPK.Optimizer())))
+    set_silent(model)
     p_val = 3.0
     pc_val = 1.0
     @variable(model, x)
@@ -153,6 +190,7 @@ end
 
 function test_quadratic_rhs_changes()
     model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(GLPK.Optimizer())))
+    set_silent(model)
     p_val = 2.0
     q_val = 2.0
     r_val = 2.0
@@ -244,6 +282,7 @@ end
 
 function test_affine_changes_compact_max()
     model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(GLPK.Optimizer())))
+    set_silent(model)
     p_val = 3.0
     pc_val = 1.0
     @variable(model, x)
@@ -272,6 +311,7 @@ end
 
 function test_diff_affine_objective()
     model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(GLPK.Optimizer())))
+    set_silent(model)
     p_val = 3.0
     @variable(model, x)
     @variable(model, p in MOI.Parameter(p_val))
@@ -286,6 +326,10 @@ function test_diff_affine_objective()
             MOI.set(model, POI.ForwardParameter(), p, direction_p)
             DiffOpt.forward_differentiate!(model)
             @test MOI.get(model, DiffOpt.ForwardVariablePrimal(), x) ≈ 0.0
+            # reverse mode
+            MOI.set(model, DiffOpt.ReverseVariablePrimal(), x, direction_p)
+            DiffOpt.reverse_differentiate!(model)
+            @test MOI.get(model, POI.ReverseParameter(), p) ≈ 0.0
         end
     end
     return
@@ -293,6 +337,7 @@ end
 
 function test_diff_quadratic_objective()
     model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(GLPK.Optimizer())))
+    set_silent(model)
     p_val = 3.0
     @variable(model, x)
     @variable(model, p in MOI.Parameter(p_val))
@@ -307,6 +352,10 @@ function test_diff_quadratic_objective()
             MOI.set(model, POI.ForwardParameter(), p, direction_p)
             DiffOpt.forward_differentiate!(model)
             @test MOI.get(model, DiffOpt.ForwardVariablePrimal(), x) ≈ 0.0
+            # reverse mode
+            MOI.set(model, DiffOpt.ReverseVariablePrimal(), x, direction_p)
+            DiffOpt.reverse_differentiate!(model)
+            @test MOI.get(model, POI.ReverseParameter(), p) ≈ 0.0
         end
     end
     return
@@ -319,7 +368,7 @@ function test_quadratic_objective_qp()
     @variable(model, x)
     @variable(model, p in MOI.Parameter(p_val))
     @constraint(model, cons, x >= -10)
-    @objective(model, Min, 3 * p * x + x * x)
+    @objective(model, Min, 3 * p * x + x * x + 5 * p + 7 * p ^ 2)
     # 2x + 3p = 0, hence x = -3p/2
     # hence dx/dp = -3/2
     for p_val in 3:3
@@ -341,5 +390,22 @@ function test_quadratic_objective_qp()
     return
 end
 
-# TODO: try with Ipopt
+function test_diff_errors()
+    model = Model(() -> POI.Optimizer(DiffOpt.Optimizer(GLPK.Optimizer())))
+    set_silent(model)
+    @variable(model, x)
+    @variable(model, p in MOI.Parameter(3.0))
+    @constraint(model, cons, x >= 3 * p)
+    @objective(model, Min, 2x)
+    optimize!(model)
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 9
+
+    @test_throws ErrorException MOI.set(model, POI.ForwardParameter(), x, 1)
+    @test_throws ErrorException MOI.set(model, DiffOpt.ReverseVariablePrimal(), p, 1)
+    @test_throws ErrorException MOI.get(model, DiffOpt.ForwardVariablePrimal(), p)
+    @test_throws ErrorException MOI.get(model, POI.ReverseParameter(), x)
+
+    return
+end
+
 # TODO: make highs support obj change
