@@ -70,15 +70,27 @@ function test_diff_vector_rhs()
     for p_val in 0:3
         MOI.set(model, POI.ParameterValue(), p, p_val)
         optimize!(model)
-        @test isapprox(MOI.get(model, MOI.VariablePrimal(), x), 3 * p_val, atol = 1e-3)
-        for direction in 0:3  
+        @test isapprox(
+            MOI.get(model, MOI.VariablePrimal(), x),
+            3 * p_val,
+            atol = 1e-3,
+        )
+        for direction in 0:3
             MOI.set(model, POI.ForwardParameter(), p, direction)
             DiffOpt.forward_differentiate!(model)
-            @test isapprox(MOI.get(model, DiffOpt.ForwardVariablePrimal(), x), direction * 3, atol = 1e-3)
+            @test isapprox(
+                MOI.get(model, DiffOpt.ForwardVariablePrimal(), x),
+                direction * 3,
+                atol = 1e-3,
+            )
             # reverse mode
             MOI.set(model, DiffOpt.ReverseVariablePrimal(), x, direction)
             DiffOpt.reverse_differentiate!(model)
-            @test isapprox(MOI.get(model, POI.ReverseParameter(), p), direction * 3, atol = 1e-3)
+            @test isapprox(
+                MOI.get(model, POI.ReverseParameter(), p),
+                direction * 3,
+                atol = 1e-3,
+            )
         end
     end
     return
@@ -366,7 +378,7 @@ function test_quadratic_objective_qp()
     @variable(model, x)
     @variable(model, p in MOI.Parameter(p_val))
     @constraint(model, cons, x >= -10)
-    @objective(model, Min, 3 * p * x + x * x + 5 * p + 7 * p ^ 2)
+    @objective(model, Min, 3 * p * x + x * x + 5 * p + 7 * p^2)
     # 2x + 3p = 0, hence x = -3p/2
     # hence dx/dp = -3/2
     for p_val in 3:3
@@ -399,8 +411,17 @@ function test_diff_errors()
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 9
 
     @test_throws ErrorException MOI.set(model, POI.ForwardParameter(), x, 1)
-    @test_throws ErrorException MOI.set(model, DiffOpt.ReverseVariablePrimal(), p, 1)
-    @test_throws ErrorException MOI.get(model, DiffOpt.ForwardVariablePrimal(), p)
+    @test_throws ErrorException MOI.set(
+        model,
+        DiffOpt.ReverseVariablePrimal(),
+        p,
+        1,
+    )
+    @test_throws ErrorException MOI.get(
+        model,
+        DiffOpt.ForwardVariablePrimal(),
+        p,
+    )
     @test_throws ErrorException MOI.get(model, POI.ReverseParameter(), x)
 
     return
