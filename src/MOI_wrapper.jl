@@ -949,18 +949,6 @@ function MOI.set(
 end
 
 #
-# NLP
-#
-
-function MOI.supports(model::Optimizer, ::MOI.NLPBlock)
-    return MOI.supports(model.optimizer, MOI.NLPBlock())
-end
-
-function MOI.set(model::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
-    return MOI.set(model.optimizer, MOI.NLPBlock(), nlp_data)
-end
-
-#
 # Other
 #
 
@@ -1394,37 +1382,14 @@ function _poi_default_copy_to(dest::T, src::MOI.ModelLike) where {T}
     MOI.empty!(dest)
     vis_src = MOI.get(src, MOI.ListOfVariableIndices())
     index_map = MOI.IndexMap()
-    # The `NLPBlock` assumes that the order of variables does not change (#849)
-    # Therefore, all VariableIndex and VectorOfVariable constraints are added
-    # seprately, and no variables constrained-on-creation are added.
-
-    # This is not valid for NLPs with Parameters, they should enter
-    has_nlp = MOI.NLPBlock() in MOI.get(src, MOI.ListOfModelAttributesSet())
-    constraints_not_added = if has_nlp
-        vcat(
-            Any[
-                MOI.get(src, MOI.ListOfConstraintIndices{F,S}()) for
-                (F, S) in MOI.get(src, MOI.ListOfConstraintTypesPresent()) if
-                MOI.Utilities._is_variable_function(F) &&
-                    S != MOI.Parameter{Float64}
-            ],
-            Any[MOI.Utilities._try_constrain_variables_on_creation(
-                dest,
-                src,
-                index_map,
-                MOI.Parameter{Float64},
-            )],
-        )
-    else
-        Any[
-            MOI.Utilities._try_constrain_variables_on_creation(
-                dest,
-                src,
-                index_map,
-                S,
-            ) for S in MOI.Utilities.sorted_variable_sets_by_cost(dest, src)
-        ]
-    end
+    constraints_not_added = Any[
+        MOI.Utilities._try_constrain_variables_on_creation(
+            dest,
+            src,
+            index_map,
+            S,
+        ) for S in MOI.Utilities.sorted_variable_sets_by_cost(dest, src)
+    ]
     MOI.Utilities._copy_free_variables(dest, index_map, vis_src)
     # Copy variable attributes
     MOI.Utilities.pass_attributes(dest, src, index_map, vis_src)
