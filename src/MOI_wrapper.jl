@@ -1358,50 +1358,6 @@ function MOI.get(
 end
 
 #
-# Copy
-#
-
-function MOI.Utilities.default_copy_to(
-    dest::MOI.Bridges.LazyBridgeOptimizer{Optimizer{T,OT}},
-    src::MOI.ModelLike,
-) where {T,OT}
-    return _poi_default_copy_to(dest, src)
-end
-
-function MOI.Utilities.default_copy_to(
-    dest::Optimizer{T,OT},
-    src::MOI.ModelLike,
-) where {T,OT}
-    return _poi_default_copy_to(dest, src)
-end
-
-function _poi_default_copy_to(dest::T, src::MOI.ModelLike) where {T}
-    if !MOI.supports_incremental_interface(dest)
-        error("Model $(typeof(dest)) does not support copy_to.")
-    end
-    MOI.empty!(dest)
-    vis_src = MOI.get(src, MOI.ListOfVariableIndices())
-    index_map = MOI.IndexMap()
-    constraints_not_added = Any[
-        MOI.Utilities._try_constrain_variables_on_creation(
-            dest,
-            src,
-            index_map,
-            S,
-        ) for S in MOI.Utilities.sorted_variable_sets_by_cost(dest, src)
-    ]
-    MOI.Utilities._copy_free_variables(dest, index_map, vis_src)
-    # Copy variable attributes
-    MOI.Utilities.pass_attributes(dest, src, index_map, vis_src)
-    # Copy model attributes
-    MOI.Utilities.pass_attributes(dest, src, index_map)
-    # Copy constraints
-    MOI.Utilities._pass_constraints(dest, src, index_map, constraints_not_added)
-    MOI.Utilities.final_touch(dest, index_map)
-    return index_map
-end
-
-#
 # Optimize
 #
 
