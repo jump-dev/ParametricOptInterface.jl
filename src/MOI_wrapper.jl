@@ -1084,28 +1084,27 @@ end
 
 function MOI.get(
     model::Optimizer,
-    attr::T,
+    attr::MOI.AbstractConstraintAttribute,
     c::MOI.ConstraintIndex,
-) where {
-    T<:Union{MOI.ConstraintPrimal,MOI.ConstraintDual,MOI.ConstraintBasisStatus},
-}
+)
     return MOI.get(model.optimizer, attr, c)
 end
 
 function MOI.get(
     model::Optimizer,
-    attr::AT,
-    c::MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S},
-) where {
-    AT<:Union{
-        MOI.ConstraintPrimal,
-        MOI.ConstraintDual,
-        MOI.ConstraintBasisStatus,
-    },
-    T,
-    S<:MOI.AbstractScalarSet,
-}
+    attr::MOI.AbstractConstraintAttribute,
+    c::MOI.ConstraintIndex{<:MOI.ScalarAffineFunction},
+)
     moi_ci = get(model.affine_outer_to_inner, c, c)
+    return MOI.get(model.optimizer, attr, moi_ci)
+end
+
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.AbstractConstraintAttribute,
+    c::MOI.ConstraintIndex{<:MOI.ScalarQuadraticFunction},
+)
+    moi_ci = get(model.quadratic_outer_to_inner, c, c)
     return MOI.get(model.optimizer, attr, moi_ci)
 end
 

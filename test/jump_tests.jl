@@ -1079,3 +1079,13 @@ function test_abstract_optimizer_attributes()
     @test get_attribute(model, "tm_lim") ≈ 60 * 1000
     return
 end
+
+function test_get_quadratic_constraint()
+    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+    @variable(model, x)
+    @variable(model, p in Parameter(2.0))
+    @constraint(model, c, p * x <= 10)
+    optimize!(model)
+    @test value(c) ≈ 2.0 * value(x)
+    return
+end
