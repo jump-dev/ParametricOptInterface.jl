@@ -1087,8 +1087,8 @@ function MOI.get(
     attr::MOI.AbstractConstraintAttribute,
     c::MOI.ConstraintIndex,
 )
-    moi_ci = get(model.constraint_outer_to_inner, c, c)
-    return MOI.get(model.optimizer, attr, c)
+    optimizer_ci = get(model.constraint_outer_to_inner, c, c)
+    return MOI.get(model.optimizer, attr, optimizer_ci)
 end
 
 #
