@@ -1363,3 +1363,19 @@ function MOI.optimize!(model::Optimizer)
     end
     return
 end
+
+#
+# compute_conflict!
+#
+
+function MOI.compute_conflict!(model::Optimizer)
+    return MOI.compute_conflict!(model.optimizer)
+end
+
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.ConstraintConflictStatus,
+    ci::MOI.ConstraintIndex{MOI.VariableIndex,<:MOI.Parameter},
+)
+    return MOI.MAYBE_IN_CONFLICT
+end
