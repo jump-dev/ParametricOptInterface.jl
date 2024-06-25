@@ -754,51 +754,12 @@ function test_jump_dual_delete_constraint()
 end
 
 function test_jump_nlp()
-    ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
-    cached =
-        () -> MOI.Bridges.full_bridge_optimizer(
-            MOI.Utilities.CachingOptimizer(
-                MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-                ipopt,
-            ),
-            Float64,
-        )
-    POI_cached_optimizer() = ParametricOptInterface.Optimizer(cached())
-    model = Model(() -> POI_cached_optimizer())
-    @variable(model, x)
-    @variable(model, y)
-    @variable(model, z in MOI.Parameter(10.0))
-    @constraint(model, x + y >= z)
-    @NLobjective(model, Min, x^2 + y^2)
-    optimize!(model)
-    objective_value(model)
-    @test value(x) ≈ 5
-    MOI.get(model, ParametricOptInterface.ParameterDual(), z)
-    MOI.set(model, ParametricOptInterface.ParameterValue(), z, 2.0)
-    optimize!(model)
-    @test objective_value(model) ≈ 2 atol = 1e-3
-    @test value(x) ≈ 1
-    ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
-    model = Model(() -> ParametricOptInterface.Optimizer(ipopt))
+    model = Model(() -> ParametricOptInterface.Optimizer(Ipopt.Optimizer()))
     @variable(model, x)
     @variable(model, z in MOI.Parameter(10.0))
-    MOI.set(
-        model,
-        ParametricOptInterface.ConstraintsInterpretation(),
-        ParametricOptInterface.ONLY_BOUNDS,
-    )
     @constraint(model, x >= z)
     @NLobjective(model, Min, x^2)
-    optimize!(model)
-    objective_value(model)
-    @test value(x) ≈ 10
-    MOI.get(model, ParametricOptInterface.ParameterDual(), z)
-    MOI.set(model, ParametricOptInterface.ParameterValue(), z, 2.0)
-    optimize!(model)
-    @test objective_value(model) ≈ 4 atol = 1e-3
-    @test value(x) ≈ 2
+    @test_throws ErrorException optimize!(model)
     return
 end
 
