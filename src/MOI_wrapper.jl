@@ -452,9 +452,9 @@ end
 function MOI.set(
     model::Optimizer,
     ::MOI.ConstraintFunction,
-    c::MOI.ConstraintIndex{F,S},
+    c::MOI.ConstraintIndex{F},
     f::F,
-) where {F,S}
+) where {F}
     MOI.set(model.optimizer, MOI.ConstraintFunction(), c, f)
     return
 end
@@ -462,8 +462,8 @@ end
 function MOI.get(
     model::Optimizer,
     attr::MOI.ConstraintFunction,
-    ci::MOI.ConstraintIndex{F,S},
-) where {F,S}
+    ci::MOI.ConstraintIndex,
+)
     if haskey(model.quadratic_outer_to_inner, ci)
         inner_ci = model.quadratic_outer_to_inner[ci]
         return _original_function(model.quadratic_constraint_cache[inner_ci])
@@ -501,8 +501,8 @@ end
 function MOI.get(
     model::Optimizer,
     attr::MOI.ConstraintSet,
-    ci::MOI.ConstraintIndex{F,S},
-) where {F,S}
+    ci::MOI.ConstraintIndex,
+)
     if haskey(model.quadratic_outer_to_inner, ci)
         inner_ci = model.quadratic_outer_to_inner[ci]
         return model.quadratic_constraint_cache_set[inner_ci]
@@ -1084,29 +1084,11 @@ end
 
 function MOI.get(
     model::Optimizer,
-    attr::T,
+    attr::MOI.AbstractConstraintAttribute,
     c::MOI.ConstraintIndex,
-) where {
-    T<:Union{MOI.ConstraintPrimal,MOI.ConstraintDual,MOI.ConstraintBasisStatus},
-}
-    return MOI.get(model.optimizer, attr, c)
-end
-
-function MOI.get(
-    model::Optimizer,
-    attr::AT,
-    c::MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S},
-) where {
-    AT<:Union{
-        MOI.ConstraintPrimal,
-        MOI.ConstraintDual,
-        MOI.ConstraintBasisStatus,
-    },
-    T,
-    S<:MOI.AbstractScalarSet,
-}
-    moi_ci = get(model.affine_outer_to_inner, c, c)
-    return MOI.get(model.optimizer, attr, moi_ci)
+)
+    optimizer_ci = get(model.constraint_outer_to_inner, c, c)
+    return MOI.get(model.optimizer, attr, optimizer_ci)
 end
 
 #
