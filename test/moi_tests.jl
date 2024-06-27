@@ -1569,3 +1569,47 @@ function test_qp_objective_parameter_in_quadratic_part()
     @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 4 / 3 atol = ATOL
     return
 end
+
+function test_compute_conflict!()
+    T = Float64
+    mock = MOI.Utilities.MockOptimizer(MOI.Utilities.Model{T}())
+    MOI.set(mock, MOI.ConflictStatus(), MOI.COMPUTE_CONFLICT_NOT_CALLED)
+    model = POI.Optimizer(
+        MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{T}(), mock),
+    )
+    x, x_ci = MOI.add_constrained_variable(model, MOI.GreaterThan(1.0))
+    p, p_ci = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    ci = MOI.add_constraint(model, 2.0 * x + 3.0 * p, MOI.LessThan(0.0))
+    @test MOI.get(model, MOI.ConflictStatus()) ==
+          MOI.COMPUTE_CONFLICT_NOT_CALLED
+    MOI.Utilities.set_mock_optimize!(
+        mock,
+        mock::MOI.Utilities.MockOptimizer -> begin
+            MOI.Utilities.mock_optimize!(
+                mock,
+                MOI.INFEASIBLE,
+                MOI.NO_SOLUTION,
+                MOI.NO_SOLUTION;
+                constraint_conflict_status = [
+                    (MOI.VariableIndex, MOI.Parameter{T}) =>
+                        [MOI.MAYBE_IN_CONFLICT],
+                    (MOI.VariableIndex, MOI.GreaterThan{T}) =>
+                        [MOI.IN_CONFLICT],
+                    (MOI.ScalarAffineFunction{T}, MOI.LessThan{T}) =>
+                        [MOI.IN_CONFLICT],
+                ],
+            )
+            MOI.set(mock, MOI.ConflictStatus(), MOI.CONFLICT_FOUND)
+        end,
+    )
+    MOI.optimize!(model)
+    @test MOI.get(model, MOI.TerminationStatus()) == MOI.INFEASIBLE
+    MOI.compute_conflict!(model)
+    @test MOI.get(model, MOI.ConflictStatus()) == MOI.CONFLICT_FOUND
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), x_ci) ==
+          MOI.IN_CONFLICT
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), p_ci) ==
+          MOI.MAYBE_IN_CONFLICT
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), ci) == MOI.IN_CONFLICT
+    return
+end
