@@ -162,6 +162,10 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     number_of_parameters_in_model::Int64
     constraints_interpretation::ConstraintsInterpretationCode
     save_original_objective_and_constraints::Bool
+
+    # sensitivity data
+    parameter_input_forward::Dict{ParameterIndex,T}
+    parameter_output_backward::Dict{ParameterIndex,T}
     function Optimizer(
         optimizer::OT;
         evaluate_duals::Bool = true,
@@ -219,6 +223,8 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             0,
             ONLY_CONSTRAINTS,
             save_original_objective_and_constraints,
+            Dict{ParameterIndex,T}(),
+            Dict{ParameterIndex,T}(),
         )
     end
 end
@@ -248,5 +254,6 @@ end
 include("duals.jl")
 include("update_parameters.jl")
 include("MOI_wrapper.jl")
+include("diff.jl")
 
 end # module
