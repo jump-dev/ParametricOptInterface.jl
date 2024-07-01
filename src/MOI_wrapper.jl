@@ -1368,7 +1368,7 @@ function MOI.optimize!(model::Optimizer)
     end
     MOI.optimize!(model.optimizer)
     if MOI.get(model, MOI.DualStatus()) != MOI.NO_SOLUTION &&
-        model.evaluate_duals
+       model.evaluate_duals
         _compute_dual_of_parameters!(model)
     end
     return
