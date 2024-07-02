@@ -126,6 +126,16 @@ function MOI.get(
     ::MOI.ConstraintDual,
     cp::MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}},
 ) where {T}
+    if !model.evaluate_duals
+        throw(
+            MOI.GetAttributeNotAllowed(
+                MOI.ConstraintDual(),
+                "$(MOI.ConstraintDual()) not available when " *
+                "evaluate_duals is set to false. " *
+                "Create an optimizer such as POI.Optimizer(HiGHS.Optimizer(); evaluate_duals = true) to enable this feature.",
+            ),
+        )
+    end
     if !_is_additive(model, cp)
         error("Cannot compute the dual of a multiplicative parameter")
     end

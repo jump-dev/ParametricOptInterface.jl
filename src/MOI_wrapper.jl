@@ -1091,18 +1091,6 @@ function MOI.get(
     return MOI.get(model.optimizer, attr, optimizer_ci)
 end
 
-function MOI.get(
-    model::Optimizer,
-    attr::MOI.ConstraintDual,
-    c::MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}},
-) where {T}
-    if !model.evaluate_duals
-        error()
-    end
-    optimizer_ci = get(model.constraint_outer_to_inner, c, c)
-    return MOI.get(model.optimizer, attr, optimizer_ci)
-end
-
 #
 # Special Attributes
 #
