@@ -609,7 +609,7 @@ function MOI.add_constraint(
 ) where {T,S}
     _cache_set_constant!(pf, set)
     _update_cache!(pf, model)
-    inner_ci = MOI.Utilities.normalize_and_add_constraint(
+    inner_ci = MOI.add_constraint(
         model.optimizer,
         MOI.ScalarAffineFunction{T}(pf.v, 0.0),
         _set_with_new_constant(set, pf.current_constant),
@@ -632,7 +632,7 @@ function _add_vi_constraint(
 ) where {T,S}
     _cache_set_constant!(pf, set)
     _update_cache!(pf, model)
-    inner_ci = MOI.Utilities.normalize_and_add_constraint(
+    inner_ci = MOI.add_constraint(
         model.optimizer,
         pf.v[].variable,
         _set_with_new_constant(set, pf.current_constant),
@@ -708,7 +708,7 @@ function _add_constraint_with_parameters_on_function(
     _update_cache!(pf, model)
 
     func = _current_function(pf)
-    f_quad = if !_is_affine(func)
+    if !_is_affine(func)
         fq = func
         inner_ci = MOI.Utilities.normalize_and_add_constraint(
             model.optimizer,
