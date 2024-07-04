@@ -426,3 +426,86 @@ function test_diff_errors()
 
     return
 end
+
+function test_diff_projection()
+    num_A = 2
+    ##### SecondOrderCone #####
+    _x_hat = rand(num_A)
+    μ = rand(num_A) * 10
+    Σ_12 = rand(num_A, num_A)
+    Σ = Σ_12 * Σ_12' + 0.1 * I
+    γ = 1.0
+    model = direct_model(POI.Optimizer(DiffOpt.diff_optimizer(SCS.Optimizer)))
+    set_silent(model)
+    @variable(model, x[1:num_A])
+    @variable(model, x_hat[1:num_A] in MOI.Parameter.(_x_hat))
+    @variable(model, norm_2)
+    # (x - x_hat)^T Σ^-1 (x - x_hat) <= γ
+    @constraint(
+        model,
+        (x - μ)' * inv(Σ) * (x - μ) <= γ,
+    )
+    # norm_2 >= ||x - x_hat||_2
+    @constraint(model, [norm_2; x - x_hat] in SecondOrderCone())
+    @objective(model, Min, norm_2)
+    optimize!(model)
+    MOI.set.(model, POI.ForwardParameter(), x_hat, ones(num_A))
+    DiffOpt.forward_differentiate!(model) # ERROR
+    #@test TBD
+    return
+end
+
+using JuMP
+using DiffOpt
+using SCS
+
+function fallback_error()
+    num_A = 2
+    ##### SecondOrderCone #####
+    x_hat = rand(num_A)
+    μ = rand(num_A) * 10
+    Σ_12 = rand(num_A, num_A)
+    Σ = Σ_12 * Σ_12' + 0.1 * I
+    γ = 1.0
+    model = direct_model(DiffOpt.diff_optimizer(SCS.Optimizer))
+    set_silent(model)
+    @variable(model, x[1:num_A])
+    @variable(model, norm_2)
+    # (x - x_hat)^T Σ^-1 (x - x_hat) <= γ
+    @constraint(
+        model,
+        (x - μ)' * inv(Σ) * (x - μ) <= γ,
+    )
+    # norm_2 >= ||x - x_hat||_2
+    @constraint(model, ctr, [norm_2; x - x_hat] in SecondOrderCone())
+    @objective(model, Min, norm_2)
+    optimize!(model)
+    MOI.set(model, DiffOpt.ForwardConstraintFunction(), ctr,
+        MOI.VectorAffineFunction{Float64}(MOI.VectorOfVariables(x))
+    )
+    DiffOpt.forward_differentiate!(model) # ERROR
+    return
+end
+
+#
+function scalarize_bridge_error()
+    model = direct_model(DiffOpt.diff_optimizer(SCS.Optimizer))
+    set_silent(model)
+    @variable(model, x)
+    # @variable(model, p in MOI.Parameter(3.0))
+    p = 3.0
+    @constraint(model, cons, [x - 3 * p] in MOI.Zeros(1))
+
+    # it works it this is uncommented
+    # @constraint(model, fake_soc, [0, 0, 0] in SecondOrderCone())
+
+    @objective(model, Min, 2x)
+    optimize!(model)
+
+    MOI.set(model, DiffOpt.ForwardConstraintFunction(), cons,
+        MOI.VectorAffineFunction{Float64}(MOI.VectorOfVariables([x]))
+    )
+    DiffOpt.forward_differentiate!(model) # ERROR
+
+    return
+end
