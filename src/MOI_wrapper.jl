@@ -582,7 +582,6 @@ function _add_constraint_with_parameters_on_function(
     set::S,
 ) where {T,S}
     pf = ParametricAffineFunction(f)
-    _cache_set_constant!(pf, set)
     if model.constraints_interpretation == ONLY_BOUNDS
         if length(pf.v) == 1 && isone(MOI.coefficient(pf.v[]))
             poi_ci = _add_vi_constraint(model, pf, set)
@@ -592,22 +591,23 @@ function _add_constraint_with_parameters_on_function(
             )
         end
     elseif model.constraints_interpretation == ONLY_CONSTRAINTS
-        poi_ci = _add_saf_constraint(model, pf, set)
+        poi_ci = MOI.add_constraint(model, pf, set)
     elseif model.constraints_interpretation == BOUNDS_AND_CONSTRAINTS
         if length(pf.v) == 1 && isone(MOI.coefficient(pf.v[]))
             poi_ci = _add_vi_constraint(model, pf, set)
         else
-            poi_ci = _add_saf_constraint(model, pf, set)
+            poi_ci = MOI.add_constraint(model, pf, set)
         end
     end
     return poi_ci
 end
 
-function _add_saf_constraint(
+function MOI.add_constraint(
     model::Optimizer,
     pf::ParametricAffineFunction{T},
     set::S,
 ) where {T,S}
+    _cache_set_constant!(pf, set)
     _update_cache!(pf, model)
     inner_ci = MOI.Utilities.normalize_and_add_constraint(
         model.optimizer,
@@ -630,6 +630,7 @@ function _add_vi_constraint(
     pf::ParametricAffineFunction{T},
     set::S,
 ) where {T,S}
+    _cache_set_constant!(pf, set)
     _update_cache!(pf, model)
     inner_ci = MOI.Utilities.normalize_and_add_constraint(
         model.optimizer,
