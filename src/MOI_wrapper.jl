@@ -710,11 +710,8 @@ function _add_constraint_with_parameters_on_function(
     func = _current_function(pf)
     if !_is_affine(func)
         fq = func
-        inner_ci = MOI.Utilities.normalize_and_add_constraint(
-            model.optimizer,
-            fq,
-            s,
-        )
+        inner_ci =
+            MOI.Utilities.normalize_and_add_constraint(model.optimizer, fq, s)
         model.last_quad_add_added += 1
         outer_ci = MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},S}(
             model.last_quad_add_added,
@@ -723,11 +720,8 @@ function _add_constraint_with_parameters_on_function(
         model.constraint_outer_to_inner[outer_ci] = inner_ci
     else
         fa = MOI.ScalarAffineFunction(func.affine_terms, func.constant)
-        inner_ci = MOI.Utilities.normalize_and_add_constraint(
-            model.optimizer,
-            fa,
-            s,
-        )
+        inner_ci =
+            MOI.Utilities.normalize_and_add_constraint(model.optimizer, fa, s)
         model.last_quad_add_added += 1
         outer_ci = MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},S}(
             model.last_quad_add_added,
