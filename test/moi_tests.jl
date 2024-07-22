@@ -1647,3 +1647,43 @@ function test_duals_not_available()
     )
     return
 end
+
+function test_duals_without_parameters()
+    optimizer = POI.Optimizer(GLPK.Optimizer())
+    MOI.set(optimizer, MOI.Silent(), true)
+    x = MOI.add_variables(optimizer, 3)
+    y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    z, cz = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    cons1 = MOI.ScalarAffineFunction(
+        MOI.ScalarAffineTerm.([1.0, -1.0], [x[1], y]),
+        0.0,
+    )
+    c1 = MOI.add_constraint(optimizer, cons1, MOI.LessThan(0.0))
+    cons2 = MOI.ScalarAffineFunction(
+        MOI.ScalarAffineTerm.([1.0], [x[2]]),
+        0.0,
+    )
+    c2 = MOI.add_constraint(optimizer, cons2, MOI.LessThan(1.0))
+    cons3 = MOI.ScalarAffineFunction(
+        MOI.ScalarAffineTerm.([1.0, -1.0], [x[3], z]),
+        0.0,
+    )
+    c3 = MOI.add_constraint(optimizer, cons3, MOI.LessThan(0.0))
+    obj_func = MOI.ScalarAffineFunction(
+        MOI.ScalarAffineTerm.([1.0, 2.0, 3.0], [x[1], x[2], x[3]]),
+        0.0,
+    )
+    MOI.set(
+        optimizer,
+        MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
+        obj_func,
+    )
+    MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(1.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(1.0))
+    MOI.optimize!(optimizer)
+    @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), c1), -1.0, atol = ATOL)
+    @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), c2), -2.0, atol = ATOL)
+    @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), c3), -3.0, atol = ATOL)
+    return
+end
