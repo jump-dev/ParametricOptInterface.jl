@@ -1659,10 +1659,7 @@ function test_duals_without_parameters()
         0.0,
     )
     c1 = MOI.add_constraint(optimizer, cons1, MOI.LessThan(0.0))
-    cons2 = MOI.ScalarAffineFunction(
-        MOI.ScalarAffineTerm.([1.0], [x[2]]),
-        0.0,
-    )
+    cons2 = MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(1.0, x[2])], 0.0)
     c2 = MOI.add_constraint(optimizer, cons2, MOI.LessThan(1.0))
     cons3 = MOI.ScalarAffineFunction(
         MOI.ScalarAffineTerm.([1.0, -1.0], [x[3], z]),

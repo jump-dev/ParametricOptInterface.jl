@@ -222,13 +222,19 @@ function _add_to_constraint_map!(model::Optimizer, ci)
     return
 end
 
-function _add_to_constraint_map!(model::Optimizer, ci::MOI.ConstraintIndex{F,S}) where {F<:MOI.ScalarAffineFunction, S}
+function _add_to_constraint_map!(
+    model::Optimizer,
+    ci::MOI.ConstraintIndex{F,S},
+) where {F<:MOI.ScalarAffineFunction,S}
     model.last_affine_added += 1
     model.constraint_outer_to_inner[ci] = ci
     return
 end
 
-function _add_to_constraint_map!(model::Optimizer, ci::MOI.ConstraintIndex{F,S}) where {F<:MOI.ScalarQuadraticFunction, S}
+function _add_to_constraint_map!(
+    model::Optimizer,
+    ci::MOI.ConstraintIndex{F,S},
+) where {F<:MOI.ScalarQuadraticFunction,S}
     model.last_quad_add_added += 1
     model.constraint_outer_to_inner[ci] = ci
     return
