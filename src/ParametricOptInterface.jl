@@ -28,6 +28,10 @@ function p_idx(vi::MOI.VariableIndex)::ParameterIndex
     return ParameterIndex(vi.value - PARAMETER_INDEX_THRESHOLD)
 end
 
+function v_idx(pi::ParameterIndex)::MOI.VariableIndex
+    return MOI.VariableIndex(pi.index + PARAMETER_INDEX_THRESHOLD)
+end
+
 function p_val(vi::MOI.VariableIndex)::Int64
     return vi.value - PARAMETER_INDEX_THRESHOLD
 end

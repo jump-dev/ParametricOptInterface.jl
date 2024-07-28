@@ -140,9 +140,13 @@ end
 # Variables
 #
 
-# TODO: This is not correct
 function MOI.is_valid(model::Optimizer, vi::MOI.VariableIndex)
-    return MOI.is_valid(model.optimizer, vi)
+    if haskey(model.variables, vi)
+        return true
+    elseif haskey(model.parameters, p_idx(vi))
+        return true
+    end
+    return false
 end
 
 function MOI.supports(
@@ -286,11 +290,8 @@ function _delete_variable_index_constraint(
     value,
 )
     inner = d[F, S]
-    for k in keys(inner)
-        if k.value == value
-            delete!(inner, k)
-        end
-    end
+    key = MOI.ConstraintIndex{F,S}(value)
+    delete!(inner, key)
     return
 end
 
@@ -986,7 +987,7 @@ function MOI.get(
 end
 
 function MOI.get(model::Optimizer, ::MOI.NumberOfVariables)
-    return length(model.parameters) + length(model.variables)
+    return MOI.get(model, NumberOfPureVariables()) + MOI.get(model, NumberOfParameters())
 end
 
 function MOI.get(model::Optimizer, ::MOI.NumberOfConstraints{F,S}) where {S,F}
@@ -994,7 +995,10 @@ function MOI.get(model::Optimizer, ::MOI.NumberOfConstraints{F,S}) where {S,F}
 end
 
 function MOI.get(model::Optimizer, ::MOI.ListOfVariableIndices)
-    return MOI.get(model.optimizer, MOI.ListOfVariableIndices())
+    return vcat(
+        MOI.get(model, ListOfPureVariableIndices()),
+        v_idx.(MOI.get(model, ListOfParameterIndices())),
+    )
 end
 
 function MOI.get(model::Optimizer, ::MOI.ListOfConstraintTypesPresent)
@@ -1090,16 +1094,28 @@ end
 # Special Attributes
 #
 
+struct NumberOfPureVariables <: MOI.AbstractModelAttribute end
+
+function MOI.get(model::Optimizer, ::NumberOfPureVariables)
+    return length(model.variables)
+end
+
 struct ListOfPureVariableIndices <: MOI.AbstractModelAttribute end
 
 function MOI.get(model::Optimizer, ::ListOfPureVariableIndices)
-    return collect(keys(model.variables))
+    return collect(keys(model.variables))::Vector{MOI.VariableIndex}
+end
+
+struct NumberOfParameters <: MOI.AbstractModelAttribute end
+
+function MOI.get(model::Optimizer, ::NumberOfParameters)
+    return length(model.parameters)
 end
 
 struct ListOfParameterIndices <: MOI.AbstractModelAttribute end
 
 function MOI.get(model::Optimizer, ::ListOfParameterIndices)
-    return collect(keys(model.parameters))
+    return collect(keys(model.parameters))::Vector{ParameterIndex}
 end
 
 """

@@ -17,8 +17,11 @@ function test_basic_tests()
     MOI.set(optimizer, MOI.Silent(), true)
     x = MOI.add_variables(optimizer, 2)
     y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    @test MOI.is_valid(optimizer, x[1])
+    @test MOI.is_valid(optimizer, y)
     z = MOI.VariableIndex(4)
     cz = MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{Float64}}(4)
+    @test !MOI.is_valid(optimizer, z)
     for x_i in x
         MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
