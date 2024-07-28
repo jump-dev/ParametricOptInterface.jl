@@ -987,7 +987,8 @@ function MOI.get(
 end
 
 function MOI.get(model::Optimizer, ::MOI.NumberOfVariables)
-    return MOI.get(model, NumberOfPureVariables()) + MOI.get(model, NumberOfParameters())
+    return MOI.get(model, NumberOfPureVariables()) +
+           MOI.get(model, NumberOfParameters())
 end
 
 function MOI.get(model::Optimizer, ::MOI.NumberOfConstraints{F,S}) where {S,F}
