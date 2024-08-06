@@ -19,6 +19,8 @@ function test_basic_tests()
     y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
     @test MOI.is_valid(optimizer, x[1])
     @test MOI.is_valid(optimizer, y)
+    @test MOI.get(optimizer, POI.ListOfPureVariableIndices()) == x
+    @test MOI.get(optimizer, MOI.ListOfVariableIndices()) == [x[1], x[2], y]
     z = MOI.VariableIndex(4)
     cz = MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{Float64}}(4)
     @test !MOI.is_valid(optimizer, z)
