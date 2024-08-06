@@ -17,8 +17,13 @@ function test_basic_tests()
     MOI.set(optimizer, MOI.Silent(), true)
     x = MOI.add_variables(optimizer, 2)
     y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    @test MOI.is_valid(optimizer, x[1])
+    @test MOI.is_valid(optimizer, y)
+    @test MOI.get(optimizer, POI.ListOfPureVariableIndices()) == x
+    @test MOI.get(optimizer, MOI.ListOfVariableIndices()) == [x[1], x[2], y]
     z = MOI.VariableIndex(4)
     cz = MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{Float64}}(4)
+    @test !MOI.is_valid(optimizer, z)
     for x_i in x
         MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
@@ -208,9 +213,6 @@ function test_moi_glpk()
         exclude = [
             # GLPK returns INVALID_MODEL instead of INFEASIBLE
             "test_constraint_ZeroOne_bounds_3",
-            # Upstream issue: https://github.com/jump-dev/MathOptInterface.jl/issues/1431
-            "test_model_LowerBoundAlreadySet",
-            "test_model_UpperBoundAlreadySet",
         ],
     )
     return
@@ -259,18 +261,7 @@ function test_moi_ipopt()
             #  - Excluded because Ipopt returns LOCALLY_INFEASIBLE instead of
             #    INFEASIBLE
             "INFEASIBLE",
-            "test_conic_linear_INFEASIBLE",
-            "test_conic_linear_INFEASIBLE_2",
             "test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_",
-            #  - Excluded due to upstream issue
-            "test_model_LowerBoundAlreadySet",
-            "test_model_UpperBoundAlreadySet",
-            #  - CachingOptimizer does not throw if optimizer not attached
-            "test_model_copy_to_UnsupportedAttribute",
-            "test_model_copy_to_UnsupportedConstraint",
-            #  - POI throws a ErrorException if user tries to modify parametric
-            #    functions
-            "test_objective_get_ObjectiveFunction_ScalarAffineFunction",
         ],
     )
     return
