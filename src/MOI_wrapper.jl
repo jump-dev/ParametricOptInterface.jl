@@ -149,6 +149,17 @@ function MOI.is_valid(model::Optimizer, vi::MOI.VariableIndex)
     return false
 end
 
+function MOI.is_valid(
+    model::Optimizer,
+    ci::MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}},
+) where {T}
+    vi = MOI.VariableIndex(ci.value)
+    if haskey(model.parameters, p_idx(vi))
+        return true
+    end
+    return false
+end
+
 function MOI.supports(
     model::Optimizer,
     attr::MOI.VariableName,
