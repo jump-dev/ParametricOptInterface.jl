@@ -163,9 +163,8 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     constraints_interpretation::ConstraintsInterpretationCode
     save_original_objective_and_constraints::Bool
 
-    # sensitivity data
-    parameter_input_forward::Dict{ParameterIndex,T}
-    parameter_output_backward::Dict{ParameterIndex,T}
+    # extension data
+    ext::Dict{Symbol,Any}
     function Optimizer(
         optimizer::OT;
         evaluate_duals::Bool = true,
@@ -223,8 +222,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             0,
             ONLY_CONSTRAINTS,
             save_original_objective_and_constraints,
-            Dict{ParameterIndex,T}(),
-            Dict{ParameterIndex,T}(),
+            Dict{Symbol,Any}(),
         )
     end
 end

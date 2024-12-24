@@ -1,18 +1,40 @@
 using DiffOpt
 
+mutable struct SensitivityData{T}
+    parameter_input_forward::Dict{ParameterIndex,T}
+    parameter_output_backward::Dict{ParameterIndex,T}
+end
+
+function SensitivityData{T}() where {T}
+    return SensitivityData{T}(Dict{ParameterIndex,T}(), Dict{ParameterIndex,T}())
+end
+
+function _get_sensitivity_data(model::Optimizer{T})::SensitivityData{T} where {T}
+    _initialize_sensitivity_data!(model)
+    return model.ext[:_sensitivity_data]::SensitivityData{T}
+end
+
+function _initialize_sensitivity_data!(model::Optimizer{T}) where {T}
+    if !haskey(model.ext, :_sensitivity_data)
+        model.ext[:_sensitivity_data] = SensitivityData{T}()
+    end
+    return
+end
+
 # forward mode
 
 function _affine_constraint_set_forward!(
     model::Optimizer{T},
     affine_constraint_cache_inner,
 ) where {T}
+    sensitivity_data = _get_sensitivity_data(model)
     for (inner_ci, pf) in affine_constraint_cache_inner
         cte = zero(T)
         terms = MOI.ScalarAffineTerm{T}[]
         sizehint!(terms, 0)
         for term in pf.p
             p = p_idx(term.variable)
-            sensitivity = get(model.parameter_input_forward, p, 0.0)
+            sensitivity = get(sensitivity_data.parameter_input_forward, p, 0.0)
             cte += sensitivity * term.coefficient
         end
         if !iszero(cte)
@@ -31,13 +53,14 @@ function _vector_affine_constraint_set_forward!(
     model::Optimizer{T},
     vector_affine_constraint_cache_inner,
 ) where {T}
+    sensitivity_data = _get_sensitivity_data(model)
     for (inner_ci, pf) in vector_affine_constraint_cache_inner
         cte = zeros(T, length(pf.c))
         terms = MOI.VectorAffineTerm{T}[]
         sizehint!(terms, 0)
         for term in pf.p
             p = p_idx(term.scalar_term.variable)
-            sensitivity = get(model.parameter_input_forward, p, 0.0)
+            sensitivity = get(sensitivity_data.parameter_input_forward, p, 0.0)
             cte[term.output_index] += sensitivity * term.scalar_term.coefficient
         end
         if !iszero(cte)
@@ -56,6 +79,7 @@ function _quadratic_constraint_set_forward!(
     model::Optimizer{T},
     quadratic_constraint_cache_inner,
 ) where {T}
+    sensitivity_data = _get_sensitivity_data(model)
     for (inner_ci, pf) in quadratic_constraint_cache_inner
         cte = zero(T)
         terms = MOI.ScalarAffineTerm{T}[]
@@ -63,14 +87,14 @@ function _quadratic_constraint_set_forward!(
         sizehint!(terms, length(pf.pv))
         for term in pf.p
             p = p_idx(term.variable)
-            sensitivity = get(model.parameter_input_forward, p, 0.0)
+            sensitivity = get(sensitivity_data.parameter_input_forward, p, 0.0)
             cte += sensitivity * term.coefficient
         end
         for term in pf.pp
             p_1 = p_idx(term.variable_1)
             p_2 = p_idx(term.variable_2)
-            sensitivity_1 = get(model.parameter_input_forward, p_1, 0.0)
-            sensitivity_2 = get(model.parameter_input_forward, p_2, 0.0)
+            sensitivity_1 = get(sensitivity_data.parameter_input_forward, p_1, 0.0)
+            sensitivity_2 = get(sensitivity_data.parameter_input_forward, p_2, 0.0)
             cte +=
                 sensitivity_1 * model.parameters[p_2] * term.coefficient /
                 ifelse(term.variable_1 === term.variable_2, 2, 1)
@@ -81,7 +105,7 @@ function _quadratic_constraint_set_forward!(
         # canonicalize?
         for term in pf.pv
             p = p_idx(term.variable_1)
-            sensitivity = get(model.parameter_input_forward, p, NaN)
+            sensitivity = get(sensitivity_data.parameter_input_forward, p, NaN)
             if !isnan(sensitivity)
                 push!(
                     terms,
@@ -109,9 +133,10 @@ function _affine_objective_set_forward!(model::Optimizer{T}) where {T}
     terms = MOI.ScalarAffineTerm{T}[]
     pf = model.affine_objective_cache
     sizehint!(terms, 0)
+    sensitivity_data = _get_sensitivity_data(model)
     for term in pf.p
         p = p_idx(term.variable)
-        sensitivity = get(model.parameter_input_forward, p, 0.0)
+        sensitivity = get(sensitivity_data.parameter_input_forward, p, 0.0)
         cte += sensitivity * term.coefficient
     end
     if !iszero(cte)
@@ -129,16 +154,17 @@ function _quadratic_objective_set_forward!(model::Optimizer{T}) where {T}
     terms = MOI.ScalarAffineTerm{T}[]
     pf = model.quadratic_objective_cache
     sizehint!(terms, length(pf.pv))
+    sensitivity_data = _get_sensitivity_data(model)
     for term in pf.p
         p = p_idx(term.variable)
-        sensitivity = get(model.parameter_input_forward, p, 0.0)
+        sensitivity = get(sensitivity_data.parameter_input_forward, p, 0.0)
         cte += sensitivity * term.coefficient
     end
     for term in pf.pp
         p_1 = p_idx(term.variable_1)
         p_2 = p_idx(term.variable_2)
-        sensitivity_1 = get(model.parameter_input_forward, p_1, 0.0)
-        sensitivity_2 = get(model.parameter_input_forward, p_2, 0.0)
+        sensitivity_1 = get(sensitivity_data.parameter_input_forward, p_1, 0.0)
+        sensitivity_2 = get(sensitivity_data.parameter_input_forward, p_2, 0.0)
         cte +=
             sensitivity_1 * model.parameters[p_2] * term.coefficient /
             ifelse(term.variable_1 === term.variable_2, 2, 1)
@@ -149,7 +175,7 @@ function _quadratic_objective_set_forward!(model::Optimizer{T}) where {T}
     # canonicalize?
     for term in pf.pv
         p = p_idx(term.variable_1)
-        sensitivity = get(model.parameter_input_forward, p, NaN)
+        sensitivity = get(sensitivity_data.parameter_input_forward, p, NaN)
         if !isnan(sensitivity)
             push!(
                 terms,
@@ -235,7 +261,8 @@ function MOI.set(
         error("Trying to set a forward parameter sensitivity for a variable")
     end
     parameter = p_idx(variable)
-    model.parameter_input_forward[parameter] = value
+    sensitivity_data = _get_sensitivity_data(model)
+    sensitivity_data.parameter_input_forward[parameter] = value
     return
 end
 
@@ -258,6 +285,7 @@ function _affine_constraint_get_reverse!(
     model::Optimizer{T},
     affine_constraint_cache_inner,
 ) where {T}
+    sensitivity_data = _get_sensitivity_data(model)
     for (inner_ci, pf) in affine_constraint_cache_inner
         if isempty(pf.p)
             continue
@@ -271,8 +299,8 @@ function _affine_constraint_get_reverse!(
         )
         for term in pf.p
             p = p_idx(term.variable)
-            value = get!(model.parameter_output_backward, p, 0.0)
-            model.parameter_output_backward[p] =
+            value = get!(sensitivity_data.parameter_output_backward, p, 0.0)
+            sensitivity_data.parameter_output_backward[p] =
                 value + term.coefficient * grad_pf_cte
         end
     end
@@ -283,6 +311,7 @@ function _vector_affine_constraint_get_reverse!(
     model::Optimizer{T},
     vector_affine_constraint_cache_inner,
 ) where {T}
+    sensitivity_data = _get_sensitivity_data(model)
     for (inner_ci, pf) in vector_affine_constraint_cache_inner
         if isempty(pf.p)
             continue
@@ -296,8 +325,8 @@ function _vector_affine_constraint_get_reverse!(
         )
         for term in pf.p
             p = p_idx(term.scalar_term.variable)
-            value = get!(model.parameter_output_backward, p, 0.0)
-            model.parameter_output_backward[p] =
+            value = get!(sensitivity_data.parameter_output_backward, p, 0.0)
+            sensitivity_data.parameter_output_backward[p] =
                 value +
                 term.scalar_term.coefficient * grad_pf_cte[term.output_index]
         end
@@ -309,6 +338,7 @@ function _quadratic_constraint_get_reverse!(
     model::Optimizer{T},
     quadratic_constraint_cache_inner,
 ) where {T}
+    sensitivity_data = _get_sensitivity_data(model)
     for (inner_ci, pf) in quadratic_constraint_cache_inner
         if isempty(pf.p) && isempty(pf.pv) && isempty(pf.pp)
             continue
@@ -321,22 +351,22 @@ function _quadratic_constraint_get_reverse!(
         grad_pf_cte = MOI.constant(grad_pf)
         for term in pf.p
             p = p_idx(term.variable)
-            value = get!(model.parameter_output_backward, p, 0.0)
-            model.parameter_output_backward[p] =
+            value = get!(sensitivity_data.parameter_output_backward, p, 0.0)
+            sensitivity_data.parameter_output_backward[p] =
                 value + term.coefficient * grad_pf_cte
         end
         for term in pf.pp
             p_1 = p_idx(term.variable_1)
             p_2 = p_idx(term.variable_2)
-            value_1 = get!(model.parameter_output_backward, p_1, 0.0)
-            value_2 = get!(model.parameter_output_backward, p_2, 0.0)
+            value_1 = get!(sensitivity_data.parameter_output_backward, p_1, 0.0)
+            value_2 = get!(sensitivity_data.parameter_output_backward, p_2, 0.0)
             # TODO: why there is no factor of 2 here????
             # ANS: probably because it was SET
-            model.parameter_output_backward[p_1] =
+            sensitivity_data.parameter_output_backward[p_1] =
                 value_1 +
                 term.coefficient * grad_pf_cte * model.parameters[p_2] /
                 ifelse(term.variable_1 === term.variable_2, 1, 1)
-            model.parameter_output_backward[p_2] =
+                sensitivity_data.parameter_output_backward[p_2] =
                 value_2 +
                 term.coefficient * grad_pf_cte * model.parameters[p_1] /
                 ifelse(term.variable_1 === term.variable_2, 1, 1)
@@ -344,8 +374,8 @@ function _quadratic_constraint_get_reverse!(
         for term in pf.pv
             p = p_idx(term.variable_1)
             v = term.variable_2 # check if inner or outer (should be inner)
-            value = get!(model.parameter_output_backward, p, 0.0)
-            model.parameter_output_backward[p] =
+            value = get!(sensitivity_data.parameter_output_backward, p, 0.0)
+            sensitivity_data.parameter_output_backward[p] =
                 value + term.coefficient * JuMP.coefficient(grad_pf, v) # * fixed value of the parameter ?
         end
     end
@@ -357,12 +387,13 @@ function _affine_objective_get_reverse!(model::Optimizer{T}) where {T}
     if isempty(pf.p)
         return
     end
+    sensitivity_data = _get_sensitivity_data(model)
     grad_pf = MOI.get(model.optimizer, DiffOpt.ReverseObjectiveFunction())
     grad_pf_cte = MOI.constant(grad_pf)
     for term in pf.p
         p = p_idx(term.variable)
-        value = get!(model.parameter_output_backward, p, 0.0)
-        model.parameter_output_backward[p] =
+        value = get!(sensitivity_data.parameter_output_backward, p, 0.0)
+        sensitivity_data.parameter_output_backward[p] =
             value + term.coefficient * grad_pf_cte
     end
     return
@@ -372,24 +403,25 @@ function _quadratic_objective_get_reverse!(model::Optimizer{T}) where {T}
     if isempty(pf.p) && isempty(pf.pv) && isempty(pf.pp)
         return
     end
+    sensitivity_data = _get_sensitivity_data(model)
     grad_pf = MOI.get(model.optimizer, DiffOpt.ReverseObjectiveFunction())
     grad_pf_cte = MOI.constant(grad_pf)
     for term in pf.p
         p = p_idx(term.variable)
-        value = get!(model.parameter_output_backward, p, 0.0)
-        model.parameter_output_backward[p] =
+        value = get!(sensitivity_data.parameter_output_backward, p, 0.0)
+        sensitivity_data.parameter_output_backward[p] =
             value + term.coefficient * grad_pf_cte
     end
     for term in pf.pp
         p_1 = p_idx(term.variable_1)
         p_2 = p_idx(term.variable_2)
-        value_1 = get!(model.parameter_output_backward, p_1, 0.0)
-        value_2 = get!(model.parameter_output_backward, p_2, 0.0)
-        model.parameter_output_backward[p_1] =
+        value_1 = get!(sensitivity_data.parameter_output_backward, p_1, 0.0)
+        value_2 = get!(sensitivity_data.parameter_output_backward, p_2, 0.0)
+        sensitivity_data.parameter_output_backward[p_1] =
             value_1 +
             term.coefficient * grad_pf_cte * model.parameters[p_2] /
             ifelse(term.variable_1 === term.variable_2, 2, 1)
-        model.parameter_output_backward[p_2] =
+            sensitivity_data.parameter_output_backward[p_2] =
             value_2 +
             term.coefficient * grad_pf_cte * model.parameters[p_1] /
             ifelse(term.variable_1 === term.variable_2, 2, 1)
@@ -397,8 +429,8 @@ function _quadratic_objective_get_reverse!(model::Optimizer{T}) where {T}
     for term in pf.pv
         p = p_idx(term.variable_1)
         v = term.variable_2 # check if inner or outer (should be inner)
-        value = get!(model.parameter_output_backward, p, 0.0)
-        model.parameter_output_backward[p] =
+        value = get!(sensitivity_data.parameter_output_backward, p, 0.0)
+        sensitivity_data.parameter_output_backward[p] =
             value + term.coefficient * JuMP.coefficient(grad_pf, v) # * fixed value of the parameter ?
     end
     return
@@ -407,8 +439,9 @@ end
 function DiffOpt.reverse_differentiate!(model::Optimizer)
     # TODO: add a reset option
     DiffOpt.reverse_differentiate!(model.optimizer)
-    empty!(model.parameter_output_backward)
-    sizehint!(model.parameter_output_backward, length(model.parameters))
+    sensitivity_data = _get_sensitivity_data(model)
+    empty!(sensitivity_data.parameter_output_backward)
+    sizehint!(sensitivity_data.parameter_output_backward, length(model.parameters))
     for (F, S) in MOI.Utilities.DoubleDicts.nonempty_outer_keys(
         model.affine_constraint_cache,
     )
@@ -467,7 +500,8 @@ function MOI.get(
         error("Trying to get a backward parameter sensitivity for a variable")
     end
     p = p_idx(variable)
-    return get(model.parameter_output_backward, p, 0.0)
+    sensitivity_data = _get_sensitivity_data(model)
+    return get(sensitivity_data.parameter_output_backward, p, 0.0)
 end
 
 # extras to handle model_dirty

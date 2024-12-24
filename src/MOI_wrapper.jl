@@ -100,8 +100,7 @@ function MOI.is_empty(model::Optimizer)
            isempty(model.multiplicative_parameters) &&
            isempty(model.dual_value_of_parameters) &&
            model.number_of_parameters_in_model == 0 &&
-           isempty(model.parameter_input_forward) &&
-           isempty(model.parameter_output_backward)
+           isempty(model.ext)
 end
 
 function MOI.empty!(model::Optimizer{T}) where {T}
@@ -135,8 +134,7 @@ function MOI.empty!(model::Optimizer{T}) where {T}
     empty!(model.dual_value_of_parameters)
     #
     model.number_of_parameters_in_model = 0
-    empty!(model.parameter_input_forward)
-    empty!(model.parameter_output_backward)
+    empty!(model.ext)
     return
 end
 
