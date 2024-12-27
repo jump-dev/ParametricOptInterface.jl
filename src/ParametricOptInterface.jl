@@ -252,6 +252,5 @@ end
 include("duals.jl")
 include("update_parameters.jl")
 include("MOI_wrapper.jl")
-include("diff.jl")
 
 end # module

@@ -67,6 +67,26 @@ function ParametricQuadraticFunction(
     )
 end
 
+function affine_parameter_terms(f::ParametricQuadraticFunction)
+    return f.p
+end
+
+function affine_variable_terms(f::ParametricQuadraticFunction)
+    return f.v
+end
+
+function quadratic_parameter_variable_terms(f::ParametricQuadraticFunction)
+    return f.pv
+end
+
+function quadratic_parameter_parameter_terms(f::ParametricQuadraticFunction)
+    return f.pp
+end
+
+function quadratic_variable_variable_terms(f::ParametricQuadraticFunction)
+    return f.vv
+end
+
 function _split_quadratic_terms(
     terms::Vector{MOI.ScalarQuadraticTerm{T}},
 ) where {T}
@@ -129,8 +149,8 @@ end
 
 function _original_function(f::ParametricQuadraticFunction{T}) where {T}
     return MOI.ScalarQuadraticFunction{T}(
-        vcat(f.pv, f.pp, f.vv),
-        vcat(f.p, f.v),
+        vcat(quadratic_parameter_variable_terms(f), quadratic_parameter_parameter_terms(f), quadratic_variable_variable_terms(f)),
+        vcat(affine_parameter_terms(f), affine_variable_terms(f)),
         f.c,
     )
 end
@@ -168,11 +188,11 @@ function _parametric_constant(
 ) where {T}
     # do not add set_function here
     param_constant = f.c
-    for term in f.p
+    for term in affine_parameter_terms(f)
         param_constant +=
             term.coefficient * model.parameters[p_idx(term.variable)]
     end
-    for term in f.pp
+    for term in quadratic_parameter_parameter_terms(f)
         param_constant +=
             (
                 term.coefficient /
@@ -189,7 +209,7 @@ function _delta_parametric_constant(
     f::ParametricQuadraticFunction{T},
 ) where {T}
     delta_constant = zero(T)
-    for term in f.p
+    for term in affine_parameter_terms(f)
         p = p_idx(term.variable)
         if !isnan(model.updated_parameters[p])
             delta_constant +=
@@ -197,7 +217,7 @@ function _delta_parametric_constant(
                 (model.updated_parameters[p] - model.parameters[p])
         end
     end
-    for term in f.pp
+    for term in quadratic_parameter_parameter_terms(f)
         p1 = p_idx(term.variable_1)
         p2 = p_idx(term.variable_2)
         isnan_1 = isnan(model.updated_parameters[p1])
@@ -229,9 +249,9 @@ function _parametric_affine_terms(
     f::ParametricQuadraticFunction{T},
 ) where {T}
     param_terms_dict = Dict{MOI.VariableIndex,T}()
-    sizehint!(param_terms_dict, length(f.pv))
+    sizehint!(param_terms_dict, length(quadratic_parameter_variable_terms(f)))
     # remember a variable may appear more than once in pv
-    for term in f.pv
+    for term in quadratic_parameter_variable_terms(f)
         base = get(param_terms_dict, term.variable_2, zero(T))
         param_terms_dict[term.variable_2] =
             base + term.coefficient * model.parameters[p_idx(term.variable_1)]
@@ -248,9 +268,9 @@ function _delta_parametric_affine_terms(
     f::ParametricQuadraticFunction{T},
 ) where {T}
     delta_terms_dict = Dict{MOI.VariableIndex,T}()
-    sizehint!(delta_terms_dict, length(f.pv))
+    sizehint!(delta_terms_dict, length(quadratic_parameter_variable_terms(f)))
     # remember a variable may appear more than once in pv
-    for term in f.pv
+    for term in quadratic_parameter_variable_terms(f)
         p = p_idx(term.variable_1)
         if !isnan(model.updated_parameters[p])
             base = get(delta_terms_dict, term.variable_2, zero(T))
@@ -287,6 +307,14 @@ function ParametricAffineFunction(f::MOI.ScalarAffineFunction{T}) where {T}
     return ParametricAffineFunction{T}(p, v, f.constant, zero(T), zero(T))
 end
 
+function affine_parameter_terms(f::ParametricAffineFunction)
+    return f.p
+end
+
+function affine_variable_terms(f::ParametricAffineFunction)
+    return f.v
+end
+
 function _split_affine_terms(terms::Vector{MOI.ScalarAffineTerm{T}}) where {T}
     num_v, num_p = _count_scalar_affine_terms_types(terms)
     v = Vector{MOI.ScalarAffineTerm{T}}(undef, num_v)
@@ -321,11 +349,11 @@ function _count_scalar_affine_terms_types(
 end
 
 function _original_function(f::ParametricAffineFunction{T}) where {T}
-    return MOI.ScalarAffineFunction{T}(vcat(f.p, f.v), f.c)
+    return MOI.ScalarAffineFunction{T}(vcat(affine_parameter_terms(f), affine_variable_terms(f)), f.c)
 end
 
 function _current_function(f::ParametricAffineFunction{T}) where {T}
-    return MOI.ScalarAffineFunction{T}(f.v, f.current_constant)
+    return MOI.ScalarAffineFunction{T}(affine_variable_terms(f), f.current_constant)
 end
 
 function _cache_set_constant!(
@@ -346,7 +374,7 @@ end
 function _parametric_constant(model, f::ParametricAffineFunction{T}) where {T}
     # do not add set_function here
     param_constant = f.c
-    for term in f.p
+    for term in affine_parameter_terms(f)
         param_constant +=
             term.coefficient * model.parameters[p_idx(term.variable)]
     end
@@ -358,7 +386,7 @@ function _delta_parametric_constant(
     f::ParametricAffineFunction{T},
 ) where {T}
     delta_constant = zero(T)
-    for term in f.p
+    for term in affine_parameter_terms(f)
         p = p_idx(term.variable)
         if !isnan(model.updated_parameters[p])
             delta_constant +=
@@ -400,6 +428,14 @@ function ParametricVectorAffineFunction(
     )
 end
 
+function vector_affine_parameter_terms(f::ParametricVectorAffineFunction)
+    return f.p
+end
+
+function vector_affine_variable_terms(f::ParametricVectorAffineFunction)
+    return f.v
+end
+
 function _split_vector_affine_terms(
     terms::Vector{MOI.VectorAffineTerm{T}},
 ) where {T}
@@ -436,11 +472,11 @@ function _count_vector_affine_terms_types(
 end
 
 function _original_function(f::ParametricVectorAffineFunction{T}) where {T}
-    return MOI.VectorAffineFunction{T}(vcat(f.p, f.v), f.c)
+    return MOI.VectorAffineFunction{T}(vcat(vector_affine_parameter_terms(f), vector_affine_variable_terms(f)), f.c)
 end
 
 function _current_function(f::ParametricVectorAffineFunction{T}) where {T}
-    return MOI.VectorAffineFunction{T}(f.v, f.current_constant)
+    return MOI.VectorAffineFunction{T}(vector_affine_variable_terms(f), f.current_constant)
 end
 
 function _parametric_constant(
@@ -449,7 +485,7 @@ function _parametric_constant(
 ) where {T}
     # do not add set_function here
     param_constant = copy(f.c)
-    for term in f.p
+    for term in vector_affine_parameter_terms(f)
         param_constant[term.output_index] +=
             term.scalar_term.coefficient *
             model.parameters[p_idx(term.scalar_term.variable)]
@@ -462,7 +498,7 @@ function _delta_parametric_constant(
     f::ParametricVectorAffineFunction{T},
 ) where {T}
     delta_constant = zeros(T, length(f.c))
-    for term in f.p
+    for term in vector_affine_parameter_terms(f)
         p = p_idx(term.scalar_term.variable)
         if !isnan(model.updated_parameters[p])
             delta_constant[term.output_index] +=

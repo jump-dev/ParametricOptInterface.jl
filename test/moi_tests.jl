@@ -22,6 +22,11 @@ function test_basic_tests()
     for x_i in x
         MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
+    @test MOI.is_valid(optimizer, x[1])
+    @test MOI.is_valid(optimizer, y)
+    @test !MOI.is_valid(optimizer, z)
+    @test MOI.is_valid(optimizer, cy)
+    @test !MOI.is_valid(optimizer, cz)
     @test_throws ErrorException("Cannot constrain a parameter") MOI.add_constraint(
         optimizer,
         y,
