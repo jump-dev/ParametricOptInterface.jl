@@ -143,11 +143,23 @@ end
 #
 
 function MOI.is_valid(model::Optimizer, vi::MOI.VariableIndex)
-    return haskey(model.variables, vi) || haskey(model.parameters, p_idx(vi))
+    if haskey(model.variables, vi)
+        return true
+    elseif haskey(model.parameters, p_idx(vi))
+        return true
+    end
+    return false
 end
 
-function MOI.is_valid(model::Optimizer, ci::MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}}) where {T}
-    return haskey(model.parameters, p_idx(MOI.VariableIndex(ci.value)))
+function MOI.is_valid(
+    model::Optimizer,
+    ci::MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}},
+) where {T}
+    vi = MOI.VariableIndex(ci.value)
+    if haskey(model.parameters, p_idx(vi))
+        return true
+    end
+    return false
 end
 
 function MOI.supports(
@@ -227,6 +239,24 @@ function _add_to_constraint_map!(model::Optimizer, ci)
     return
 end
 
+function _add_to_constraint_map!(
+    model::Optimizer,
+    ci::MOI.ConstraintIndex{F,S},
+) where {F<:MOI.ScalarAffineFunction,S}
+    model.last_affine_added += 1
+    model.constraint_outer_to_inner[ci] = ci
+    return
+end
+
+function _add_to_constraint_map!(
+    model::Optimizer,
+    ci::MOI.ConstraintIndex{F,S},
+) where {F<:MOI.ScalarQuadraticFunction,S}
+    model.last_quad_add_added += 1
+    model.constraint_outer_to_inner[ci] = ci
+    return
+end
+
 function MOI.supports(
     model::Optimizer,
     attr::MOI.AbstractVariableAttribute,
@@ -291,11 +321,8 @@ function _delete_variable_index_constraint(
     value,
 )
     inner = d[F, S]
-    for k in keys(inner)
-        if k.value == value
-            delete!(inner, k)
-        end
-    end
+    key = MOI.ConstraintIndex{F,S}(value)
+    delete!(inner, key)
     return
 end
 
@@ -457,9 +484,9 @@ end
 function MOI.set(
     model::Optimizer,
     ::MOI.ConstraintFunction,
-    c::MOI.ConstraintIndex{F,S},
+    c::MOI.ConstraintIndex{F},
     f::F,
-) where {F,S}
+) where {F}
     MOI.set(model.optimizer, MOI.ConstraintFunction(), c, f)
     return
 end
@@ -467,8 +494,8 @@ end
 function MOI.get(
     model::Optimizer,
     attr::MOI.ConstraintFunction,
-    ci::MOI.ConstraintIndex{F,S},
-) where {F,S}
+    ci::MOI.ConstraintIndex,
+)
     if haskey(model.quadratic_outer_to_inner, ci)
         inner_ci = model.quadratic_outer_to_inner[ci]
         return _original_function(model.quadratic_constraint_cache[inner_ci])
@@ -506,8 +533,8 @@ end
 function MOI.get(
     model::Optimizer,
     attr::MOI.ConstraintSet,
-    ci::MOI.ConstraintIndex{F,S},
-) where {F,S}
+    ci::MOI.ConstraintIndex,
+)
     if haskey(model.quadratic_outer_to_inner, ci)
         inner_ci = model.quadratic_outer_to_inner[ci]
         return model.quadratic_constraint_cache_set[inner_ci]
@@ -587,7 +614,6 @@ function _add_constraint_with_parameters_on_function(
     set::S,
 ) where {T,S}
     pf = ParametricAffineFunction(f)
-    _cache_set_constant!(pf, set)
     if model.constraints_interpretation == ONLY_BOUNDS
         if length(pf.v) == 1 && isone(MOI.coefficient(pf.v[]))
             poi_ci = _add_vi_constraint(model, pf, set)
@@ -597,24 +623,25 @@ function _add_constraint_with_parameters_on_function(
             )
         end
     elseif model.constraints_interpretation == ONLY_CONSTRAINTS
-        poi_ci = _add_saf_constraint(model, pf, set)
+        poi_ci = MOI.add_constraint(model, pf, set)
     elseif model.constraints_interpretation == BOUNDS_AND_CONSTRAINTS
         if length(pf.v) == 1 && isone(MOI.coefficient(pf.v[]))
             poi_ci = _add_vi_constraint(model, pf, set)
         else
-            poi_ci = _add_saf_constraint(model, pf, set)
+            poi_ci = MOI.add_constraint(model, pf, set)
         end
     end
     return poi_ci
 end
 
-function _add_saf_constraint(
+function MOI.add_constraint(
     model::Optimizer,
     pf::ParametricAffineFunction{T},
     set::S,
 ) where {T,S}
+    _cache_set_constant!(pf, set)
     _update_cache!(pf, model)
-    inner_ci = MOI.Utilities.normalize_and_add_constraint(
+    inner_ci = MOI.add_constraint(
         model.optimizer,
         MOI.ScalarAffineFunction{T}(pf.v, 0.0),
         _set_with_new_constant(set, pf.current_constant),
@@ -635,8 +662,9 @@ function _add_vi_constraint(
     pf::ParametricAffineFunction{T},
     set::S,
 ) where {T,S}
+    _cache_set_constant!(pf, set)
     _update_cache!(pf, model)
-    inner_ci = MOI.Utilities.normalize_and_add_constraint(
+    inner_ci = MOI.add_constraint(
         model.optimizer,
         pf.v[].variable,
         _set_with_new_constant(set, pf.current_constant),
@@ -712,13 +740,10 @@ function _add_constraint_with_parameters_on_function(
     _update_cache!(pf, model)
 
     func = _current_function(pf)
-    f_quad = if !_is_affine(func)
+    if !_is_affine(func)
         fq = func
-        inner_ci = MOI.Utilities.normalize_and_add_constraint(
-            model.optimizer,
-            fq,
-            s,
-        )
+        inner_ci =
+            MOI.Utilities.normalize_and_add_constraint(model.optimizer, fq, s)
         model.last_quad_add_added += 1
         outer_ci = MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},S}(
             model.last_quad_add_added,
@@ -727,11 +752,8 @@ function _add_constraint_with_parameters_on_function(
         model.constraint_outer_to_inner[outer_ci] = inner_ci
     else
         fa = MOI.ScalarAffineFunction(func.affine_terms, func.constant)
-        inner_ci = MOI.Utilities.normalize_and_add_constraint(
-            model.optimizer,
-            fa,
-            s,
-        )
+        inner_ci =
+            MOI.Utilities.normalize_and_add_constraint(model.optimizer, fa, s)
         model.last_quad_add_added += 1
         outer_ci = MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},S}(
             model.last_quad_add_added,
@@ -954,18 +976,6 @@ function MOI.set(
 end
 
 #
-# NLP
-#
-
-function MOI.supports(model::Optimizer, ::MOI.NLPBlock)
-    return MOI.supports(model.optimizer, MOI.NLPBlock())
-end
-
-function MOI.set(model::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
-    return MOI.set(model.optimizer, MOI.NLPBlock(), nlp_data)
-end
-
-#
 # Other
 #
 
@@ -1008,7 +1018,8 @@ function MOI.get(
 end
 
 function MOI.get(model::Optimizer, ::MOI.NumberOfVariables)
-    return length(model.parameters) + length(model.variables)
+    return MOI.get(model, NumberOfPureVariables()) +
+           MOI.get(model, NumberOfParameters())
 end
 
 function MOI.get(model::Optimizer, ::MOI.NumberOfConstraints{F,S}) where {S,F}
@@ -1016,7 +1027,10 @@ function MOI.get(model::Optimizer, ::MOI.NumberOfConstraints{F,S}) where {S,F}
 end
 
 function MOI.get(model::Optimizer, ::MOI.ListOfVariableIndices)
-    return MOI.get(model.optimizer, MOI.ListOfVariableIndices())
+    return vcat(
+        MOI.get(model, ListOfPureVariableIndices()),
+        v_idx.(MOI.get(model, ListOfParameterIndices())),
+    )
 end
 
 function MOI.get(model::Optimizer, ::MOI.ListOfConstraintTypesPresent)
@@ -1101,29 +1115,11 @@ end
 
 function MOI.get(
     model::Optimizer,
-    attr::T,
+    attr::MOI.AbstractConstraintAttribute,
     c::MOI.ConstraintIndex,
-) where {
-    T<:Union{MOI.ConstraintPrimal,MOI.ConstraintDual,MOI.ConstraintBasisStatus},
-}
-    return MOI.get(model.optimizer, attr, c)
-end
-
-function MOI.get(
-    model::Optimizer,
-    attr::AT,
-    c::MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S},
-) where {
-    AT<:Union{
-        MOI.ConstraintPrimal,
-        MOI.ConstraintDual,
-        MOI.ConstraintBasisStatus,
-    },
-    T,
-    S<:MOI.AbstractScalarSet,
-}
-    moi_ci = get(model.affine_outer_to_inner, c, c)
-    return MOI.get(model.optimizer, attr, moi_ci)
+)
+    optimizer_ci = get(model.constraint_outer_to_inner, c, c)
+    return MOI.get(model.optimizer, attr, optimizer_ci)
 end
 
 #
@@ -1199,17 +1195,29 @@ function MOI.get(
 ) where {F,S, P <: ParametricQuadraticFunction}
     return model.quadratic_constraint_cache[F, S]
 end
+ 
+struct NumberOfPureVariables <: MOI.AbstractModelAttribute end
+
+function MOI.get(model::Optimizer, ::NumberOfPureVariables)
+    return length(model.variables)
+end
 
 struct ListOfPureVariableIndices <: MOI.AbstractModelAttribute end
 
 function MOI.get(model::Optimizer, ::ListOfPureVariableIndices)
-    return collect(keys(model.variables))
+    return collect(keys(model.variables))::Vector{MOI.VariableIndex}
+end
+
+struct NumberOfParameters <: MOI.AbstractModelAttribute end
+
+function MOI.get(model::Optimizer, ::NumberOfParameters)
+    return length(model.parameters)
 end
 
 struct ListOfParameterIndices <: MOI.AbstractModelAttribute end
 
 function MOI.get(model::Optimizer, ::ListOfParameterIndices)
-    return collect(keys(model.parameters))
+    return collect(keys(model.parameters))::Vector{ParameterIndex}
 end
 
 """
@@ -1445,73 +1453,6 @@ function MOI.get(
 end
 
 #
-# Copy
-#
-
-function MOI.Utilities.default_copy_to(
-    dest::MOI.Bridges.LazyBridgeOptimizer{Optimizer{T,OT}},
-    src::MOI.ModelLike,
-) where {T,OT}
-    return _poi_default_copy_to(dest, src)
-end
-
-function MOI.Utilities.default_copy_to(
-    dest::Optimizer{T,OT},
-    src::MOI.ModelLike,
-) where {T,OT}
-    return _poi_default_copy_to(dest, src)
-end
-
-function _poi_default_copy_to(dest::T, src::MOI.ModelLike) where {T}
-    if !MOI.supports_incremental_interface(dest)
-        error("Model $(typeof(dest)) does not support copy_to.")
-    end
-    MOI.empty!(dest)
-    vis_src = MOI.get(src, MOI.ListOfVariableIndices())
-    index_map = MOI.IndexMap()
-    # The `NLPBlock` assumes that the order of variables does not change (#849)
-    # Therefore, all VariableIndex and VectorOfVariable constraints are added
-    # seprately, and no variables constrained-on-creation are added.
-
-    # This is not valid for NLPs with Parameters, they should enter
-    has_nlp = MOI.NLPBlock() in MOI.get(src, MOI.ListOfModelAttributesSet())
-    constraints_not_added = if has_nlp
-        vcat(
-            Any[
-                MOI.get(src, MOI.ListOfConstraintIndices{F,S}()) for
-                (F, S) in MOI.get(src, MOI.ListOfConstraintTypesPresent()) if
-                MOI.Utilities._is_variable_function(F) &&
-                    S != MOI.Parameter{Float64}
-            ],
-            Any[MOI.Utilities._try_constrain_variables_on_creation(
-                dest,
-                src,
-                index_map,
-                MOI.Parameter{Float64},
-            )],
-        )
-    else
-        Any[
-            MOI.Utilities._try_constrain_variables_on_creation(
-                dest,
-                src,
-                index_map,
-                S,
-            ) for S in MOI.Utilities.sorted_variable_sets_by_cost(dest, src)
-        ]
-    end
-    MOI.Utilities._copy_free_variables(dest, index_map, vis_src)
-    # Copy variable attributes
-    MOI.Utilities.pass_attributes(dest, src, index_map, vis_src)
-    # Copy model attributes
-    MOI.Utilities.pass_attributes(dest, src, index_map)
-    # Copy constraints
-    MOI.Utilities._pass_constraints(dest, src, index_map, constraints_not_added)
-    MOI.Utilities.final_touch(dest, index_map)
-    return index_map
-end
-
-#
 # Optimize
 #
 
@@ -1527,11 +1468,25 @@ function MOI.optimize!(model::Optimizer)
         _set_quadratic_product_in_obj!(model)
     end
     MOI.optimize!(model.optimizer)
-    if MOI.get(model, MOI.DualStatus()) == MOI.NO_SOLUTION &&
+    if MOI.get(model, MOI.DualStatus()) != MOI.NO_SOLUTION &&
        model.evaluate_duals
-        @warn "Dual solution not available, ignoring `evaluate_duals`"
-    elseif model.evaluate_duals
         _compute_dual_of_parameters!(model)
     end
     return
+end
+
+#
+# compute_conflict!
+#
+
+function MOI.compute_conflict!(model::Optimizer)
+    return MOI.compute_conflict!(model.optimizer)
+end
+
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.ConstraintConflictStatus,
+    ci::MOI.ConstraintIndex{MOI.VariableIndex,<:MOI.Parameter},
+)
+    return MOI.MAYBE_IN_CONFLICT
 end

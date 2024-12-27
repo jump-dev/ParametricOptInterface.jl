@@ -17,8 +17,14 @@ function test_basic_tests()
     MOI.set(optimizer, MOI.Silent(), true)
     x = MOI.add_variables(optimizer, 2)
     y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    @test MOI.is_valid(optimizer, x[1])
+    @test MOI.is_valid(optimizer, y)
+    @test MOI.is_valid(optimizer, cy)
+    @test MOI.get(optimizer, POI.ListOfPureVariableIndices()) == x
+    @test MOI.get(optimizer, MOI.ListOfVariableIndices()) == [x[1], x[2], y]
     z = MOI.VariableIndex(4)
     cz = MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{Float64}}(4)
+    @test !MOI.is_valid(optimizer, z)
     for x_i in x
         MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
@@ -213,9 +219,6 @@ function test_moi_glpk()
         exclude = [
             # GLPK returns INVALID_MODEL instead of INFEASIBLE
             "test_constraint_ZeroOne_bounds_3",
-            # Upstream issue: https://github.com/jump-dev/MathOptInterface.jl/issues/1431
-            "test_model_LowerBoundAlreadySet",
-            "test_model_UpperBoundAlreadySet",
         ],
     )
     return
@@ -264,18 +267,7 @@ function test_moi_ipopt()
             #  - Excluded because Ipopt returns LOCALLY_INFEASIBLE instead of
             #    INFEASIBLE
             "INFEASIBLE",
-            "test_conic_linear_INFEASIBLE",
-            "test_conic_linear_INFEASIBLE_2",
             "test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_",
-            #  - Excluded due to upstream issue
-            "test_model_LowerBoundAlreadySet",
-            "test_model_UpperBoundAlreadySet",
-            #  - CachingOptimizer does not throw if optimizer not attached
-            "test_model_copy_to_UnsupportedAttribute",
-            "test_model_copy_to_UnsupportedConstraint",
-            #  - POI throws a ErrorException if user tries to modify parametric
-            #    functions
-            "test_objective_get_ObjectiveFunction_ScalarAffineFunction",
         ],
     )
     return
@@ -1601,5 +1593,120 @@ function test_qp_objective_parameter_in_quadratic_part()
     @test MOI.get(model, MOI.ObjectiveValue()) ≈ 32 / 9 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 4 / 3 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 4 / 3 atol = ATOL
+    return
+end
+
+function test_compute_conflict!()
+    T = Float64
+    mock = MOI.Utilities.MockOptimizer(MOI.Utilities.Model{T}())
+    MOI.set(mock, MOI.ConflictStatus(), MOI.COMPUTE_CONFLICT_NOT_CALLED)
+    model = POI.Optimizer(
+        MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{T}(), mock),
+    )
+    x, x_ci = MOI.add_constrained_variable(model, MOI.GreaterThan(1.0))
+    p, p_ci = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    ci = MOI.add_constraint(model, 2.0 * x + 3.0 * p, MOI.LessThan(0.0))
+    @test MOI.get(model, MOI.ConflictStatus()) ==
+          MOI.COMPUTE_CONFLICT_NOT_CALLED
+    MOI.Utilities.set_mock_optimize!(
+        mock,
+        mock::MOI.Utilities.MockOptimizer -> begin
+            MOI.Utilities.mock_optimize!(
+                mock,
+                MOI.INFEASIBLE,
+                MOI.NO_SOLUTION,
+                MOI.NO_SOLUTION;
+                constraint_conflict_status = [
+                    (MOI.VariableIndex, MOI.Parameter{T}) =>
+                        [MOI.MAYBE_IN_CONFLICT],
+                    (MOI.VariableIndex, MOI.GreaterThan{T}) =>
+                        [MOI.IN_CONFLICT],
+                    (MOI.ScalarAffineFunction{T}, MOI.LessThan{T}) =>
+                        [MOI.IN_CONFLICT],
+                ],
+            )
+            MOI.set(mock, MOI.ConflictStatus(), MOI.CONFLICT_FOUND)
+        end,
+    )
+    MOI.optimize!(model)
+    @test MOI.get(model, MOI.TerminationStatus()) == MOI.INFEASIBLE
+    MOI.compute_conflict!(model)
+    @test MOI.get(model, MOI.ConflictStatus()) == MOI.CONFLICT_FOUND
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), x_ci) ==
+          MOI.IN_CONFLICT
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), p_ci) ==
+          MOI.MAYBE_IN_CONFLICT
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), ci) == MOI.IN_CONFLICT
+    return
+end
+
+function test_duals_not_available()
+    optimizer = POI.Optimizer(GLPK.Optimizer(); evaluate_duals = false)
+    MOI.set(optimizer, MOI.Silent(), true)
+    x = MOI.add_variables(optimizer, 2)
+    y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    z = MOI.VariableIndex(4)
+    cz = MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{Float64}}(4)
+    for x_i in x
+        MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
+    end
+    cons1 = MOI.ScalarAffineFunction(
+        MOI.ScalarAffineTerm.([1.0, 1.0], [x[1], y]),
+        0.0,
+    )
+    c1 = MOI.add_constraint(optimizer, cons1, MOI.EqualTo(2.0))
+    obj_func = MOI.ScalarAffineFunction(
+        MOI.ScalarAffineTerm.([1.0, 1.0], [x[1], y]),
+        0.0,
+    )
+    MOI.set(
+        optimizer,
+        MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
+        obj_func,
+    )
+    MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    MOI.optimize!(optimizer)
+    @test_throws MOI.GetAttributeNotAllowed MOI.get(
+        optimizer,
+        MOI.ConstraintDual(),
+        cy,
+    )
+    return
+end
+
+function test_duals_without_parameters()
+    optimizer = POI.Optimizer(GLPK.Optimizer())
+    MOI.set(optimizer, MOI.Silent(), true)
+    x = MOI.add_variables(optimizer, 3)
+    y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    z, cz = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    cons1 = MOI.ScalarAffineFunction(
+        MOI.ScalarAffineTerm.([1.0, -1.0], [x[1], y]),
+        0.0,
+    )
+    c1 = MOI.add_constraint(optimizer, cons1, MOI.LessThan(0.0))
+    cons2 = MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(1.0, x[2])], 0.0)
+    c2 = MOI.add_constraint(optimizer, cons2, MOI.LessThan(1.0))
+    cons3 = MOI.ScalarAffineFunction(
+        MOI.ScalarAffineTerm.([1.0, -1.0], [x[3], z]),
+        0.0,
+    )
+    c3 = MOI.add_constraint(optimizer, cons3, MOI.LessThan(0.0))
+    obj_func = MOI.ScalarAffineFunction(
+        MOI.ScalarAffineTerm.([1.0, 2.0, 3.0], [x[1], x[2], x[3]]),
+        0.0,
+    )
+    MOI.set(
+        optimizer,
+        MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
+        obj_func,
+    )
+    MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(1.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(1.0))
+    MOI.optimize!(optimizer)
+    @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), c1), -1.0, atol = ATOL)
+    @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), c2), -2.0, atol = ATOL)
+    @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), c3), -3.0, atol = ATOL)
     return
 end

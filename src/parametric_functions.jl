@@ -1,5 +1,21 @@
+abstract type ParametricFunction{T} end
 
-mutable struct ParametricQuadraticFunction{T}
+function _cache_set_constant!(
+    f::ParametricFunction{T},
+    s::Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+) where {T}
+    f.set_constant = MOI.constant(s)
+    return
+end
+
+function _cache_set_constant!(
+    ::ParametricFunction{T},
+    ::MOI.AbstractScalarSet,
+) where {T}
+    return
+end
+
+mutable struct ParametricQuadraticFunction{T} <: ParametricFunction{T}
     # helper to efficiently update affine terms 
     affine_data::Dict{MOI.VariableIndex,T}
     affine_data_np::Dict{MOI.VariableIndex,T}
@@ -167,21 +183,6 @@ function _current_function(f::ParametricQuadraticFunction{T}) where {T}
     return MOI.ScalarQuadraticFunction{T}(f.vv, affine, f.current_constant)
 end
 
-function _cache_set_constant!(
-    f::ParametricQuadraticFunction{T},
-    s::Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
-) where {T}
-    f.set_constant = MOI.constant(s)
-    return
-end
-
-function _cache_set_constant!(
-    ::ParametricQuadraticFunction{T},
-    ::MOI.AbstractScalarSet,
-) where {T}
-    return
-end
-
 function _parametric_constant(
     model,
     f::ParametricQuadraticFunction{T},
@@ -289,7 +290,7 @@ function _update_cache!(f::ParametricQuadraticFunction{T}, model) where {T}
     return nothing
 end
 
-mutable struct ParametricAffineFunction{T}
+mutable struct ParametricAffineFunction{T} <: ParametricFunction{T}
     # constant * parameter
     p::Vector{MOI.ScalarAffineTerm{T}}
     # constant * variable
@@ -304,7 +305,21 @@ end
 
 function ParametricAffineFunction(f::MOI.ScalarAffineFunction{T}) where {T}
     v, p = _split_affine_terms(f.terms)
-    return ParametricAffineFunction{T}(p, v, f.constant, zero(T), zero(T))
+    return ParametricAffineFunction(p, v, f.constant)
+end
+
+function ParametricAffineFunction(
+    terms_p::Vector{MOI.ScalarAffineTerm{T}},
+    terms_v::Vector{MOI.ScalarAffineTerm{T}},
+    constant::T,
+) where {T}
+    return ParametricAffineFunction{T}(
+        terms_p,
+        terms_v,
+        constant,
+        zero(T),
+        zero(T),
+    )
 end
 
 function affine_parameter_terms(f::ParametricAffineFunction)
@@ -354,21 +369,6 @@ end
 
 function _current_function(f::ParametricAffineFunction{T}) where {T}
     return MOI.ScalarAffineFunction{T}(affine_variable_terms(f), f.current_constant)
-end
-
-function _cache_set_constant!(
-    f::ParametricAffineFunction{T},
-    s::Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
-) where {T}
-    f.set_constant = MOI.constant(s)
-    return
-end
-
-function _cache_set_constant!(
-    f::ParametricAffineFunction{T},
-    s::MOI.AbstractScalarSet,
-) where {T}
-    return
 end
 
 function _parametric_constant(model, f::ParametricAffineFunction{T}) where {T}
