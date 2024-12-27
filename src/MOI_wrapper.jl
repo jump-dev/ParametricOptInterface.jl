@@ -1139,7 +1139,10 @@ end
 
 struct ParametricObjectiveFunction{T} <: MOI.AbstractModelAttribute end
 
-function MOI.get(model::Optimizer{T}, ::ParametricObjectiveFunction{ParametricQuadraticFunction{T}}) where {T}
+function MOI.get(
+    model::Optimizer{T},
+    ::ParametricObjectiveFunction{ParametricQuadraticFunction{T}},
+) where {T}
     if model.quadratic_objective_cache === nothing
         error("
             There is no parametric quadratic objective function in the model.
@@ -1148,7 +1151,10 @@ function MOI.get(model::Optimizer{T}, ::ParametricObjectiveFunction{ParametricQu
     return model.quadratic_objective_cache
 end
 
-function MOI.get(model::Optimizer{T}, ::ParametricObjectiveFunction{ParametricAffineFunction{T}}) where {T}
+function MOI.get(
+    model::Optimizer{T},
+    ::ParametricObjectiveFunction{ParametricAffineFunction{T}},
+) where {T}
     if model.affine_objective_cache === nothing
         error("
             There is no parametric affine objective function in the model.
@@ -1159,43 +1165,53 @@ end
 
 struct ListOfParametricConstraintTypesPresent <: MOI.AbstractModelAttribute end
 
-function MOI.get(model::Optimizer{T}, ::ListOfParametricConstraintTypesPresent) where {T}
+function MOI.get(
+    model::Optimizer{T},
+    ::ListOfParametricConstraintTypesPresent,
+) where {T}
     output = Set{Tuple{DataType,DataType,DataType}}()
-    for (F, S) in MOI.Utilities.DoubleDicts.nonempty_outer_keys(model.affine_constraint_cache)
+    for (F, S) in MOI.Utilities.DoubleDicts.nonempty_outer_keys(
+        model.affine_constraint_cache,
+    )
         push!(output, (F, S, ParametricAffineFunction{T}))
     end
-    for (F, S) in MOI.Utilities.DoubleDicts.nonempty_outer_keys(model.vector_affine_constraint_cache)
+    for (F, S) in MOI.Utilities.DoubleDicts.nonempty_outer_keys(
+        model.vector_affine_constraint_cache,
+    )
         push!(output, (F, S, ParametricVectorAffineFunction{T}))
     end
-    for (F, S) in MOI.Utilities.DoubleDicts.nonempty_outer_keys(model.quadratic_constraint_cache)
+    for (F, S) in MOI.Utilities.DoubleDicts.nonempty_outer_keys(
+        model.quadratic_constraint_cache,
+    )
         push!(output, (F, S, ParametricQuadraticFunction{T}))
     end
     return collect(output)
 end
 
-struct DictOfParametricConstraintIndicesAndFunctions{F,S,P} <: MOI.AbstractModelAttribute end
+struct DictOfParametricConstraintIndicesAndFunctions{F,S,P} <:
+       MOI.AbstractModelAttribute end
 
 function MOI.get(
     model::Optimizer,
     ::DictOfParametricConstraintIndicesAndFunctions{F,S,P},
-) where {F,S,P <: ParametricAffineFunction}
+) where {F,S,P<:ParametricAffineFunction}
     return model.affine_constraint_cache[F, S]
 end
 
 function MOI.get(
     model::Optimizer,
     ::DictOfParametricConstraintIndicesAndFunctions{F,S,P},
-) where {F,S,P <: ParametricVectorAffineFunction}
+) where {F,S,P<:ParametricVectorAffineFunction}
     return model.vector_affine_constraint_cache[F, S]
 end
 
 function MOI.get(
     model::Optimizer,
     ::DictOfParametricConstraintIndicesAndFunctions{F,S,P},
-) where {F,S, P <: ParametricQuadraticFunction}
+) where {F,S,P<:ParametricQuadraticFunction}
     return model.quadratic_constraint_cache[F, S]
 end
- 
+
 struct NumberOfPureVariables <: MOI.AbstractModelAttribute end
 
 function MOI.get(model::Optimizer, ::NumberOfPureVariables)

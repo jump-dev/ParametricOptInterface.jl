@@ -165,7 +165,11 @@ end
 
 function _original_function(f::ParametricQuadraticFunction{T}) where {T}
     return MOI.ScalarQuadraticFunction{T}(
-        vcat(quadratic_parameter_variable_terms(f), quadratic_parameter_parameter_terms(f), quadratic_variable_variable_terms(f)),
+        vcat(
+            quadratic_parameter_variable_terms(f),
+            quadratic_parameter_parameter_terms(f),
+            quadratic_variable_variable_terms(f),
+        ),
         vcat(affine_parameter_terms(f), affine_variable_terms(f)),
         f.c,
     )
@@ -364,11 +368,17 @@ function _count_scalar_affine_terms_types(
 end
 
 function _original_function(f::ParametricAffineFunction{T}) where {T}
-    return MOI.ScalarAffineFunction{T}(vcat(affine_parameter_terms(f), affine_variable_terms(f)), f.c)
+    return MOI.ScalarAffineFunction{T}(
+        vcat(affine_parameter_terms(f), affine_variable_terms(f)),
+        f.c,
+    )
 end
 
 function _current_function(f::ParametricAffineFunction{T}) where {T}
-    return MOI.ScalarAffineFunction{T}(affine_variable_terms(f), f.current_constant)
+    return MOI.ScalarAffineFunction{T}(
+        affine_variable_terms(f),
+        f.current_constant,
+    )
 end
 
 function _parametric_constant(model, f::ParametricAffineFunction{T}) where {T}
@@ -472,11 +482,17 @@ function _count_vector_affine_terms_types(
 end
 
 function _original_function(f::ParametricVectorAffineFunction{T}) where {T}
-    return MOI.VectorAffineFunction{T}(vcat(vector_affine_parameter_terms(f), vector_affine_variable_terms(f)), f.c)
+    return MOI.VectorAffineFunction{T}(
+        vcat(vector_affine_parameter_terms(f), vector_affine_variable_terms(f)),
+        f.c,
+    )
 end
 
 function _current_function(f::ParametricVectorAffineFunction{T}) where {T}
-    return MOI.VectorAffineFunction{T}(vector_affine_variable_terms(f), f.current_constant)
+    return MOI.VectorAffineFunction{T}(
+        vector_affine_variable_terms(f),
+        f.current_constant,
+    )
 end
 
 function _parametric_constant(
