@@ -28,6 +28,11 @@ function test_basic_tests()
     for x_i in x
         MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
+    @test MOI.is_valid(optimizer, x[1])
+    @test MOI.is_valid(optimizer, y)
+    @test !MOI.is_valid(optimizer, z)
+    @test MOI.is_valid(optimizer, cy)
+    @test !MOI.is_valid(optimizer, cz)
     @test_throws ErrorException("Cannot constrain a parameter") MOI.add_constraint(
         optimizer,
         y,
@@ -99,6 +104,7 @@ function test_basic_tests()
     @test MOI.supports(optimizer, MOI.VariableName(), MOI.VariableIndex)
     @test MOI.get(optimizer, MOI.ObjectiveSense()) == MOI.MIN_SENSE
     @test MOI.get(optimizer, MOI.VariableName(), x[1]) == ""
+    @test MOI.get(optimizer, MOI.VariableName(), y) == "" # ???
     @test MOI.get(optimizer, MOI.ConstraintName(), c1) == ""
     MOI.set(optimizer, MOI.ConstraintName(), c1, "ctr123")
     @test MOI.get(optimizer, MOI.ConstraintName(), c1) == "ctr123"
@@ -1146,8 +1152,13 @@ function test_qp_parameter_times_variable()
     @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 0.5, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 29.25, atol = ATOL)
     MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(2.0))
+    # this implies: x1 + x2 + x1^2 + x1*y + y^2 <= 30
+    # becomes: 2 * x1 + x2 + x1^2 <= 30 - 4 = 26
+    # then x1 = 0 and x2 = 26 and obj = 26
+    # is x1 = eps >= 0, x2 = 26 - 2 * eps - eps^2 and
+    # obj = 26 - 2 * eps - eps^2 + 2 * eps = 26 - eps ^2 (eps == 0 to maximize)
     MOI.optimize!(optimizer)
-    @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 22.0, atol = ATOL)
+    @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 26.0, atol = ATOL)
     return
 end
 
@@ -1190,7 +1201,13 @@ function test_qp_variable_times_parameter()
     @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 29.25, atol = ATOL)
     MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(2.0))
     MOI.optimize!(optimizer)
-    @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 22.0, atol = ATOL)
+    # this implies: x1 + x2 + x1^2 + x1*y + y^2 <= 30
+    # becomes: 2 * x1 + x2 + x1^2 <= 30 - 4 = 26
+    # then x1 = 0 and x2 = 26 and obj = 26
+    # is x1 = eps >= 0, x2 = 26 - 2 * eps - eps^2 and
+    # obj = 26 - 2 * eps - eps^2 + 2 * eps = 26 - eps ^2 (eps == 0 to maximize)
+    MOI.optimize!(optimizer)
+    @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 26.0, atol = ATOL)
     return
 end
 
@@ -1204,12 +1221,17 @@ function test_qp_parameter_times_parameter()
     a = [1.0, 1.0]
     c = [2.0, 1.0]
     x = MOI.add_variables(optimizer, 2)
+    # x1 >= 0, x2 >= 0
     for x_i in x
         MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
     end
+    # x1 <= 20
     MOI.add_constraint(optimizer, x[1], MOI.LessThan(20.0))
+    # y == 0
     y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    # z == 0
     z, cz = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+    # x1 + x2 + y^2 + yz + z^2 <= 30
     quad_terms = MOI.ScalarQuadraticTerm{Float64}[]
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 1], y, y))
     push!(quad_terms, MOI.ScalarQuadraticTerm(A[1, 2], y, z))
@@ -1220,6 +1242,7 @@ function test_qp_parameter_times_parameter()
         0.0,
     )
     MOI.add_constraint(optimizer, constraint_function, MOI.LessThan(30.0))
+    # max 2x1 + x2
     obj_func =
         MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(c, [x[1], x[2]]), 0.0)
     MOI.set(
@@ -1240,16 +1263,28 @@ function test_qp_parameter_times_parameter()
         10.0,
         atol = ATOL,
     )
+    # now x1 + x2 + y^2 + yz + z^2 <= 30
+    # implies x1 + x2 <= 26
     MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(2.0))
     MOI.optimize!(optimizer)
-    @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 42.0, atol = ATOL)
+    # hence x1 = 20, x2 = 6
+    # and obj = 46
+    @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 46.0, atol = ATOL)
     MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(1.0))
+    # now x1 + x2 + y^2 + yz + z^2 <= 30
+    # implies x1 + x2 <= 30 - 4 - 2 - 1 = 23
+    # hence x1 = 20, x2 = 3
+    # and obj = 43
     MOI.optimize!(optimizer)
-    @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 36.0, atol = ATOL)
+    @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 43.0, atol = ATOL)
     MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(-1.0))
     MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(-1.0))
+    # now x1 + x2 + y^2 + yz + z^2 <= 30
+    # implies x1 + x2 <= 30 -1 -1 -1 = 27
+    # hence x1 = 20, x2 = 7
+    # and obj = 47
     MOI.optimize!(optimizer)
-    @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 45.0, atol = ATOL)
+    @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 47.0, atol = ATOL)
     return
 end
 
@@ -1674,5 +1709,193 @@ function test_duals_without_parameters()
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), c1), -1.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), c2), -2.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), c3), -3.0, atol = ATOL)
+    return
+end
+
+function test_getters()
+    cached = MOI.Utilities.CachingOptimizer(
+        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+        SCS.Optimizer(),
+    )
+    optimizer = POI.Optimizer(cached)
+    MOI.set(optimizer, MOI.Silent(), true)
+    x = MOI.add_variable(optimizer)
+    @test isempty(
+        MOI.get(optimizer, POI.ListOfParametricConstraintTypesPresent()),
+    )
+    p, cp = MOI.add_constrained_variable(optimizer, MOI.Parameter(1.0))
+    @test isempty(
+        MOI.get(optimizer, POI.ListOfParametricConstraintTypesPresent()),
+    )
+    MOI.add_constraint(optimizer, 1.0x + 2.0p + 0.0, MOI.GreaterThan(0.0))
+    T1 = (
+        MOI.ScalarAffineFunction{Float64},
+        MOI.GreaterThan{Float64},
+        POI.ParametricAffineFunction{Float64},
+    )
+    T2 = (
+        MOI.ScalarAffineFunction{Float64},
+        MOI.LessThan{Float64},
+        POI.ParametricQuadraticFunction{Float64},
+    )
+    T3 = (
+        MOI.VectorAffineFunction{Float64},
+        MOI.Zeros,
+        POI.ParametricVectorAffineFunction{Float64},
+    )
+    @test MOI.get(optimizer, POI.ListOfParametricConstraintTypesPresent()) ==
+          [T1]
+    @test length(
+        MOI.get(
+            optimizer,
+            POI.DictOfParametricConstraintIndicesAndFunctions{
+                T1[1],
+                T1[2],
+                T1[3],
+            }(),
+        ),
+    ) == 1
+    @test isempty(
+        MOI.get(
+            optimizer,
+            POI.DictOfParametricConstraintIndicesAndFunctions{
+                T2[1],
+                T2[2],
+                T2[3],
+            }(),
+        ),
+    )
+    @test isempty(
+        MOI.get(
+            optimizer,
+            POI.DictOfParametricConstraintIndicesAndFunctions{
+                T3[1],
+                T3[2],
+                T3[3],
+            }(),
+        ),
+    )
+    MOI.add_constraint(optimizer, 2.0x * p + 2.0p, MOI.LessThan(0.0))
+    @test MOI.get(optimizer, POI.ListOfParametricConstraintTypesPresent()) ==
+          [T1, T2] ||
+          MOI.get(optimizer, POI.ListOfParametricConstraintTypesPresent()) ==
+          [T2, T1]
+    @test length(
+        MOI.get(
+            optimizer,
+            POI.DictOfParametricConstraintIndicesAndFunctions{
+                T1[1],
+                T1[2],
+                T1[3],
+            }(),
+        ),
+    ) == 1
+    @test length(
+        MOI.get(
+            optimizer,
+            POI.DictOfParametricConstraintIndicesAndFunctions{
+                T2[1],
+                T2[2],
+                T2[3],
+            }(),
+        ),
+    ) == 1
+    @test isempty(
+        MOI.get(
+            optimizer,
+            POI.DictOfParametricConstraintIndicesAndFunctions{
+                T3[1],
+                T3[2],
+                T3[3],
+            }(),
+        ),
+    )
+    terms = [
+        MOI.VectorAffineTerm(Int64(1), MOI.ScalarAffineTerm(2.0, x)),
+        MOI.VectorAffineTerm(Int64(2), MOI.ScalarAffineTerm(3.0, p)),
+    ]
+    f = MOI.VectorAffineFunction(terms, [4.0, 5.0])
+    MOI.add_constraint(optimizer, f, MOI.Zeros(2))
+    @test length(
+        MOI.get(
+            optimizer,
+            POI.DictOfParametricConstraintIndicesAndFunctions{
+                T1[1],
+                T1[2],
+                T1[3],
+            }(),
+        ),
+    ) == 1
+    @test length(
+        MOI.get(
+            optimizer,
+            POI.DictOfParametricConstraintIndicesAndFunctions{
+                T2[1],
+                T2[2],
+                T2[3],
+            }(),
+        ),
+    ) == 1
+    @test length(
+        MOI.get(
+            optimizer,
+            POI.DictOfParametricConstraintIndicesAndFunctions{
+                T3[1],
+                T3[2],
+                T3[3],
+            }(),
+        ),
+    ) == 1
+    @test MOI.get(optimizer, POI.ParametricObjectiveType()) == Nothing
+    MOI.set(
+        optimizer,
+        MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
+        3.0x,
+    )
+    @test MOI.get(optimizer, POI.ParametricObjectiveType()) == Nothing
+    @test_throws ErrorException MOI.get(
+        optimizer,
+        POI.ParametricObjectiveFunction{POI.ParametricAffineFunction{Float64}}(),
+    )
+    @test_throws ErrorException MOI.get(
+        optimizer,
+        POI.ParametricObjectiveFunction{
+            POI.ParametricQuadraticFunction{Float64},
+        }(),
+    )
+    MOI.set(
+        optimizer,
+        MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
+        3.0x + 4.0p,
+    )
+    @test MOI.get(
+        optimizer,
+        POI.ParametricObjectiveFunction{POI.ParametricAffineFunction{Float64}}(),
+    ) isa POI.ParametricAffineFunction{Float64}
+    @test_throws ErrorException MOI.get(
+        optimizer,
+        POI.ParametricObjectiveFunction{
+            POI.ParametricQuadraticFunction{Float64},
+        }(),
+    )
+    @test MOI.get(optimizer, POI.ParametricObjectiveType()) ==
+          POI.ParametricAffineFunction{Float64}
+    MOI.set(
+        optimizer,
+        MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
+        3.0x * p + 4.0p,
+    )
+    @test MOI.get(optimizer, POI.ParametricObjectiveType()) ==
+          POI.ParametricQuadraticFunction{Float64}
+    @test_throws ErrorException MOI.get(
+        optimizer,
+        POI.ParametricObjectiveFunction{POI.ParametricAffineFunction{Float64}}(),
+    )
+    @test MOI.get(
+        optimizer,
+        POI.ParametricObjectiveFunction{
+            POI.ParametricQuadraticFunction{Float64},
+        }(),
+    ) isa POI.ParametricQuadraticFunction{Float64}
     return
 end

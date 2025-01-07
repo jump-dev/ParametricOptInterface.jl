@@ -166,6 +166,9 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     number_of_parameters_in_model::Int64
     constraints_interpretation::ConstraintsInterpretationCode
     save_original_objective_and_constraints::Bool
+
+    # extension data
+    ext::Dict{Symbol,Any}
     function Optimizer(
         optimizer::OT;
         evaluate_duals::Bool = true,
@@ -223,6 +226,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             0,
             ONLY_CONSTRAINTS,
             save_original_objective_and_constraints,
+            Dict{Symbol,Any}(),
         )
     end
 end
