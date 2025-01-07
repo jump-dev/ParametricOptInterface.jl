@@ -37,12 +37,14 @@ using JuMP, HiGHS
 import ParametricOptInterface as POI
 model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
 @variable(model, x)
-@variable(model, p in MOI.Parameter(1.0))
+@variable(model, p in Parameter(1.0))
 @constraint(model, cons, x + p >= 3)
 @objective(model, Min, 2x)
 optimize!(model)
-MOI.set(model, POI.ParameterValue(), p, 2.0)
+@show value(x)
+set_parameter_value(p, 2.0)
 optimize!(model)
+@show value(x)
 ```
 
 ## GSOC2020
