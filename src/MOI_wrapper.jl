@@ -1126,6 +1126,15 @@ end
 # Special Attributes
 #
 
+"""
+    ParametricObjectiveType <: MOI.AbstractModelAttribute
+
+A model attribute for the type `P` of the ParametricOptInterface's parametric
+function type in the objective function. The value os `P` can be `Nothing` if
+the objective function is not parametric. The parametric function type can be
+queried using the [`ParametricObjectiveFunction{P}`](@ref) attribute. The type
+`P` can be `ParametricAffineFunction{T}` or `ParametricQuadraticFunction{T}`.
+"""
 struct ParametricObjectiveType <: MOI.AbstractModelAttribute end
 
 function MOI.get(model::Optimizer{T}, ::ParametricObjectiveType) where {T}
@@ -1137,6 +1146,12 @@ function MOI.get(model::Optimizer{T}, ::ParametricObjectiveType) where {T}
     return Nothing
 end
 
+"""
+    ParametricObjectiveFunction{P} <: MOI.AbstractModelAttribute
+
+A model attribute for the parametric objective function of type `P`. The type
+`P` can be `ParametricAffineFunction{T}` or `ParametricQuadraticFunction{T}`.
+"""
 struct ParametricObjectiveFunction{T} <: MOI.AbstractModelAttribute end
 
 function MOI.get(
@@ -1163,6 +1178,15 @@ function MOI.get(
     return model.affine_objective_cache
 end
 
+"""
+    ListOfParametricConstraintTypesPresent()
+
+A model attribute for the list of tuples of the form `(F,S,P)`, where `F` is a
+MOI function type, `S` is a set type and `P` is a ParametricOptInterface
+parametric function type indicating that the attribute
+[`DictOfParametricConstraintIndicesAndFunctions{F,S,P}`](@ref) returns a
+non-empty dictionary.
+"""
 struct ListOfParametricConstraintTypesPresent <: MOI.AbstractModelAttribute end
 
 function MOI.get(
@@ -1188,6 +1212,13 @@ function MOI.get(
     return collect(output)
 end
 
+"""
+    DictOfParametricConstraintIndicesAndFunctions{F,S,P}
+
+A model attribute for a dictionary mapping constraint indices to parametric
+functions. The key is a constraint index with scalar function type `F`
+and set type `S` and the value is a parametric function of type `P`.
+"""
 struct DictOfParametricConstraintIndicesAndFunctions{F,S,P} <:
        MOI.AbstractModelAttribute end
 
@@ -1212,24 +1243,44 @@ function MOI.get(
     return model.quadratic_constraint_cache[F, S]
 end
 
+"""
+    NumberOfPureVariables
+
+A model attribute for the number of pure variables in the model.
+"""
 struct NumberOfPureVariables <: MOI.AbstractModelAttribute end
 
 function MOI.get(model::Optimizer, ::NumberOfPureVariables)
     return length(model.variables)
 end
 
+"""
+    ListOfPureVariableIndices
+
+A model attribute for the list of pure variable indices in the model.
+"""
 struct ListOfPureVariableIndices <: MOI.AbstractModelAttribute end
 
 function MOI.get(model::Optimizer, ::ListOfPureVariableIndices)
     return collect(keys(model.variables))::Vector{MOI.VariableIndex}
 end
 
+"""
+    NumberOfParameters
+
+A model attribute for the number of parameters in the model.
+"""
 struct NumberOfParameters <: MOI.AbstractModelAttribute end
 
 function MOI.get(model::Optimizer, ::NumberOfParameters)
     return length(model.parameters)
 end
 
+"""
+    ListOfParameterIndices
+
+A model attribute for the list of parameter indices in the model.
+"""
 struct ListOfParameterIndices <: MOI.AbstractModelAttribute end
 
 function MOI.get(model::Optimizer, ::ListOfParameterIndices)
