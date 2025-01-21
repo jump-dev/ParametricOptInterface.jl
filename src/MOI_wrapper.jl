@@ -247,12 +247,16 @@ function MOI.get(model::Optimizer, tp::Type{MOI.VariableIndex}, attr::String)
     return MOI.get(model.optimizer, tp, attr)
 end
 
-function MOI.add_variable(model::Optimizer)
+function _add_variable(model::Optimizer, inner_vi)
     _next_variable_index!(model)
     return MOI.Utilities.CleverDicts.add_item(
         model.variables,
-        MOI.add_variable(model.optimizer),
+        inner_vi,
     )
+end
+
+function MOI.add_variable(model::Optimizer)
+    return _add_variable(model, MOI.add_variable(model.optimizer))
 end
 
 function MOI.supports_add_constrained_variable(
@@ -279,6 +283,20 @@ function _assert_parameter_is_finite(set::MOI.Parameter{T}) where {T}
     end
 end
 
+function MOI.supports_add_constrained_variable(
+    model::Optimizer,
+    ::Type{S},
+) where {S<:MOI.AbstractScalarSet}
+    return MOI.supports_add_constrained_variable(model.optimizer, S)
+end
+
+function MOI.supports_add_constrained_variables(
+    model::Optimizer,
+    ::Type{S},
+) where {S<:MOI.AbstractVectorSet}
+    return MOI.supports_add_constrained_variables(model.optimizer, S)
+end
+
 function MOI.add_constrained_variable(
     model::Optimizer{T},
     set::MOI.Parameter{T},
@@ -294,6 +312,22 @@ function MOI.add_constrained_variable(
     MOI.Utilities.CleverDicts.add_item(model.updated_parameters, NaN)
     _update_number_of_parameters!(model)
     return p, cp
+end
+
+function MOI.add_constrained_variable(
+    model::Optimizer,
+    set::MOI.AbstractScalarSet,
+)
+    inner_vi, inner_ci = MOI.add_constrained_variable(model.optimizer, set)
+    return _add_variable(model, inner_vi), inner_ci # FIXME map inner_ci
+end
+
+function MOI.add_constrained_variables(
+    model::Optimizer,
+    set::MOI.AbstractVectorSet,
+)
+    inner_vis, inner_ci = MOI.add_constrained_variables(model.optimizer, set)
+    return _add_variable.(Ref(model), inner_vis), inner_ci # FIXME map inner_ci
 end
 
 function _add_to_constraint_map!(model::Optimizer, ci)
