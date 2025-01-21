@@ -789,12 +789,16 @@ function MOI.add_constraint(
         # function like the other entries.
         if _is_affine(f)
             fa = MOI.ScalarAffineFunction(f.affine_terms, f.constant)
-            inner_ci =
-                MOI.Utilities.normalize_and_add_constraint(model.optimizer, fa, set)
-            model.last_quad_add_added += 1
-            outer_ci = MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},typeof(set)}(
-                model.last_quad_add_added,
+            inner_ci = MOI.Utilities.normalize_and_add_constraint(
+                model.optimizer,
+                fa,
+                set,
             )
+            model.last_quad_add_added += 1
+            outer_ci =
+                MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},typeof(set)}(
+                    model.last_quad_add_added,
+                )
             model.quadratic_outer_to_inner[outer_ci] = inner_ci
             model.constraint_outer_to_inner[outer_ci] = inner_ci
             return outer_ci
