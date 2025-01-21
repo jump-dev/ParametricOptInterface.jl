@@ -781,6 +781,26 @@ function MOI.add_constraint(
     set::MOI.AbstractScalarSet,
 ) where {T}
     if !_has_parameters(f)
+        # The user might construct the expression `*(f::Vector{AffExpr}, p)`
+        # where `p` is a parameter. This results in a `Vector{QuadExpr}`
+        # and hence in `ScalarQuadraticFunction` constraints.
+        # If some entries of `f` are zero, then `has_parameters` will be zero for
+        # the resulting constraint. We should however still turn it into an affine
+        # function like the other entries.
+        if _is_affine(f)
+            fa = MOI.ScalarAffineFunction(f.affine_terms, f.constant)
+            inner_ci =
+                MOI.Utilities.normalize_and_add_constraint(model.optimizer, fa, set)
+            model.last_quad_add_added += 1
+            outer_ci = MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},typeof(set)}(
+                model.last_quad_add_added,
+            )
+            model.quadratic_outer_to_inner[outer_ci] = inner_ci
+            model.constraint_outer_to_inner[outer_ci] = inner_ci
+            return outer_ci
+        else
+            return _add_constraint_direct_and_cache_map!(model, f, set)
+        end
         return _add_constraint_direct_and_cache_map!(model, f, set)
     else
         return _add_constraint_with_parameters_on_function(model, f, set)
