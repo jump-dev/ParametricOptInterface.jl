@@ -249,10 +249,7 @@ end
 
 function _add_variable(model::Optimizer, inner_vi)
     _next_variable_index!(model)
-    return MOI.Utilities.CleverDicts.add_item(
-        model.variables,
-        inner_vi,
-    )
+    return MOI.Utilities.CleverDicts.add_item(model.variables, inner_vi)
 end
 
 function MOI.add_variable(model::Optimizer)
