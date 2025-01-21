@@ -1899,3 +1899,23 @@ function test_getters()
     ) isa POI.ParametricQuadraticFunction{Float64}
     return
 end
+
+function test_no_quadratic_terms()
+    optimizer = POI.Optimizer(GLPK.Optimizer())
+    MOI.set(optimizer, MOI.Silent(), true)
+    x = MOI.add_variable(optimizer)
+    y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(1.0))
+    MOI.add_constraint(optimizer, 1.0 * x * y + 1.0 * x + 1.0 * y  - 1.0 * x * y, MOI.LessThan(0.0))
+    MOI.set(
+        optimizer,
+        MOI.ObjectiveSense(),
+        MOI.MAX_SENSE,
+    )
+    obj_func = 1.0 * x + 2.0 * y
+    MOI.set(
+        optimizer,
+        MOI.ObjectiveFunction{typeof(obj_func)}(),
+        obj_func,
+    )
+    return
+end
