@@ -492,13 +492,22 @@ function MOI.set(
 end
 
 function MOI.get(
-    model::Optimizer,
+    model::Optimizer{T},
     attr::MOI.ConstraintFunction,
     ci::MOI.ConstraintIndex,
-)
+) where {T}
     if haskey(model.quadratic_outer_to_inner, ci)
         inner_ci = model.quadratic_outer_to_inner[ci]
-        return _original_function(model.quadratic_constraint_cache[inner_ci])
+        if haskey(model.quadratic_constraint_cache, inner_ci)
+            return _original_function(
+                model.quadratic_constraint_cache[inner_ci],
+            )
+        else
+            return convert(
+                MOI.ScalarQuadraticFunction{T},
+                MOI.get(model.optimizer, attr, inner_ci),
+            )
+        end
     elseif haskey(model.affine_outer_to_inner, ci)
         inner_ci = model.affine_outer_to_inner[ci]
         return _original_function(model.affine_constraint_cache[inner_ci])
@@ -801,6 +810,7 @@ function MOI.add_constraint(
                 )
             model.quadratic_outer_to_inner[outer_ci] = inner_ci
             model.constraint_outer_to_inner[outer_ci] = inner_ci
+            model.quadratic_constraint_cache_set[inner_ci] = set
             return outer_ci
         else
             return _add_constraint_direct_and_cache_map!(model, f, set)
