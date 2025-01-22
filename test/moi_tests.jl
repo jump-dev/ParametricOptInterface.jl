@@ -2190,7 +2190,8 @@ function test_constrained_variables()
     @test MOI.supports_add_constrained_variables(optimizer, typeof(set))
     x, c = MOI.add_constrained_variables(optimizer, set)
     @test c isa MOI.ConstraintIndex{MOI.VectorOfVariables,typeof(set)}
-    @test MOI.get(optimizer, MOI.ConstraintFunction(), c) ≈ MOI.VectorOfVariables(x)
+    @test MOI.get(optimizer, MOI.ConstraintFunction(), c) ≈
+          MOI.VectorOfVariables(x)
     @test MOI.get(optimizer, MOI.ConstraintSet(), c) == set
     @test MOI.supports(optimizer, MOI.VariableName(), eltype(x))
     MOI.set(optimizer, MOI.VariableName(), x[1], "vname")
