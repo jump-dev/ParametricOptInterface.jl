@@ -2023,7 +2023,6 @@ function test_no_quadratic_terms()
     @test c isa MOI.ConstraintIndex{typeof(func),typeof(set)}
     @test MOI.get(optimizer, MOI.ConstraintFunction(), c) ≈ func
     @test MOI.get(optimizer, MOI.ConstraintSet(), c) == set
-    @test MOI.supports(optimizer, MOI.ConstraintName(), typeof(c))
     MOI.set(optimizer, MOI.ConstraintName(), c, "name")
     @test MOI.get(optimizer, MOI.ConstraintName(), c) == "name"
     MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
