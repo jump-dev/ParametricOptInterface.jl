@@ -247,7 +247,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     end
 end
 
-Optimizer(args...; kws...) = Optimizer{Float64}(args..., kws...)
+Optimizer(args...; kws...) = Optimizer{Float64}(args...; kws...)
 
 function _next_variable_index!(model::Optimizer)
     return model.last_variable_index_added += 1
