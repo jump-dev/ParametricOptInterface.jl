@@ -2023,6 +2023,7 @@ function test_no_quadratic_terms()
     @test c isa MOI.ConstraintIndex{typeof(func),typeof(set)}
     @test MOI.get(optimizer, MOI.ConstraintFunction(), c) ≈ func
     @test MOI.get(optimizer, MOI.ConstraintSet(), c) == set
+    @test MOI.supports(optimizer, MOI.ConstraintName(), typeof(c))
     MOI.set(optimizer, MOI.ConstraintName(), c, "name")
     @test MOI.get(optimizer, MOI.ConstraintName(), c) == "name"
     MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
@@ -2141,4 +2142,61 @@ function test_copy_model()
     MOI.copy_to(poi, model)
     MOI.optimize!(poi)
     @test MOI.get(poi, MOI.VariablePrimal(), x) ≈ 1.0
+end
+
+function test_constrained_variable()
+    optimizer = POI.Optimizer(GLPK.Optimizer())
+    MOI.set(optimizer, MOI.Silent(), true)
+    set = MOI.LessThan(1.0)
+    @test MOI.supports_add_constrained_variable(optmizer, typeof(set))
+    x, c = MOI.add_constrained_variable(optimizer, set)
+    @test c isa MOI.ConstraintIndex{typeof(x),typeof(set)}
+    @test MOI.get(optimizer, MOI.ConstraintFunction(), c) ≈ x
+    @test MOI.get(optimizer, MOI.ConstraintSet(), c) == set
+    @test MOI.supports(optimizer, MOI.VariableName(), typeof(x))
+    MOI.set(optimizer, MOI.VariableName(), x, "vname")
+    @test MOI.get(optimizer, MOI.VariableName(), x) == "vname"
+    MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+    obj_func = 1.0 * x
+    MOI.set(optimizer, MOI.ObjectiveFunction{typeof(obj_func)}(), obj_func)
+    MOI.optimize!(optimizer)
+    @test MOI.get(optimizer, MOI.ConstraintDual(), c) ≈ -1 atol = ATOL
+    @test MOI.get(optimizer, MOI.VariablePrimal(), x) ≈ 1 atol = ATOL
+    return
+end
+
+include("no_free_model.jl")
+
+function test_constrained_variable()
+    optimizer = POI.Optimizer(NoFreeVariablesModel{Float64}())
+    set = MOI.LessThan(1.0)
+    @test MOI.supports_add_constrained_variable(optimizer, typeof(set))
+    x, c = MOI.add_constrained_variable(optimizer, set)
+    @test c isa MOI.ConstraintIndex{typeof(x),typeof(set)}
+    @test MOI.get(optimizer, MOI.ConstraintFunction(), c) ≈ x
+    @test MOI.get(optimizer, MOI.ConstraintSet(), c) == set
+    @test MOI.supports(optimizer, MOI.VariableName(), typeof(x))
+    MOI.set(optimizer, MOI.VariableName(), x, "vname")
+    @test MOI.get(optimizer, MOI.VariableName(), x) == "vname"
+    MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+    obj_func = 1.0 * x
+    MOI.set(optimizer, MOI.ObjectiveFunction{typeof(obj_func)}(), obj_func)
+    return
+end
+
+function test_constrained_variables()
+    optimizer = POI.Optimizer{Int}(NoFreeVariablesModel{Int}())
+    set = MOI.Nonnegatives(2)
+    @test MOI.supports_add_constrained_variables(optimizer, typeof(set))
+    x, c = MOI.add_constrained_variables(optimizer, set)
+    @test c isa MOI.ConstraintIndex{MOI.VectorOfVariables,typeof(set)}
+    @test MOI.get(optimizer, MOI.ConstraintFunction(), c) ≈ MOI.VectorOfVariables(x)
+    @test MOI.get(optimizer, MOI.ConstraintSet(), c) == set
+    @test MOI.supports(optimizer, MOI.VariableName(), eltype(x))
+    MOI.set(optimizer, MOI.VariableName(), x[1], "vname")
+    @test MOI.get(optimizer, MOI.VariableName(), x[1]) == "vname"
+    MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    obj_func = 1 * x[1] + 1 * x[2]
+    MOI.set(optimizer, MOI.ObjectiveFunction{typeof(obj_func)}(), obj_func)
+    return
 end
