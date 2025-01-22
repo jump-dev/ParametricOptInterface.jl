@@ -1899,3 +1899,23 @@ function test_getters()
     ) isa POI.ParametricQuadraticFunction{Float64}
     return
 end
+
+function test_no_quadratic_terms()
+    optimizer = POI.Optimizer(GLPK.Optimizer())
+    MOI.set(optimizer, MOI.Silent(), true)
+    x = MOI.add_variable(optimizer)
+    func = MOI.Utilities.canonical(1.0 * x * x + 1.0 * x - 1.0 * x * x)
+    set = MOI.LessThan(0.0)
+    c = MOI.add_constraint(optimizer, func, set)
+    @test c isa MOI.ConstraintIndex{typeof(func),typeof(set)}
+    @test MOI.get(optimizer, MOI.ConstraintFunction(), c) ≈ func
+    @test MOI.get(optimizer, MOI.ConstraintSet(), c) == set
+    MOI.set(optimizer, MOI.ConstraintName(), c, "name")
+    @test MOI.get(optimizer, MOI.ConstraintName(), c) == "name"
+    MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+    obj_func = 1.0 * x
+    MOI.set(optimizer, MOI.ObjectiveFunction{typeof(obj_func)}(), obj_func)
+    MOI.optimize!(optimizer)
+    @test MOI.get(optimizer, MOI.ConstraintDual(), c) ≈ -1 atol = ATOL
+    return
+end

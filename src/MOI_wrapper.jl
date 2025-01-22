@@ -492,13 +492,22 @@ function MOI.set(
 end
 
 function MOI.get(
-    model::Optimizer,
+    model::Optimizer{T},
     attr::MOI.ConstraintFunction,
     ci::MOI.ConstraintIndex,
-)
+) where {T}
     if haskey(model.quadratic_outer_to_inner, ci)
         inner_ci = model.quadratic_outer_to_inner[ci]
-        return _original_function(model.quadratic_constraint_cache[inner_ci])
+        if haskey(model.quadratic_constraint_cache, inner_ci)
+            return _original_function(
+                model.quadratic_constraint_cache[inner_ci],
+            )
+        else
+            return convert(
+                MOI.ScalarQuadraticFunction{T},
+                MOI.get(model.optimizer, attr, inner_ci),
+            )
+        end
     elseif haskey(model.affine_outer_to_inner, ci)
         inner_ci = model.affine_outer_to_inner[ci]
         return _original_function(model.affine_constraint_cache[inner_ci])
@@ -781,6 +790,31 @@ function MOI.add_constraint(
     set::MOI.AbstractScalarSet,
 ) where {T}
     if !_has_parameters(f)
+        # The user might construct the expression `*(f::Vector{AffExpr}, p)`
+        # where `p` is a parameter. This results in a `Vector{QuadExpr}`
+        # and hence in `ScalarQuadraticFunction` constraints.
+        # If some entries of `f` are zero, then `has_parameters` will be zero for
+        # the resulting constraint. We should however still turn it into an affine
+        # function like the other entries.
+        if _is_affine(f)
+            fa = MOI.ScalarAffineFunction(f.affine_terms, f.constant)
+            inner_ci = MOI.Utilities.normalize_and_add_constraint(
+                model.optimizer,
+                fa,
+                set,
+            )
+            model.last_quad_add_added += 1
+            outer_ci =
+                MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},typeof(set)}(
+                    model.last_quad_add_added,
+                )
+            model.quadratic_outer_to_inner[outer_ci] = inner_ci
+            model.constraint_outer_to_inner[outer_ci] = inner_ci
+            model.quadratic_constraint_cache_set[inner_ci] = set
+            return outer_ci
+        else
+            return _add_constraint_direct_and_cache_map!(model, f, set)
+        end
         return _add_constraint_direct_and_cache_map!(model, f, set)
     else
         return _add_constraint_with_parameters_on_function(model, f, set)
