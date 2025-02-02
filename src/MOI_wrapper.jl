@@ -1416,9 +1416,9 @@ Attribute to define how [`POI.Optimizer`](@ref) should interpret constraints.
 # Example
 
 ```julia
-MOI.set(model, POI.InterpretConstraintsAsBounds(), POI.ONLY_BOUNDS)
-MOI.set(model, POI.InterpretConstraintsAsBounds(), POI.ONLY_CONSTRAINTS)
-MOI.set(model, POI.InterpretConstraintsAsBounds(), POI.BOUNDS_AND_CONSTRAINTS)
+MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
+MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_CONSTRAINTS)
+MOI.set(model, POI.ConstraintsInterpretation(), POI.BOUNDS_AND_CONSTRAINTS)
 ```
 """
 struct ConstraintsInterpretation <: MOI.AbstractOptimizerAttribute end
