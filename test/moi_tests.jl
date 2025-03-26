@@ -150,6 +150,7 @@ function test_basic_special_cases_of_getters()
     @test MOI.get(optimizer, MOI.ObjectiveFunctionType()) ==
           MOI.ScalarQuadraticFunction{Float64}
     @test MOI.get(optimizer, MOI.NumberOfVariables()) == 3
+    MOI.delete(optimizer, cons_index)
     return
 end
 
