@@ -1095,7 +1095,7 @@ function test_get_duals_from_multiplicative_parameters_1()
     @variable(model, x)
     @variable(model, p1 in Parameter(2.0))
     @variable(model, p2 in Parameter(2.0))
-    @constraint(model, c, 3*x >= p1 * p2)
+    @constraint(model, c, 3 * x >= p1 * p2)
     @objective(model, Min, sum(x))
     optimize!(model)
     @test dual(c) ≈ 1.0 / 3.0

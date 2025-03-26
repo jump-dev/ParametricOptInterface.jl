@@ -70,9 +70,13 @@ function _compute_parameters_in_ci!(
     if hasproperty(pf, :pp)
         for term in pf.pp
             model.dual_value_of_parameters[p_val(term.variable_1)] -=
-                cons_dual * term.coefficient * MOI.get(model, ParameterValue(), term.variable_2)
+                cons_dual *
+                term.coefficient *
+                MOI.get(model, ParameterValue(), term.variable_2)
             model.dual_value_of_parameters[p_val(term.variable_2)] -=
-                cons_dual * term.coefficient * MOI.get(model, ParameterValue(), term.variable_1)
+                cons_dual *
+                term.coefficient *
+                MOI.get(model, ParameterValue(), term.variable_1)
         end
     end
     return
