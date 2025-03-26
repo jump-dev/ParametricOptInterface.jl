@@ -828,14 +828,14 @@ function MOI.delete(
 ) where {F<:MOI.ScalarQuadraticFunction,S<:MOI.AbstractSet}
     if haskey(model.quadratic_outer_to_inner, c)
         ci_inner = model.quadratic_outer_to_inner[c]
-        deleteat!(model.quadratic_outer_to_inner, c)
-        deleteat!(model.quadratic_constraint_cache, c)
-        deleteat!(model.quadratic_constraint_cache_set, c)
+        delete!(model.quadratic_outer_to_inner, c)
+        delete!(model.quadratic_constraint_cache, c)
+        delete!(model.quadratic_constraint_cache_set, c)
         MOI.delete(model.optimizer, ci_inner)
     else
         MOI.delete(model.optimizer, c)
     end
-    deleteat!(model.constraint_outer_to_inner, c)
+    delete!(model.constraint_outer_to_inner, c)
     return
 end
 
@@ -871,7 +871,7 @@ function MOI.delete(
 ) where {F<:MOI.VectorAffineFunction,S<:MOI.AbstractSet}
     MOI.delete(model.optimizer, c)
     delete!(model.constraint_outer_to_inner, c)
-    deleteat!(model.vector_affine_constraint_cache, c)
+    delete!(model.vector_affine_constraint_cache, c)
     return
 end
 
