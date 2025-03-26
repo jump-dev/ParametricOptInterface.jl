@@ -56,12 +56,11 @@ function _cache_multiplicative_params!(
     f::ParametricQuadraticFunction{T},
 ) where {T}
     for term in f.pv
-        push!(model.multiplicative_parameters, term.variable_1.value)
+        push!(model.multiplicative_parameters_pv, term.variable_1.value)
     end
-    # TODO compute these duals might be feasible
     for term in f.pp
-        push!(model.multiplicative_parameters, term.variable_1.value)
-        push!(model.multiplicative_parameters, term.variable_2.value)
+        push!(model.multiplicative_parameters_pp, term.variable_1.value)
+        push!(model.multiplicative_parameters_pp, term.variable_2.value)
     end
     return
 end
@@ -97,7 +96,8 @@ function MOI.is_empty(model::Optimizer)
            #
            isempty(model.vector_affine_constraint_cache) &&
            #
-           isempty(model.multiplicative_parameters) &&
+           isempty(model.multiplicative_parameters_pv) &&
+           isempty(model.multiplicative_parameters_pp) &&
            isempty(model.dual_value_of_parameters) &&
            model.number_of_parameters_in_model == 0 &&
            isempty(model.ext)
@@ -130,7 +130,8 @@ function MOI.empty!(model::Optimizer{T}) where {T}
     #
     empty!(model.vector_affine_constraint_cache)
     #
-    empty!(model.multiplicative_parameters)
+    empty!(model.multiplicative_parameters_pv)
+    empty!(model.multiplicative_parameters_pp)
     empty!(model.dual_value_of_parameters)
     #
     model.number_of_parameters_in_model = 0

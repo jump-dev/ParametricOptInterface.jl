@@ -67,6 +67,12 @@ function _compute_parameters_in_ci!(
         model.dual_value_of_parameters[p_val(term.variable)] -=
             cons_dual * term.coefficient
     end
+    for term in pf.pp
+        model.dual_value_of_parameters[p_val(term.variable_1)] -=
+            cons_dual * term.coefficient * MOI.get(model, ParameterValue(), term.variable_2)
+        model.dual_value_of_parameters[p_val(term.variable_2)] -=
+            cons_dual * term.coefficient * MOI.get(model, ParameterValue(), term.variable_1)
+    end
     return
 end
 
@@ -143,7 +149,7 @@ function MOI.get(
 end
 
 function _is_additive(model::Optimizer, cp::MOI.ConstraintIndex)
-    if cp.value in model.multiplicative_parameters
+    if cp.value in model.multiplicative_parameters_pv
         return false
     end
     return true
