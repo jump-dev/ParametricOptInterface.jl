@@ -76,6 +76,10 @@ function _compute_parameters_in_ci!(
     ci::MOI.ConstraintIndex{F,S},
 ) where {F,S} where {T, OT}
     cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
+    for term in pf.p
+        model.dual_value_of_parameters[p_val(term.variable)] -=
+            cons_dual * term.coefficient
+    end
     for term in pf.pp
         model.dual_value_of_parameters[p_val(term.variable_1)] -=
             cons_dual *
