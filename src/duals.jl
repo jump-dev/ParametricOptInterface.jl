@@ -58,35 +58,42 @@ function _compute_parameters_in_ci!(
 end
 
 function _compute_parameters_in_ci!(
-    model::Optimizer{T},
-    pf,
+    model::Optimizer{T, OT},
+    pf::ParametricAffineFunction{T},
     ci::MOI.ConstraintIndex{F,S},
-) where {F,S} where {T}
+) where {F,S} where {T, OT}
     cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
     for term in pf.p
         model.dual_value_of_parameters[p_val(term.variable)] -=
             cons_dual * term.coefficient
     end
-    if hasproperty(pf, :pp)
-        for term in pf.pp
-            model.dual_value_of_parameters[p_val(term.variable_1)] -=
-                cons_dual *
-                term.coefficient *
-                MOI.get(model, ParameterValue(), term.variable_2)
-            model.dual_value_of_parameters[p_val(term.variable_2)] -=
-                cons_dual *
-                term.coefficient *
-                MOI.get(model, ParameterValue(), term.variable_1)
-        end
+    return
+end
+
+function _compute_parameters_in_ci!(
+    model::Optimizer{T, OT},
+    pf::ParametricQuadraticFunction{T},
+    ci::MOI.ConstraintIndex{F,S},
+) where {F,S} where {T, OT}
+    cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
+    for term in pf.pp
+        model.dual_value_of_parameters[p_val(term.variable_1)] -=
+            cons_dual *
+            term.coefficient *
+            MOI.get(model, ParameterValue(), term.variable_2)
+        model.dual_value_of_parameters[p_val(term.variable_2)] -=
+            cons_dual *
+            term.coefficient *
+            MOI.get(model, ParameterValue(), term.variable_1)
     end
     return
 end
 
 function _compute_parameters_in_ci!(
-    model::Optimizer{T},
+    model::Optimizer{T, OT},
     pf::ParametricVectorAffineFunction{T},
     ci::MOI.ConstraintIndex{F,S},
-) where {F<:MOI.VectorAffineFunction{T},S} where {T}
+) where {F<:MOI.VectorAffineFunction{T},S} where {T, OT}
     cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
     for term in pf.p
         model.dual_value_of_parameters[p_val(term.scalar_term.variable)] -=
