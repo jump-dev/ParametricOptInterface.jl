@@ -150,6 +150,7 @@ function test_basic_special_cases_of_getters()
     @test MOI.get(optimizer, MOI.ObjectiveFunctionType()) ==
           MOI.ScalarQuadraticFunction{Float64}
     @test MOI.get(optimizer, MOI.NumberOfVariables()) == 3
+    MOI.delete(optimizer, cons_index)
     return
 end
 
@@ -1383,10 +1384,8 @@ function test_qp_objective_parameter_times_parameter()
         0.0,
         atol = ATOL,
     )
-    err =
-        ErrorException("Cannot compute the dual of a multiplicative parameter")
-    @test_throws err MOI.get(optimizer, MOI.ConstraintDual(), cy)
-    @test_throws err MOI.get(optimizer, MOI.ConstraintDual(), cz)
+    @test MOI.get(optimizer, MOI.ConstraintDual(), cy) == 0.0
+    @test MOI.get(optimizer, MOI.ConstraintDual(), cz) == 0.0
     MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(2.0))
     MOI.optimize!(optimizer)
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 2.0, atol = ATOL)

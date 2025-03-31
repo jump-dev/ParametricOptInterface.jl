@@ -48,9 +48,9 @@ function _update_duals_from_quadratic_constraints!(model::Optimizer)
 end
 
 function _compute_parameters_in_ci!(
-    model::OT,
+    model::Optimizer,
     constraint_cache_inner::DoubleDictInner{F,S,V},
-) where {OT,F,S,V}
+) where {F,S,V}
     for (inner_ci, pf) in constraint_cache_inner
         _compute_parameters_in_ci!(model, pf, inner_ci)
     end
@@ -59,13 +59,39 @@ end
 
 function _compute_parameters_in_ci!(
     model::Optimizer{T},
-    pf,
+    pf::ParametricAffineFunction{T},
     ci::MOI.ConstraintIndex{F,S},
-) where {F,S} where {T}
+) where {F,S,T}
     cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
     for term in pf.p
         model.dual_value_of_parameters[p_val(term.variable)] -=
             cons_dual * term.coefficient
+    end
+    return
+end
+
+function _compute_parameters_in_ci!(
+    model::Optimizer{T},
+    pf::ParametricQuadraticFunction{T},
+    ci::MOI.ConstraintIndex{F,S},
+) where {F,S,T}
+    cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
+    for term in pf.p
+        model.dual_value_of_parameters[p_val(term.variable)] -=
+            cons_dual * term.coefficient
+    end
+    for term in pf.pp
+        coef = ifelse(term.variable_1 == term.variable_2, T(1 // 2), T(1))
+        model.dual_value_of_parameters[p_val(term.variable_1)] -=
+            coef *
+            cons_dual *
+            term.coefficient *
+            MOI.get(model, ParameterValue(), term.variable_2)
+        model.dual_value_of_parameters[p_val(term.variable_2)] -=
+            coef *
+            cons_dual *
+            term.coefficient *
+            MOI.get(model, ParameterValue(), term.variable_1)
     end
     return
 end
@@ -143,7 +169,7 @@ function MOI.get(
 end
 
 function _is_additive(model::Optimizer, cp::MOI.ConstraintIndex)
-    if cp.value in model.multiplicative_parameters
+    if cp.value in model.multiplicative_parameters_pv
         return false
     end
     return true

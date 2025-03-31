@@ -158,7 +158,8 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     }
 
     #
-    multiplicative_parameters::Set{Int64}
+    multiplicative_parameters_pv::Set{Int64}
+    multiplicative_parameters_pp::Set{Int64}
     dual_value_of_parameters::Vector{T}
 
     # params
@@ -220,6 +221,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             # DoubleDict{Vector{MOI.VectorAffineTerm{T}}}(),
             DoubleDict{ParametricVectorAffineFunction{T}}(),
             # other
+            Set{Int64}(),
             Set{Int64}(),
             Vector{T}(),
             evaluate_duals,
