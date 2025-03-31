@@ -48,9 +48,9 @@ function _update_duals_from_quadratic_constraints!(model::Optimizer)
 end
 
 function _compute_parameters_in_ci!(
-    model::OT,
+    model::Optimizer,
     constraint_cache_inner::DoubleDictInner{F,S,V},
-) where {OT,F,S,V}
+) where {F,S,V}
     for (inner_ci, pf) in constraint_cache_inner
         _compute_parameters_in_ci!(model, pf, inner_ci)
     end
@@ -58,10 +58,10 @@ function _compute_parameters_in_ci!(
 end
 
 function _compute_parameters_in_ci!(
-    model::Optimizer{T,OT},
+    model::Optimizer{T},
     pf::ParametricAffineFunction{T},
     ci::MOI.ConstraintIndex{F,S},
-) where {F,S} where {T,OT}
+) where {F,S,T}
     cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
     for term in pf.p
         model.dual_value_of_parameters[p_val(term.variable)] -=
@@ -71,10 +71,10 @@ function _compute_parameters_in_ci!(
 end
 
 function _compute_parameters_in_ci!(
-    model::Optimizer{T,OT},
+    model::Optimizer{T},
     pf::ParametricQuadraticFunction{T},
     ci::MOI.ConstraintIndex{F,S},
-) where {F,S} where {T,OT}
+) where {F,S,T}
     cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
     for term in pf.p
         model.dual_value_of_parameters[p_val(term.variable)] -=
@@ -97,10 +97,10 @@ function _compute_parameters_in_ci!(
 end
 
 function _compute_parameters_in_ci!(
-    model::Optimizer{T,OT},
+    model::Optimizer{T},
     pf::ParametricVectorAffineFunction{T},
     ci::MOI.ConstraintIndex{F,S},
-) where {F<:MOI.VectorAffineFunction{T},S} where {T,OT}
+) where {F<:MOI.VectorAffineFunction{T},S} where {T}
     cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
     for term in pf.p
         model.dual_value_of_parameters[p_val(term.scalar_term.variable)] -=
