@@ -81,11 +81,14 @@ function _compute_parameters_in_ci!(
             cons_dual * term.coefficient
     end
     for term in pf.pp
+        coef = ifelse(term.variable_1 == term.variable_2, T(1 // 2), T(1))
         model.dual_value_of_parameters[p_val(term.variable_1)] -=
+            coef *
             cons_dual *
             term.coefficient *
             MOI.get(model, ParameterValue(), term.variable_2)
         model.dual_value_of_parameters[p_val(term.variable_2)] -=
+            coef *
             cons_dual *
             term.coefficient *
             MOI.get(model, ParameterValue(), term.variable_1)
