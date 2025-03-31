@@ -1117,3 +1117,15 @@ function test_get_duals_from_multiplicative_parameters_2()
     @test MOI.get.(model, POI.ParameterDual(), p2) ≈ 40.0 / 3
     return
 end
+
+function test_get_duals_from_multiplicative_parameters_3()
+    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+    @variable(model, x)
+    @variable(model, p in Parameter(4.0))
+    @constraint(model, c, 3 * x >= p * p)
+    @objective(model, Min, sum(x))
+    optimize!(model)
+    @test dual(c) ≈ 1.0 / 3.0
+    @test MOI.get.(model, POI.ParameterDual(), p) ≈ 2 * 4.0 / 3
+    return
+end
