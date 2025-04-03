@@ -219,9 +219,9 @@ function MOI.supports_add_constrained_variables(
     return MOI.supports_add_constrained_variables(model.optimizer, MOI.Reals)
 end
 
-function _assert_parameter_is_not_nan(set::MOI.Parameter{T}) where {T}
-    if isnan(set.value)
-        throw(AssertionError("Parameter value cannot be NaN."))
+function _assert_parameter_is_finite(set::MOI.Parameter{T}) where {T}
+    if isfinite(set.value)
+        throw(AssertionError("Parameter value must be a finite number. Got $(set.value)"))
     end
 end
 
@@ -229,7 +229,7 @@ function MOI.add_constrained_variable(
     model::Optimizer{T},
     set::MOI.Parameter{T},
 ) where {T}
-    _assert_parameter_is_not_nan(set)
+    _assert_parameter_is_finite(set)
     _next_parameter_index!(model)
     p = MOI.VariableIndex(model.last_parameter_index_added)
     MOI.Utilities.CleverDicts.add_item(model.parameters, set.value)
@@ -570,7 +570,7 @@ function MOI.set(
     cp::MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}},
     set::MOI.Parameter{T},
 ) where {T}
-    _assert_parameter_is_not_nan(set)
+    _assert_parameter_is_finite(set)
     p = MOI.VariableIndex(cp.value)
     if !_parameter_in_model(model, p)
         error("Parameter not in the model")
