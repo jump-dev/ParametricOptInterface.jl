@@ -221,7 +221,11 @@ end
 
 function _assert_parameter_is_finite(set::MOI.Parameter{T}) where {T}
     if !isfinite(set.value)
-        throw(AssertionError("Parameter value must be a finite number. Got $(set.value)"))
+        throw(
+            AssertionError(
+                "Parameter value must be a finite number. Got $(set.value)",
+            ),
+        )
     end
 end
 
