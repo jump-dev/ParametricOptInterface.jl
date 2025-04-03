@@ -1129,3 +1129,26 @@ function test_get_duals_from_multiplicative_parameters_3()
     @test MOI.get.(model, POI.ParameterDual(), p) ≈ 2 * 4.0 / 3
     return
 end
+
+function test_parameters_cannot_be_nan_1()
+    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+    @variable(model, x)
+    @variable(model, p in Parameter(NaN))
+    @constraint(model, c, 3 * x >= p * p)
+    @objective(model, Min, sum(x))
+    @test_throws AssertionError optimize!(model)
+    MOI.set(model, POI.ParameterValue(), p, 20.0)
+    return
+end
+
+function test_parameters_cannot_be_nan_2()
+    optimizer = POI.Optimizer(GLPK.Optimizer())
+    model = direct_model(optimizer)
+    @variable(model, x[1:2])
+    @test_throws AssertionError @variable(model, p in Parameter(NaN))
+    @variable(model, p in Parameter(1.0))
+    @constraint(model, c, 3 * x[1] + x[2] >= p * p)
+    @objective(model, Min, sum(x))
+    @test_throws AssertionError MOI.set(model, POI.ParameterValue(), p, NaN)
+    return
+end
