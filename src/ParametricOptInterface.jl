@@ -168,6 +168,8 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     constraints_interpretation::ConstraintsInterpretationCode
     save_original_objective_and_constraints::Bool
 
+    parameters_in_conflict::Set{MOI.VariableIndex}
+
     # extension data
     ext::Dict{Symbol,Any}
     function Optimizer(
@@ -228,6 +230,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             0,
             ONLY_CONSTRAINTS,
             save_original_objective_and_constraints,
+            Set{MOI.VariableIndex}(),
             Dict{Symbol,Any}(),
         )
     end
