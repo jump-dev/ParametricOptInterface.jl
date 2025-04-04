@@ -1605,7 +1605,39 @@ function test_compute_conflict!()
     )
     x, x_ci = MOI.add_constrained_variable(model, MOI.GreaterThan(1.0))
     p, p_ci = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    p2, p2_ci = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    p3, p3_ci = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    p4, p4_ci = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    p5, p5_ci = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    p6, p6_ci = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    p7, p7_ci = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    p8, p8_ci = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    p9, p9_ci = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    p10, p10_ci = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    p11, p11_ci = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    p12, p12_ci = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
     ci = MOI.add_constraint(model, 2.0 * x + 3.0 * p, MOI.LessThan(0.0))
+    ci2 = MOI.add_constraint(model, 2.0 * x + 3.0 * p2, MOI.LessThan(10.0))
+    civ = MOI.add_constraint(
+        model,
+        MOI.Utilities.vectorize([2.0 * x + 3.0 * p3]),
+        MOI.Nonpositives(1),
+    )
+    civ2 = MOI.add_constraint(
+        model,
+        MOI.Utilities.vectorize([2.0 * x + 3.0 * p4 - 10.0]),
+        MOI.Nonpositives(1),
+    )
+    # pv
+    ci3 = MOI.add_constraint(model, 1.0 * p5 * x + 3.0 * 2, MOI.LessThan(0.0))
+    ci4 = MOI.add_constraint(model, 1.0 * p6 * x + 3.0 * 2, MOI.LessThan(10.0))
+    # pp
+    ci5 = MOI.add_constraint(model, 2.0 * x + 1.0 * p7 * p7, MOI.LessThan(0.0))
+    ci6 = MOI.add_constraint(model, 2.0 * x + 1.0 * p8 * p8, MOI.LessThan(10.0))
+    # p
+    ci7 = MOI.add_constraint(model, 1.0 * p11 * x + 3.0 * p9, MOI.LessThan(0.0))
+    ci8 =
+        MOI.add_constraint(model, 1.0 * p12 * x + 3.0 * p10, MOI.LessThan(10.0))
     @test MOI.get(model, MOI.ConflictStatus()) ==
           MOI.COMPUTE_CONFLICT_NOT_CALLED
     MOI.Utilities.set_mock_optimize!(
@@ -1617,12 +1649,20 @@ function test_compute_conflict!()
                 MOI.NO_SOLUTION,
                 MOI.NO_SOLUTION;
                 constraint_conflict_status = [
-                    (MOI.VariableIndex, MOI.Parameter{T}) =>
-                        [MOI.MAYBE_IN_CONFLICT],
                     (MOI.VariableIndex, MOI.GreaterThan{T}) =>
                         [MOI.IN_CONFLICT],
-                    (MOI.ScalarAffineFunction{T}, MOI.LessThan{T}) =>
-                        [MOI.IN_CONFLICT],
+                    (MOI.ScalarAffineFunction{T}, MOI.LessThan{T}) => [
+                        MOI.IN_CONFLICT,
+                        MOI.NOT_IN_CONFLICT,
+                        MOI.IN_CONFLICT,
+                        MOI.NOT_IN_CONFLICT,
+                        MOI.IN_CONFLICT,
+                        MOI.NOT_IN_CONFLICT,
+                        MOI.IN_CONFLICT,
+                        MOI.NOT_IN_CONFLICT,
+                    ],
+                    (MOI.VectorAffineFunction{T}, MOI.Nonpositives) =>
+                        [MOI.IN_CONFLICT, MOI.NOT_IN_CONFLICT],
                 ],
             )
             MOI.set(mock, MOI.ConflictStatus(), MOI.CONFLICT_FOUND)
@@ -1637,6 +1677,30 @@ function test_compute_conflict!()
     @test MOI.get(model, MOI.ConstraintConflictStatus(), p_ci) ==
           MOI.MAYBE_IN_CONFLICT
     @test MOI.get(model, MOI.ConstraintConflictStatus(), ci) == MOI.IN_CONFLICT
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), ci2) ==
+          MOI.NOT_IN_CONFLICT
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), p2_ci) ==
+          MOI.NOT_IN_CONFLICT
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), p3_ci) ==
+          MOI.MAYBE_IN_CONFLICT
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), p4_ci) ==
+          MOI.NOT_IN_CONFLICT
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), p5_ci) ==
+          MOI.MAYBE_IN_CONFLICT
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), p6_ci) ==
+          MOI.NOT_IN_CONFLICT
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), p7_ci) ==
+          MOI.MAYBE_IN_CONFLICT
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), p8_ci) ==
+          MOI.NOT_IN_CONFLICT
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), p9_ci) ==
+          MOI.MAYBE_IN_CONFLICT
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), p10_ci) ==
+          MOI.NOT_IN_CONFLICT
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), p11_ci) ==
+          MOI.MAYBE_IN_CONFLICT
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), p12_ci) ==
+          MOI.NOT_IN_CONFLICT
     return
 end
 
