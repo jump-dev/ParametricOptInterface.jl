@@ -100,6 +100,7 @@ function MOI.is_empty(model::Optimizer)
            isempty(model.multiplicative_parameters_pp) &&
            isempty(model.dual_value_of_parameters) &&
            model.number_of_parameters_in_model == 0 &&
+           isempty(model.parameters_in_conflict) &&
            isempty(model.ext)
 end
 
@@ -135,6 +136,7 @@ function MOI.empty!(model::Optimizer{T}) where {T}
     empty!(model.dual_value_of_parameters)
     #
     model.number_of_parameters_in_model = 0
+    empty!(model.parameters_in_conflict)
     empty!(model.ext)
     return
 end
@@ -1594,7 +1596,68 @@ end
 #
 
 function MOI.compute_conflict!(model::Optimizer)
-    return MOI.compute_conflict!(model.optimizer)
+    empty!(model.parameters_in_conflict)
+    MOI.compute_conflict!(model.optimizer)
+    if MOI.get(model.optimizer, MOI.ConflictStatus()) == MOI.CONFLICT_FOUND
+        for (F, S) in keys(model.affine_constraint_cache.dict)
+            affine_constraint_cache_inner = model.affine_constraint_cache[F, S]
+            for (inner_ci, pf) in affine_constraint_cache_inner
+                if MOI.get(
+                    model.optimizer,
+                    MOI.ConstraintConflictStatus(),
+                    inner_ci,
+                ) == MOI.NOT_IN_CONFLICT
+                    continue
+                end
+                for term in pf.p
+                    push!(model.parameters_in_conflict, term.variable)
+                end
+            end
+        end
+        for (F, S) in keys(model.quadratic_constraint_cache.dict)
+            quadratic_constraint_cache_inner =
+                model.quadratic_constraint_cache[F, S]
+            for (inner_ci, pf) in quadratic_constraint_cache_inner
+                if MOI.get(
+                    model.optimizer,
+                    MOI.ConstraintConflictStatus(),
+                    inner_ci,
+                ) == MOI.NOT_IN_CONFLICT
+                    continue
+                end
+                for term in pf.p
+                    push!(model.parameters_in_conflict, term.variable)
+                end
+                for term in pf.pp
+                    push!(model.parameters_in_conflict, term.variable_1)
+                    push!(model.parameters_in_conflict, term.variable_2)
+                end
+                for term in pf.pv
+                    push!(model.parameters_in_conflict, term.variable_1)
+                end
+            end
+        end
+        for (F, S) in keys(model.vector_affine_constraint_cache.dict)
+            vector_affine_constraint_cache_inner =
+                model.vector_affine_constraint_cache[F, S]
+            for (inner_ci, pf) in vector_affine_constraint_cache_inner
+                if MOI.get(
+                    model.optimizer,
+                    MOI.ConstraintConflictStatus(),
+                    inner_ci,
+                ) == MOI.NOT_IN_CONFLICT
+                    continue
+                end
+                for term in pf.p
+                    push!(
+                        model.parameters_in_conflict,
+                        term.scalar_term.variable,
+                    )
+                end
+            end
+        end
+    end
+    return
 end
 
 function MOI.get(
@@ -1602,5 +1665,6 @@ function MOI.get(
     attr::MOI.ConstraintConflictStatus,
     ci::MOI.ConstraintIndex{MOI.VariableIndex,<:MOI.Parameter},
 )
-    return MOI.MAYBE_IN_CONFLICT
+    return MOI.VariableIndex(ci.value) in model.parameters_in_conflict ?
+           MOI.MAYBE_IN_CONFLICT : MOI.NOT_IN_CONFLICT
 end
