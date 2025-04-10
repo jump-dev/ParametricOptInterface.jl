@@ -754,8 +754,6 @@ function test_jump_dual_delete_constraint()
 end
 
 function test_jump_dual_delete_constraint_2()
-    using Test, JuMP, GLPK
-    import ParametricOptInterface as POI
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
     @variable(model, α in MOI.Parameter(1.0))
     @variable(model, β in MOI.Parameter(0.0))
@@ -801,9 +799,6 @@ function test_jump_dual_delete_constraint_2()
 end
 
 function test_jump_dual_delete_constraint_3()
-    using Test, JuMP, SCS
-    import ParametricOptInterface as POI
-    import MathOptInterface as MOI
     cached = MOI.Utilities.CachingOptimizer(
         MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
         SCS.Optimizer(),
