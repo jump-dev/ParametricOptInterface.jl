@@ -883,8 +883,8 @@ function MOI.delete(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
 ) where {F<:MOI.VectorAffineFunction,S<:MOI.AbstractSet}
-    if haskey(model.constraint_outer_to_inner, c)
-        ci_inner = model.constraint_outer_to_inner[c]
+    ci_inner = model.constraint_outer_to_inner[c]
+    if haskey(model.vector_affine_constraint_cache, ci_inner)
         delete!(model.vector_affine_constraint_cache, ci_inner)
         MOI.delete(model.optimizer, ci_inner)
     else
