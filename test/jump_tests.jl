@@ -753,6 +753,48 @@ function test_jump_dual_delete_constraint()
     return
 end
 
+function test_jump_dual_delete_constraint_2()
+    using Test, JuMP, GLPK
+    import ParametricOptInterface as POI
+    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+    @variable(model, α in MOI.Parameter(1.0))
+    @variable(model, x)
+    list = []
+    cref = @constraint(model, x >= 1 * 1)
+    push!(list, cref)
+    cref = @constraint(model, x >= 9 * α)
+    push!(list, cref)
+    cref = @constraint(model, x >= 8 * α^2)
+    push!(list, cref)
+    cref = @constraint(model, x >= 7 * 1)
+    push!(list, cref)
+    cref = @constraint(model, x >= 6 * α)
+    push!(list, cref)
+    cref = @constraint(model, x >= 5 * α^2)
+    push!(list, cref)
+    cref = @constraint(model, x >= 4 * 1)
+    push!(list, cref)
+    cref = @constraint(model, x >= 3 * α)
+    push!(list, cref)
+    cref = @constraint(model, x >= 2 * α^2)
+    push!(list, cref)
+    @objective(model, Min, x)
+    cref1 = popfirst!(list)
+    for i in 9:2
+        JuMP.optimize!(model)
+        @test JuMP.value(x) == 1.0 * i
+        @test JuMP.dual(cref1) == 0.0
+        for con in list[2:end]
+            @test JuMP.dual(con) == 0.0
+        end
+        @test JuMP.dual(list[1]) == 1.0
+        @test MOI.get(model, POI.ParameterDual(), α) == 1.0 * i
+        con = popfirst!(list)
+        JuMP.delete(model, con)
+    end
+    return
+end
+
 function test_jump_nlp()
     model = Model(() -> ParametricOptInterface.Optimizer(Ipopt.Optimizer()))
     @variable(model, x)
