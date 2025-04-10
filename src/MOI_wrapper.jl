@@ -843,8 +843,8 @@ function MOI.delete(
     if haskey(model.quadratic_outer_to_inner, c)
         ci_inner = model.quadratic_outer_to_inner[c]
         delete!(model.quadratic_outer_to_inner, c)
-        delete!(model.quadratic_constraint_cache, c)
-        delete!(model.quadratic_constraint_cache_set, c)
+        delete!(model.quadratic_constraint_cache, ci_inner)
+        delete!(model.quadratic_constraint_cache_set, ci_inner)
         MOI.delete(model.optimizer, ci_inner)
     else
         MOI.delete(model.optimizer, c)
@@ -860,8 +860,8 @@ function MOI.delete(
     if haskey(model.affine_outer_to_inner, c)
         ci_inner = model.affine_outer_to_inner[c]
         delete!(model.affine_outer_to_inner, c)
-        delete!(model.affine_constraint_cache, c)
-        delete!(model.affine_constraint_cache_set, c)
+        delete!(model.affine_constraint_cache, ci_inner)
+        delete!(model.affine_constraint_cache_set, ci_inner)
         MOI.delete(model.optimizer, ci_inner)
     else
         MOI.delete(model.optimizer, c)
@@ -883,9 +883,14 @@ function MOI.delete(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
 ) where {F<:MOI.VectorAffineFunction,S<:MOI.AbstractSet}
-    MOI.delete(model.optimizer, c)
+    ci_inner = model.constraint_outer_to_inner[c]
+    if haskey(model.vector_affine_constraint_cache, ci_inner)
+        delete!(model.vector_affine_constraint_cache, ci_inner)
+        MOI.delete(model.optimizer, ci_inner)
+    else
+        MOI.delete(model.optimizer, c)
+    end
     delete!(model.constraint_outer_to_inner, c)
-    delete!(model.vector_affine_constraint_cache, c)
     return
 end
 
