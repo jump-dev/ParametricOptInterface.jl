@@ -758,29 +758,30 @@ function test_jump_dual_delete_constraint_2()
     import ParametricOptInterface as POI
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
     @variable(model, α in MOI.Parameter(1.0))
+    @variable(model, β in MOI.Parameter(0.0))
     @variable(model, x)
     list = []
     cref = @constraint(model, x >= 1 * 1)
     push!(list, cref)
     cref = @constraint(model, x >= 9 * α)
     push!(list, cref)
-    cref = @constraint(model, x >= 8 * α^2)
+    cref = @constraint(model, x >= 8 * α + β^2)
     push!(list, cref)
     cref = @constraint(model, x >= 7 * 1)
     push!(list, cref)
     cref = @constraint(model, x >= 6 * α)
     push!(list, cref)
-    cref = @constraint(model, x >= 5 * α^2)
+    cref = @constraint(model, x >= 5 * α + β^2)
     push!(list, cref)
     cref = @constraint(model, x >= 4 * 1)
     push!(list, cref)
     cref = @constraint(model, x >= 3 * α)
     push!(list, cref)
-    cref = @constraint(model, x >= 2 * α^2)
+    cref = @constraint(model, x >= 2 * α + β^2)
     push!(list, cref)
     @objective(model, Min, x)
     cref1 = popfirst!(list)
-    for i in 9:2
+    for i in 9:-1:2
         JuMP.optimize!(model)
         @test JuMP.value(x) == 1.0 * i
         @test JuMP.dual(cref1) == 0.0
@@ -788,7 +789,68 @@ function test_jump_dual_delete_constraint_2()
             @test JuMP.dual(con) == 0.0
         end
         @test JuMP.dual(list[1]) == 1.0
-        @test MOI.get(model, POI.ParameterDual(), α) == 1.0 * i
+        if i in [7, 4]
+            @test MOI.get(model, POI.ParameterDual(), α) == 0.0
+        else
+            @test MOI.get(model, POI.ParameterDual(), α) == 1.0 * i
+        end
+        con = popfirst!(list)
+        JuMP.delete(model, con)
+    end
+    return
+end
+
+function test_jump_dual_delete_constraint_3()
+    using Test, JuMP, SCS
+    import ParametricOptInterface as POI
+    import MathOptInterface as MOI
+    cached = MOI.Utilities.CachingOptimizer(
+        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+        SCS.Optimizer(),
+    )
+    optimizer = POI.Optimizer(cached)
+    model = direct_model(optimizer)
+    set_silent(model)
+    list = []
+    @variable(model, α in MOI.Parameter(1.0))
+    @variable(model, β in MOI.Parameter(0.0))
+    @variable(model, x)
+    cref = @constraint(model, [x - 1 * 1] in MOI.Nonnegatives(1))
+    push!(list, cref)
+    cref = @constraint(model, [x - 9 * α] in MOI.Nonnegatives(1))
+    push!(list, cref)
+    # cref = @constraint(model, [x - 8 * α + β^2] in MOI.Nonnegatives(1))
+    cref = @constraint(model, [x - 8 * α + β] in MOI.Nonnegatives(1))
+    push!(list, cref)
+    cref = @constraint(model, [x - 7 * 1] in MOI.Nonnegatives(1))
+    push!(list, cref)
+    cref = @constraint(model, [x - 6 * α] in MOI.Nonnegatives(1))
+    push!(list, cref)
+    # cref = @constraint(model, [x - 5 * α + β^2] in MOI.Nonnegatives(1))
+    cref = @constraint(model, [x - 5 * α + β] in MOI.Nonnegatives(1))
+    push!(list, cref)
+    cref = @constraint(model, [x - 4 * 1] in MOI.Nonnegatives(1))
+    push!(list, cref)
+    cref = @constraint(model, [x - 3 * α] in MOI.Nonnegatives(1))
+    push!(list, cref)
+    # cref = @constraint(model, [x - 2 * α + β^2] in MOI.Nonnegatives(1))
+    cref = @constraint(model, [x - 2 * α + β] in MOI.Nonnegatives(1))
+    push!(list, cref)
+    @objective(model, Min, 1.0 * x)
+    cref1 = popfirst!(list)
+    for i in 9:-1:2
+        JuMP.optimize!(model)
+        @test JuMP.value(x) ≈ 1.0 * i atol = 1e-5
+        @test JuMP.dual(cref1)[] ≈ 0.0 atol = 1e-5
+        for con in list[2:end]
+            @test JuMP.dual(con)[] ≈ 0.0 atol = 1e-5
+        end
+        @test JuMP.dual(list[1])[] ≈ 1.0 atol = 1e-5
+        if i in [7, 4]
+            @test MOI.get(model, POI.ParameterDual(), α) ≈ 0.0 atol = 1e-5
+        else
+            @test MOI.get(model, POI.ParameterDual(), α) ≈ 1.0 * i atol = 1e-5
+        end
         con = popfirst!(list)
         JuMP.delete(model, con)
     end
