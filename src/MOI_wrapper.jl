@@ -281,6 +281,27 @@ end
 
 function MOI.set(
     model::Optimizer,
+    attr::MOI.VariablePrimalStart,
+    v::MOI.VariableIndex,
+    val,
+)
+    if _variable_in_model(model, v)
+        MOI.set(model.optimizer, attr, v, val)
+    elseif _parameter_in_model(model, v)
+        _val = model.parameters[p_idx(v)]
+        if val != _val
+            error(
+                "The parameter $v value is $_val, but trying to set VariablePrimalStart $val",
+            )
+        end
+    else
+        error("Variable not in the model")
+    end
+    return
+end
+
+function MOI.set(
+    model::Optimizer,
     attr::MOI.AbstractVariableAttribute,
     v::MOI.VariableIndex,
     val,
@@ -1134,8 +1155,16 @@ end
 # Solutions Attributes
 #
 
+function MOI.supports(model::Optimizer, attr::MOI.AbstractModelAttribute)
+    return MOI.supports(model.optimizer, attr)
+end
+
 function MOI.get(model::Optimizer, attr::MOI.AbstractModelAttribute)
     return MOI.get(model.optimizer, attr)
+end
+
+function MOI.set(model::Optimizer, attr::MOI.AbstractModelAttribute, val)
+    return MOI.set(model.optimizer, attr, val)
 end
 
 function MOI.get(
@@ -1167,6 +1196,10 @@ function MOI.get(
     return MOI.get(model.optimizer, attr)
 end
 
+function MOI.supports(model::Optimizer, attr::MOI.AbstractConstraintAttribute)
+    return MOI.supports(model.optimizer, attr)
+end
+
 function MOI.get(
     model::Optimizer,
     attr::MOI.AbstractConstraintAttribute,
@@ -1174,6 +1207,72 @@ function MOI.get(
 )
     optimizer_ci = get(model.constraint_outer_to_inner, c, c)
     return MOI.get(model.optimizer, attr, optimizer_ci)
+end
+
+function MOI.set(
+    model::Optimizer,
+    attr::MOI.AbstractConstraintAttribute,
+    c::MOI.ConstraintIndex,
+    val,
+)
+    optimizer_ci = get(model.constraint_outer_to_inner, c, nothing)
+    if optimizer_ci === nothing
+        error("Constraint $c not in the model")
+    end
+    return MOI.set(model.optimizer, attr, optimizer_ci, val)
+end
+
+function MOI.set(
+    model::Optimizer,
+    attr::MOI.AbstractConstraintAttribute,
+    c::MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}},
+    val,
+) where {T}
+    error(
+        "Constraint attribute $attr cannot be set for $c",
+    )
+end
+
+function MOI.get(
+    model::Optimizer,
+    ::MOI.ConstraintPrimal,
+    c::MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}},
+) where {T}
+    v = MOI.VariableIndex(c.value)
+    return model.parameters[p_idx(v)]
+end
+
+function MOI.set(
+    model::Optimizer,
+    ::MOI.ConstraintPrimalStart,
+    c::MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}},
+    val,
+) where {T}
+    v = MOI.VariableIndex(c.value)
+    if _parameter_in_model(model, v)
+        _val = model.parameters[p_idx(v)]
+        if val != _val
+            error(
+                "The parameter $v (from constraint $c) value is $_val, but trying to set ConstraintPrimalStart $val",
+            )
+        end
+    else
+        error("Variable not in the model")
+    end
+    return
+end
+
+function MOI.set(
+    model::Optimizer,
+    ::MOI.ConstraintDualStart,
+    c::MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}},
+    val,
+) where {T}
+    v = MOI.VariableIndex(c.value)
+    if !_parameter_in_model(model, v)
+        error("Variable not in the model")
+    end
+    return
 end
 
 #
@@ -1672,4 +1771,12 @@ function MOI.get(
 )
     return MOI.VariableIndex(ci.value) in model.parameters_in_conflict ?
            MOI.MAYBE_IN_CONFLICT : MOI.NOT_IN_CONFLICT
+end
+
+function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
+    return MOI.Utilities.default_copy_to(dest, src)
+end
+
+function MOI.Utilities.final_touch(model::Optimizer, index_map)
+    return MOI.Utilities.final_touch(model.optimizer, index_map)
 end
