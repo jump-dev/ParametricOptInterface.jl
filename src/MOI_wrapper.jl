@@ -1210,8 +1210,6 @@ function MOI.get(
     return MOI.get(model.optimizer, attr, optimizer_ci)
 end
 
-function _constant() end
-
 function MOI.get(
     model::Optimizer,
     attr::MOI.ConstraintPrimal,
