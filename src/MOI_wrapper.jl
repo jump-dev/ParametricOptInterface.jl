@@ -288,6 +288,7 @@ function MOI.set(
     if _variable_in_model(model, v)
         MOI.set(model.optimizer, attr, v, val)
     elseif _parameter_in_model(model, v)
+        # this is effectivelly a no-op, but we do validation
         _val = model.parameters[p_idx(v)]
         if val != _val
             error(
@@ -1209,6 +1210,24 @@ function MOI.get(
     return MOI.get(model.optimizer, attr, optimizer_ci)
 end
 
+function _constant() end
+
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.ConstraintPrimal,
+    c::MOI.ConstraintIndex,
+)
+    # optimizer_ci = get(model.constraint_outer_to_inner, c, c)
+    # value = MOI.get(model.optimizer, attr, optimizer_ci)
+    # inner_ci = model.constraint_outer_to_inner[c]
+    # if haskey(model.quadratic_constraint_cache_set, inner_ci)
+    #     set = model.quadratic_constraint_cache_set[inner_ci]
+    # # TODO : this method will not work well due to the usage of
+    # of normalize and add. We need to add more info to cache
+    # end
+    return MOI.Utilities.get_fallback(model, attr, c)
+end
+
 function MOI.set(
     model::Optimizer,
     attr::MOI.AbstractConstraintAttribute,
@@ -1228,9 +1247,7 @@ function MOI.set(
     c::MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}},
     val,
 ) where {T}
-    error(
-        "Constraint attribute $attr cannot be set for $c",
-    )
+    return error("Constraint attribute $attr cannot be set for $c")
 end
 
 function MOI.get(
