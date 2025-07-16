@@ -529,3 +529,207 @@ function _update_cache!(f::ParametricVectorAffineFunction{T}, model) where {T}
     f.current_constant = _parametric_constant(model, f)
     return nothing
 end
+
+mutable struct ParametricVectorQuadraticFunction{T}
+    # constant * parameter * variable (in this order)
+    pv::Vector{MOI.VectorQuadraticTerm{T}}
+    # constant * parameter * parameter
+    pp::Vector{MOI.VectorQuadraticTerm{T}}
+    # constant * variable * variable
+    vv::Vector{MOI.VectorQuadraticTerm{T}}
+    # constant * parameter
+    p::Vector{MOI.VectorAffineTerm{T}}
+    # constant * variable
+    v::Vector{MOI.VectorAffineTerm{T}}
+    # constant
+    c::Vector{T}
+    # to avoid unnecessary lookups in updates
+    set_constant::Vector{T}
+    # cache to avoid slow getters
+    current_constant::Vector{T}
+end
+
+function ParametricVectorQuadraticFunction(
+    f::MOI.VectorQuadraticFunction{T},
+) where {T}
+    v, p = _split_vector_affine_terms(f.affine_terms)
+    pv, pp, vv = _split_vector_quadratic_terms(f.quadratic_terms)
+
+    # Find variables related to parameters in parameter-variable quadratic terms
+    v_in_pv = Set{MOI.VariableIndex}()
+    sizehint!(v_in_pv, length(pv))
+    for term in pv
+        push!(v_in_pv, term.scalar_term.variable_2)
+    end
+
+    # Only cache affine variable terms that are involved in parameter-variable quadratic terms
+    v_filtered = Vector{MOI.VectorAffineTerm{T}}()
+    for term in v
+        if term.scalar_term.variable in v_in_pv
+            push!(v_filtered, term)
+        end
+    end
+
+    return ParametricVectorQuadraticFunction{T}(
+        pv,
+        pp,
+        vv,
+        p,
+        v_filtered,
+        copy(f.constants),
+        zeros(T, length(f.constants)),
+        zeros(T, length(f.constants)),
+    )
+end
+
+function vector_quadratic_parameter_variable_terms(f::ParametricVectorQuadraticFunction)
+    return f.pv
+end
+
+function vector_quadratic_parameter_parameter_terms(f::ParametricVectorQuadraticFunction)
+    return f.pp
+end
+
+function vector_quadratic_variable_variable_terms(f::ParametricVectorQuadraticFunction)
+    return f.vv
+end
+
+function vector_affine_parameter_terms(f::ParametricVectorQuadraticFunction)
+    return f.p
+end
+
+function vector_affine_variable_terms(f::ParametricVectorQuadraticFunction)
+    return f.v
+end
+
+function _split_vector_quadratic_terms(
+    terms::Vector{MOI.VectorQuadraticTerm{T}},
+) where {T}
+    num_vv = 0
+    num_pp = 0
+    num_pv = 0
+    for term in terms
+        if _is_variable(term.scalar_term.variable_1)
+            if _is_variable(term.scalar_term.variable_2)
+                num_vv += 1
+            else
+                num_pv += 1
+            end
+        else
+            if _is_variable(term.scalar_term.variable_2)
+                num_pv += 1
+            else
+                num_pp += 1
+            end
+        end
+    end
+    vv = Vector{MOI.VectorQuadraticTerm{T}}(undef, num_vv)
+    pp = Vector{MOI.VectorQuadraticTerm{T}}(undef, num_pp)
+    pv = Vector{MOI.VectorQuadraticTerm{T}}(undef, num_pv)
+    i_vv = 1
+    i_pp = 1
+    i_pv = 1
+    for term in terms
+        if _is_variable(term.scalar_term.variable_1)
+            if _is_variable(term.scalar_term.variable_2)
+                vv[i_vv] = term
+                i_vv += 1
+            else
+                pv[i_pv] = MOI.VectorQuadraticTerm(
+                    term.output_index,
+                    MOI.ScalarQuadraticTerm(
+                        term.scalar_term.coefficient,
+                        term.scalar_term.variable_2,
+                        term.scalar_term.variable_1,
+                    ),
+                )
+                i_pv += 1
+            end
+        else
+            if _is_variable(term.scalar_term.variable_2)
+                pv[i_pv] = term
+                i_pv += 1
+            else
+                pp[i_pp] = term
+                i_pp += 1
+            end
+        end
+    end
+    return pv, pp, vv
+end
+
+function _parametric_constant(
+    model,
+    f::ParametricVectorQuadraticFunction{T},
+) where {T}
+    param_constant = copy(f.c)
+    for term in vector_affine_parameter_terms(f)
+        param_constant[term.output_index] +=
+            term.scalar_term.coefficient *
+            model.parameters[p_idx(term.scalar_term.variable)]
+    end
+    for term in vector_quadratic_parameter_parameter_terms(f)
+        idx = term.output_index
+        coef = term.scalar_term.coefficient /
+            (term.scalar_term.variable_1 == term.scalar_term.variable_2 ? 2 : 1)
+        param_constant[idx] += coef *
+            model.parameters[p_idx(term.scalar_term.variable_1)] *
+            model.parameters[p_idx(term.scalar_term.variable_2)]
+    end
+    return param_constant
+end
+
+function _delta_parametric_constant(
+    model,
+    f::ParametricVectorQuadraticFunction{T},
+) where {T}
+    delta_constant = zeros(T, length(f.c))
+    for term in vector_affine_parameter_terms(f)
+        p = p_idx(term.scalar_term.variable)
+        if !isnan(model.updated_parameters[p])
+            delta_constant[term.output_index] +=
+                term.scalar_term.coefficient *
+                (model.updated_parameters[p] - model.parameters[p])
+        end
+    end
+    for term in vector_quadratic_parameter_parameter_terms(f)
+        idx = term.output_index
+        p1 = p_idx(term.scalar_term.variable_1)
+        p2 = p_idx(term.scalar_term.variable_2)
+        isnan_1 = isnan(model.updated_parameters[p1])
+        isnan_2 = isnan(model.updated_parameters[p2])
+        if !isnan_1 || !isnan_2
+            new_1 = isnan_1 ? model.parameters[p1] : model.updated_parameters[p1]
+            new_2 = isnan_2 ? model.parameters[p2] : model.updated_parameters[p2]
+            coef = term.scalar_term.coefficient /
+                (term.scalar_term.variable_1 == term.scalar_term.variable_2 ? 2 : 1)
+            delta_constant[idx] += coef * (new_1 * new_2 - model.parameters[p1] * model.parameters[p2])
+        end
+    end
+    return delta_constant
+end
+
+function _update_cache!(f::ParametricVectorQuadraticFunction{T}, model) where {T}
+    f.current_constant = _parametric_constant(model, f)
+    return nothing
+end
+
+function _original_function(f::ParametricVectorQuadraticFunction{T}) where {T}
+    return MOI.VectorQuadraticFunction{T}(
+        vcat(
+            vector_quadratic_parameter_variable_terms(f),
+            vector_quadratic_parameter_parameter_terms(f),
+            vector_quadratic_variable_variable_terms(f),
+        ),
+        vcat(vector_affine_parameter_terms(f), vector_affine_variable_terms(f)),
+        f.c,
+    )
+end
+
+function _current_function(f::ParametricVectorQuadraticFunction{T}) where {T}
+    return MOI.VectorQuadraticFunction{T}(
+        vector_quadratic_variable_variable_terms(f),
+        vector_affine_variable_terms(f),
+        f.current_constant,
+    )
+end

@@ -51,6 +51,22 @@ function _has_parameters(f::MOI.ScalarQuadraticFunction{T}) where {T}
     return false
 end
 
+function _has_parameters(f::MOI.VectorQuadraticFunction)
+    # quadratic part
+    for qt in f.quadratic_terms
+        if _has_parameters(qt.scalar_term)
+            return true
+        end
+    end
+    # affine part
+    for at in f.affine_terms
+        if _has_parameters(at.scalar_term)
+            return true
+        end
+    end
+    return false
+end
+
 function _cache_multiplicative_params!(
     model::Optimizer{T},
     f::ParametricQuadraticFunction{T},
@@ -858,6 +874,23 @@ function MOI.add_constraint(
     end
 end
 
+function add_constraint(model::Optimizer,
+                        f::MOI.VectorQuadraticFunction{T},
+                        S::MOI.AbstractVectorSet) where {T}
+    if _has_parameters(f)
+        pvqf = ParametricVectorQuadraticFunction(f)          # strip parameters
+        ci   = MOI.add_constraint(model.optimizer,
+                                  pvqf.current_function,
+                                  S)                         # plain MOI call
+        pvqf.ci = ci                                         # remember link
+        # cache is a DoubleDict keyed by (F,S) like the other caches
+        model.vector_quadratic_constraint_cache[pvqf, S] = pvqf
+        return ci
+    else
+        return MOI.add_constraint(model.optimizer, f, S)     # non-parametric
+    end
+end
+
 function MOI.delete(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
@@ -1409,6 +1442,13 @@ function MOI.get(
     ::DictOfParametricConstraintIndicesAndFunctions{F,S,P},
 ) where {F,S,P<:ParametricQuadraticFunction}
     return model.quadratic_constraint_cache[F, S]
+end
+
+function MOI.get(
+    model::Optimizer,
+    ::DictOfParametricConstraintIndicesAndFunctions{F,S,P},
+) where {F,S,P<:ParametricVectorQuadraticFunction}
+    return model.vector_quadratic_constraint_cache[F, S]
 end
 
 """

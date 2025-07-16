@@ -137,6 +137,8 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     quadratic_constraint_cache::DoubleDict{ParametricQuadraticFunction{T}}
     # Store original constraint set (inner key)
     quadratic_constraint_cache_set::DoubleDict{MOI.AbstractScalarSet}
+    # Vector quadratic function data
+    vector_quadratic_constraint_cache::DoubleDict{ParametricVectorQuadraticFunction{T}}
 
     # objective function data
     # Clever cache of data (at most one can be !== nothing)
@@ -209,6 +211,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             DoubleDict{MOI.ConstraintIndex}(),
             DoubleDict{ParametricQuadraticFunction{T}}(),
             DoubleDict{MOI.AbstractScalarSet}(),
+            DoubleDict{ParametricVectorQuadraticFunction{T}}(),
             # objective
             nothing,
             nothing,

@@ -272,6 +272,7 @@ function update_parameters!(model::Optimizer)
     _update_quadratic_constraints!(model)
     _update_affine_objective!(model)
     _update_quadratic_objective!(model)
+    _update_vector_quadratic_constraints!(model)
 
     # Update parameters and put NaN to indicate that the parameter has been
     # updated
@@ -282,5 +283,38 @@ function update_parameters!(model::Optimizer)
         end
     end
 
+    return
+end
+
+function _update_vector_quadratic_constraints!(model::Optimizer)
+    for (F, S) in keys(model.vector_quadratic_constraint_cache.dict)
+        vector_quadratic_constraint_cache_inner =
+            model.vector_quadratic_constraint_cache[F, S]
+        if !isempty(vector_quadratic_constraint_cache_inner)
+            _update_vector_quadratic_constraints!(
+                model,
+                vector_quadratic_constraint_cache_inner,
+            )
+        end
+    end
+    return
+end
+
+function _update_vector_quadratic_constraints!(
+    model::Optimizer,
+    vector_quadratic_constraint_cache_inner::DoubleDictInner{F,S,V},
+) where {F<:MOI.VectorQuadraticFunction{T},S,V} where {T}
+    for (inner_ci, pf) in vector_quadratic_constraint_cache_inner
+        delta_constant = _delta_parametric_constant(model, pf)
+        if !iszero(sum(abs, delta_constant))
+            pf.current_constant .+= delta_constant
+            MOI.modify(
+                model.optimizer,
+                inner_ci,
+                MOI.VectorConstantChange(pf.current_constant),
+            )
+        end
+        # TODO: handle variable coefficients if needed
+    end
     return
 end

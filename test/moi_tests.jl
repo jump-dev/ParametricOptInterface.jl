@@ -1982,3 +1982,38 @@ function test_no_quadratic_terms()
     @test MOI.get(optimizer, MOI.ConstraintDual(), c) ≈ -1 atol = ATOL
     return
 end
+
+@testset "Vector Quadratic – parameter update" begin
+    model = Optimizer()
+    @variable(model, x)
+    p = MOI.add_parameter(model, 1.0)      # initial value 1.0
+
+    # f₁ = p * x + x²        (output index 1)
+    # f₂ = 2p² + 3x² + 4     (output index 2)
+    f = MOI.VectorQuadraticFunction(
+        [
+            MOI.VectorQuadraticTerm(1,
+                MOI.ScalarQuadraticTerm(1.0, v_idx(p), x))       # p·x
+        ],                                                       # pv
+        [
+            MOI.VectorAffineTerm(1, MOI.ScalarAffineTerm(4.0, x)) # 4·x  (plain v)
+        ],                                                       # v
+        [0.0, 4.0],                                              # c
+    )
+    ci = @constraint(model, f in MOI.Zeros(2))
+
+    MOI.optimize!(model.optimizer)
+    @test value(x) ≈ 0.0 atol=1e-8
+
+    # --- update parameter ---
+    MOI.set(model, MOI.ParameterValue(), p, 3.0)
+    update_parameters!(model)
+
+    # After the update the constant term of output‑2 should be
+    #     2*p^2 + 4  = 22
+    f_cur = MOI.get(model.optimizer, MOI.ConstraintFunction(), ci)
+    @test f_cur.constant[2] ≈ 22.0 atol=1e-8
+    # and the coefficient of x in output‑1 should be 3 (new p)
+    coeff = first(f_cur.affine_terms).scalar_term.coefficient
+    @test coeff ≈ 3.0 atol=1e-8
+end
