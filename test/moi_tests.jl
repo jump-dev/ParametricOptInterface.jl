@@ -1984,8 +1984,12 @@ function test_no_quadratic_terms()
 end
 
 @testset "Vector Quadratic – parameter update" begin
-    ipopt = Ipopt.Optimizer()
-    model = POI.Optimizer(ipopt)
+    cached = MOI.Utilities.CachingOptimizer(
+        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+        SCS.Optimizer(),
+    )
+
+    model = POI.Optimizer(cached)
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     p =
@@ -2010,7 +2014,7 @@ end
     )
 
     # f .>= 0.0
-    POI.add_constraint(model, f, MOI.Nonnegatives(2))
+    MOI.add_constraint(model, f, MOI.PositiveSemidefiniteConeSquare(2))
 
     MOI.optimize!(model.optimizer)
     @test value(x) ≈ 0.0 atol=1e-8

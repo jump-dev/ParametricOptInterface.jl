@@ -874,20 +874,21 @@ function MOI.add_constraint(
     end
 end
 
-function add_constraint(model::Optimizer,
-                        f::MOI.VectorQuadraticFunction{T},
-                        S::MOI.AbstractVectorSet) where {T}
+function MOI.add_constraint(
+    model::Optimizer,
+    f::MOI.VectorQuadraticFunction{T},
+    set::MOI.AbstractVectorSet,
+) where {T}
     if _has_parameters(f)
-        pvqf = ParametricVectorQuadraticFunction(f)          # strip parameters
-        ci   = MOI.add_constraint(model.optimizer,
-                                  pvqf.current_function,
-                                  S)                         # plain MOI call
-        pvqf.ci = ci                                         # remember link
-        # cache is a DoubleDict keyed by (F,S) like the other caches
-        model.vector_quadratic_constraint_cache[pvqf, S] = pvqf
-        return ci
+        # wrap into our parametric form
+        pvqf = ParametricVectorQuadraticFunction(f)
+        # initialize constant cache
+        _update_cache!(pvqf, model)
+        # add the stripped (no‐parameter) constraint, caching for duals/updates
+        return _add_constraint_direct_and_cache_map!(model, _current_function(pvqf), set)
     else
-        return MOI.add_constraint(model.optimizer, f, S)     # non-parametric
+        # no parameters → delegate to direct helper
+        return _add_constraint_direct_and_cache_map!(model, f, set)
     end
 end
 
