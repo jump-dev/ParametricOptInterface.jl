@@ -2063,9 +2063,7 @@ end
     MOI.optimize!(model.optimizer)
     @test value(x) ≈ 1.0 atol=1e-8
 
-    # --- update parameter ---
     MOI.set(model, POI.ParameterValue(), p, 3.0)
-    update_parameters!(model)
 
     MOI.optimize!(model.optimizer)
     @test value(x) ≈ 1/3 atol=1e-8
