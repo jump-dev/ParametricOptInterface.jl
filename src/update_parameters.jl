@@ -314,7 +314,12 @@ function _update_vector_quadratic_constraints!(
                 MOI.VectorConstantChange(pf.current_constant),
             )
         end
-        # TODO: handle variable coefficients if needed
+        delta_terms = _delta_parametric_affine_terms(model, pf)
+        if !isempty(delta_terms)
+            changes = _affine_build_change_and_up_param_func(pf, delta_terms)
+            cis = fill(inner_ci, length(changes))
+            MOI.modify(model.optimizer, cis, changes)
+        end
     end
     return
 end
