@@ -1276,15 +1276,13 @@ function test_parameter_Cannot_be_inf_2()
 end
 
 @testset "JuMP PVQF" begin
-    model = Model(Optimizer)
-    @variable(model, x >= 0)
-    @variable(model, p in MOI.Parameter(0.5))
-    @constraint(model, [ p * x + x^2 ; 1 ] .== [ 0 ; 0 ])
+    model = Model(SCS.Optimizer)
+    @variable(model, x)
+    @variable(model, p in MOI.Parameter(1.0))
+    @constraint(model, [0, px + -1, 0] in JuMP.PSDCone(3))
     optimize!(model)
-    @test termination_status(model) == MOI.LOCALLY_SOLVED
-
-    set_value(p, 4.0)
-
+    @test value(x) ≈ 1.0 atol = 1e-5
+    set_value(p, 3.0)
     optimize!(model)
-    @test primal_status(model) == MOI.FEASIBLE_POINT
+    @test value(x) ≈ 1/3 atol = 1e-5
 end
