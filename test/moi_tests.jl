@@ -1983,7 +1983,45 @@ function test_no_quadratic_terms()
     return
 end
 
+#=
+# Initialize model with SCS solver and necessary bridges
+model = MOI.instantiate(SCS.Optimizer; with_bridge_type = Float64)
+MOI.set(model, MOI.Silent(), true)  # Disable solver output
+
+# Add variable
+x = MOI.add_variable(model)
+
+# Set objective: minimize x
+MOI.set(
+    model,
+    MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
+    MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(1.0, x)], 0.0)
+)
+MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+
+# Build constraint [0, x-1, 0] ∈ PositiveSemidefiniteConeTriangle(2)
+terms = [MOI.VectorAffineTerm(2, MOI.ScalarAffineTerm(1.0, x))]
+constants = [0.0, -1.0, 0.0]
+vec_func = MOI.VectorAffineFunction(terms, constants)
+psd_cone = MOI.PositiveSemidefiniteConeTriangle(2)
+c_index = MOI.add_constraint(model, vec_func, psd_cone)
+
+# Optimize and retrieve results
+MOI.optimize!(model)
+if MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL
+    x_val = MOI.get(model, MOI.VariablePrimal(), x)
+    println("Optimal x: ", x_val)  # Expected: x ≈ 1.0
+else
+    println("Optimization failed.")
+end
+=#
 @testset "Vector Quadratic – parameter update" begin
+    #=
+    variables: x
+    parameters: p
+        minobjective: 1x
+        c1: [0, px + -1, 0] in PositiveSemidefiniteConeTriangle(2)
+    =#
     cached = MOI.Utilities.CachingOptimizer(
         MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
         SCS.Optimizer(),
@@ -2000,34 +2038,32 @@ end
             ),
         )
 
-    # f₁ = p * x + x²        (output index 1)
-    # f₂ = 2p² + 3x² + 4     (output index 2)
-    f = MOI.VectorQuadraticFunction(
-        [
-            MOI.VectorQuadraticTerm(1,
-                MOI.ScalarQuadraticTerm(1.0, p, x))       # p·x
-        ],                                                       # pv
-        [
-            MOI.VectorAffineTerm(1, MOI.ScalarAffineTerm(4.0, x)) # 4·x  (plain v)
-        ],                                                       # v
-        [0.0, 4.0],                                              # c
-    )
+    # Set objective: minimize x
+    obj_func = MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(1.0, x)], 0.0)
+    MOI.set(model, MOI.ObjectiveFunction{typeof(obj_func)}(), obj_func)
+    MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
-    # f .>= 0.0
-    MOI.add_constraint(model, f, MOI.PositiveSemidefiniteConeSquare(2))
+    # Build constraint: [0, px - 1, 0] ∈ PositiveSemidefiniteConeTriangle(2)
+    quadratic_terms = [
+        MOI.VectorQuadraticTerm(
+            2,  # Index in the output vector (position 2: off-diagonal element)
+            MOI.ScalarQuadraticTerm(1.0, p, x)  # 1.0 * p * x
+        )
+    ]
+    affine_terms = MOI.VectorAffineTerm{Float64}[]  # No affine terms
+    constants = [0.0, -1.0, 0.0]  # Constants for [diag1, off-diag, diag2]
+
+    vec_func = MOI.VectorQuadraticFunction(quadratic_terms, affine_terms, constants)
+    psd_cone = MOI.PositiveSemidefiniteConeTriangle(2)
+    c_index = MOI.add_constraint(model, vec_func, psd_cone)
 
     MOI.optimize!(model.optimizer)
-    @test value(x) ≈ 0.0 atol=1e-8
+    @test value(x) ≈ 1.0 atol=1e-8
 
     # --- update parameter ---
     MOI.set(model, MOI.ParameterValue(), p, 3.0)
     update_parameters!(model)
 
-    # After the update the constant term of output‑2 should be
-    #     2*p^2 + 4  = 22
-    f_cur = MOI.get(model.optimizer, MOI.ConstraintFunction(), ci)
-    @test f_cur.constant[2] ≈ 22.0 atol=1e-8
-    # and the coefficient of x in output‑1 should be 3 (new p)
-    coeff = first(f_cur.affine_terms).scalar_term.coefficient
-    @test coeff ≈ 3.0 atol=1e-8
+    MOI.optimize!(model.optimizer)
+    @test value(x) ≈ 1/3 atol=1e-8
 end
