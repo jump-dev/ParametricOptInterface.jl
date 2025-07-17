@@ -1984,23 +1984,33 @@ function test_no_quadratic_terms()
 end
 
 @testset "Vector Quadratic – parameter update" begin
-    model = Optimizer()
-    @variable(model, x)
-    @variable(model, p in MOI.Parameter(1.0))
+    ipopt = Ipopt.Optimizer()
+    model = POI.Optimizer(ipopt)
+    MOI.set(model, MOI.Silent(), true)
+    x = MOI.add_variable(model)
+    p =
+        first.(
+            MOI.add_constrained_variable.(
+                model,
+                MOI.Parameter(1.0),
+            ),
+        )
 
     # f₁ = p * x + x²        (output index 1)
     # f₂ = 2p² + 3x² + 4     (output index 2)
     f = MOI.VectorQuadraticFunction(
         [
             MOI.VectorQuadraticTerm(1,
-                MOI.ScalarQuadraticTerm(1.0, v_idx(p), x))       # p·x
+                MOI.ScalarQuadraticTerm(1.0, p, x))       # p·x
         ],                                                       # pv
         [
             MOI.VectorAffineTerm(1, MOI.ScalarAffineTerm(4.0, x)) # 4·x  (plain v)
         ],                                                       # v
         [0.0, 4.0],                                              # c
     )
-    ci = @constraint(model, f in MOI.Zeros(2))
+
+    # f .>= 0.0
+    MOI.add_constraint(model, f, MOI.Nonnegatives(2))
 
     MOI.optimize!(model.optimizer)
     @test value(x) ≈ 0.0 atol=1e-8
