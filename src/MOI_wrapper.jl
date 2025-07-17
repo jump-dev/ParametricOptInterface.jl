@@ -907,15 +907,23 @@ function _add_constraint_with_parameters_on_function(
     fq = _current_function(pf)
     
     # Check if the function is actually affine after parameter evaluation
-    if _is_vector_affine(fq)  # Need to implement this function
+    if _is_vector_affine(fq)
         fa = MOI.VectorAffineFunction(fq.affine_terms, fq.constants)
         inner_ci = MOI.add_constraint(model.optimizer, fa, set)
+        # Convert to ParametricVectorAffineFunction and store in the correct cache
+        pf_affine = ParametricVectorAffineFunction(
+            pf.p,  # parameter terms
+            pf.v,  # variable terms  
+            pf.c,  # constants
+            pf.set_constant,
+            pf.current_constant
+        )
+        model.vector_affine_constraint_cache[inner_ci] = pf_affine
     else
         inner_ci = MOI.add_constraint(model.optimizer, fq, set)
+        # cache for future duals/updates
+        model.vector_quadratic_constraint_cache[inner_ci] = pf
     end
-    
-    # cache for future duals/updates
-    model.vector_quadratic_constraint_cache[inner_ci] = pf
 
     # register in our outer→inner map
     _add_to_constraint_map!(model, inner_ci)

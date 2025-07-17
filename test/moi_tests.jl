@@ -2060,11 +2060,12 @@ end
     psd_cone = MOI.PositiveSemidefiniteConeTriangle(2)
     c_index = MOI.add_constraint(model, vec_func, psd_cone)
 
-    MOI.optimize!(model.optimizer)
-    @test value(x) ≈ 1.0 atol=1e-8
+    MOI.optimize!(model)
+    @test MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1.0 atol=1e-8
 
     MOI.set(model, POI.ParameterValue(), p, 3.0)
 
-    MOI.optimize!(model.optimizer)
-    @test value(x) ≈ 1/3 atol=1e-8
+    MOI.optimize!(model)
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1/3 atol=1e-8
 end
