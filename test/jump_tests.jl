@@ -1278,14 +1278,13 @@ end
 @testset "JuMP PVQF" begin
     model = Model(Optimizer)
     @variable(model, x >= 0)
-    p = add_parameter(model, 0.5)
-
+    @variable(model, p in MOI.Parameter(0.5))
     @constraint(model, [ p * x + x^2 ; 1 ] .== [ 0 ; 0 ])
     optimize!(model)
     @test termination_status(model) == MOI.LOCALLY_SOLVED
 
     set_value(p, 4.0)
-    update_parameters!(backend(model))
+
     optimize!(model)
     @test primal_status(model) == MOI.FEASIBLE_POINT
 end

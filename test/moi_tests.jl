@@ -1986,7 +1986,7 @@ end
 @testset "Vector Quadratic – parameter update" begin
     model = Optimizer()
     @variable(model, x)
-    p = MOI.add_parameter(model, 1.0)      # initial value 1.0
+    @variable(model, p in MOI.Parameter(1.0))
 
     # f₁ = p * x + x²        (output index 1)
     # f₂ = 2p² + 3x² + 4     (output index 2)
