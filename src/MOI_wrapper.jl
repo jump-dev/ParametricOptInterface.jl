@@ -889,6 +889,10 @@ function MOI.add_constraint(
     end
 end
 
+function _is_vector_affine(f::MOI.VectorQuadraticFunction{T}) where {T}
+    return isempty(f.quadratic_terms)
+end
+
 function _add_constraint_with_parameters_on_function(
     model::Optimizer,
     f::MOI.VectorQuadraticFunction{T},
@@ -901,8 +905,15 @@ function _add_constraint_with_parameters_on_function(
 
     # strip parameters and add to underlying optimizer
     fq = _current_function(pf)
-    inner_ci = MOI.add_constraint(model.optimizer, fq, set)
-
+    
+    # Check if the function is actually affine after parameter evaluation
+    if _is_vector_affine(fq)  # Need to implement this function
+        fa = MOI.VectorAffineFunction(fq.affine_terms, fq.constants)
+        inner_ci = MOI.add_constraint(model.optimizer, fa, set)
+    else
+        inner_ci = MOI.add_constraint(model.optimizer, fq, set)
+    end
+    
     # cache for future duals/updates
     model.vector_quadratic_constraint_cache[inner_ci] = pf
 

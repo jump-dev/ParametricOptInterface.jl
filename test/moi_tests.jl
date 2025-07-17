@@ -2022,9 +2022,12 @@ end
         minobjective: 1x
         c1: [0, px + -1, 0] in PositiveSemidefiniteConeTriangle(2)
     =#
-    cached = MOI.Utilities.CachingOptimizer(
-        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-        SCS.Optimizer(),
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            SCS.Optimizer(),
+        ),
+        Float64,
     )
 
     model = POI.Optimizer(cached)
@@ -2061,7 +2064,7 @@ end
     @test value(x) ≈ 1.0 atol=1e-8
 
     # --- update parameter ---
-    MOI.set(model, MOI.ParameterValue(), p, 3.0)
+    MOI.set(model, POI.ParameterValue(), p, 3.0)
     update_parameters!(model)
 
     MOI.optimize!(model.optimizer)
