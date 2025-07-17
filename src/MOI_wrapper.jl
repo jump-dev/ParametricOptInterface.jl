@@ -81,6 +81,21 @@ function _cache_multiplicative_params!(
     return
 end
 
+function _cache_multiplicative_params!(
+    model::Optimizer{T},
+    f::ParametricVectorQuadraticFunction{T},
+) where {T}
+    for term in f.pv
+        push!(model.multiplicative_parameters_pv,
+              term.scalar_term.variable_1.value)
+    end
+    for term in f.pp
+        push!(model.multiplicative_parameters_pp, term.scalar_term.variable_1.value)
+        push!(model.multiplicative_parameters_pp, term.scalar_term.variable_2.value)
+    end
+    return
+end
+
 #
 # Empty
 #
@@ -874,21 +889,38 @@ function MOI.add_constraint(
     end
 end
 
+function _add_constraint_with_parameters_on_function(
+    model::Optimizer,
+    f::MOI.VectorQuadraticFunction{T},
+    set::S,
+) where {T,S}
+    # wrap into our parametric type
+    pf = ParametricVectorQuadraticFunction(f)
+    _cache_multiplicative_params!(model, pf)
+    _update_cache!(pf, model)
+
+    # strip parameters and add to underlying optimizer
+    fq = _current_function(pf)
+    inner_ci = MOI.add_constraint(model.optimizer, fq, set)
+
+    # cache for future duals/updates
+    model.vector_quadratic_constraint_cache[inner_ci] = pf
+
+    # register in our outer→inner map
+    _add_to_constraint_map!(model, inner_ci)
+
+    return inner_ci
+end
+
 function MOI.add_constraint(
     model::Optimizer,
     f::MOI.VectorQuadraticFunction{T},
     set::MOI.AbstractVectorSet,
 ) where {T}
-    if _has_parameters(f)
-        # wrap into our parametric form
-        pvqf = ParametricVectorQuadraticFunction(f)
-        # initialize constant cache
-        _update_cache!(pvqf, model)
-        # add the stripped (no‐parameter) constraint, caching for duals/updates
-        return _add_constraint_direct_and_cache_map!(model, _current_function(pvqf), set)
-    else
-        # no parameters → delegate to direct helper
+    if !_has_parameters(f)
         return _add_constraint_direct_and_cache_map!(model, f, set)
+    else
+        return _add_constraint_with_parameters_on_function(model, f, set)
     end
 end
 
