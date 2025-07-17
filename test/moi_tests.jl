@@ -2010,7 +2010,7 @@ end
     )
 
     # f .>= 0.0
-    MOI.add_constraint(model, f, MOI.Nonnegatives(2))
+    POI.add_constraint(model, f, MOI.Nonnegatives(2))
 
     MOI.optimize!(model.optimizer)
     @test value(x) ≈ 0.0 atol=1e-8

@@ -54,13 +54,13 @@ end
 function _has_parameters(f::MOI.VectorQuadraticFunction)
     # quadratic part
     for qt in f.quadratic_terms
-        if _has_parameters(qt.scalar_term)
+        if _is_parameter(qt.scalar_term.variable_1) || _is_parameter(qt.scalar_term.variable_2)
             return true
         end
     end
     # affine part
     for at in f.affine_terms
-        if _has_parameters(at.scalar_term)
+        if _is_parameter(at.scalar_term.variable)
             return true
         end
     end
