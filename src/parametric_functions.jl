@@ -268,6 +268,31 @@ function _parametric_affine_terms(
     return param_terms_dict
 end
 
+function _parametric_affine_terms(
+    model,
+    f::ParametricVectorQuadraticFunction{T},
+) where {T}
+    param_terms_dict = Dict{Tuple{MOI.VariableIndex,Int},T}()
+    sizehint!(param_terms_dict, length(vector_quadratic_parameter_variable_terms(f)))
+    
+    for term in vector_quadratic_parameter_variable_terms(f)
+        p_idx_val = p_idx(term.scalar_term.variable_1)
+        var = term.scalar_term.variable_2
+        output_idx = term.output_index
+        base = get(param_terms_dict, (var, output_idx), zero(T))
+        param_terms_dict[(var, output_idx)] =
+            base + term.scalar_term.coefficient * model.parameters[p_idx_val]
+    end
+    
+    for (term, coef) in f.affine_data
+        output_idx = term.output_index
+        var = term.scalar_term.variable
+        param_terms_dict[(var, output_idx)] = coef
+    end
+    
+    return param_terms_dict
+end
+
 function _delta_parametric_affine_terms(
     model,
     f::ParametricQuadraticFunction{T},
@@ -531,6 +556,9 @@ function _update_cache!(f::ParametricVectorAffineFunction{T}, model) where {T}
 end
 
 mutable struct ParametricVectorQuadraticFunction{T}
+    # helper to efficiently update affine terms 
+    affine_data::Dict{Tuple{MOI.VariableIndex,Int},T}
+    affine_data_np::Dict{Tuple{MOI.VariableIndex,Int},T}
     # constant * parameter * variable (in this order)
     pv::Vector{MOI.VectorQuadraticTerm{T}}
     # constant * parameter * parameter
@@ -545,7 +573,8 @@ mutable struct ParametricVectorQuadraticFunction{T}
     c::Vector{T}
     # to avoid unnecessary lookups in updates
     set_constant::Vector{T}
-    # cache to avoid slow getters
+    # cache data that is inside the solver to avoid slow getters
+    current_terms_with_p::Dict{Tuple{MOI.VariableIndex,Int},T}
     current_constant::Vector{T}
 end
 
@@ -561,23 +590,31 @@ function ParametricVectorQuadraticFunction(
     for term in pv
         push!(v_in_pv, term.scalar_term.variable_2)
     end
-
-    # Only cache affine variable terms that are involved in parameter-variable quadratic terms
-    v_filtered = Vector{MOI.VectorAffineTerm{T}}()
+    affine_data = Dict{Tuple{MOI.VariableIndex,Int},T}()
+    sizehint!(affine_data, length(v_in_pv))
+    affine_data_np = Dict{Tuple{MOI.VariableIndex,Int},T}()
+    sizehint!(affine_data_np, length(v))
     for term in v
         if term.scalar_term.variable in v_in_pv
-            push!(v_filtered, term)
+            base = get(affine_data, (term.scalar_term.variable, term.output_index), zero(T))
+            affine_data[(term.scalar_term.variable, term.output_index)] = term.scalar_term.coefficient + base
+        else
+            base = get(affine_data_np, (term.scalar_term.variable, term.output_index), zero(T))
+            affine_data_np[(term.scalar_term.variable, term.output_index)] = term.scalar_term.coefficient + base
         end
     end
 
     return ParametricVectorQuadraticFunction{T}(
+        affine_data,
+        affine_data_np,
         pv,
         pp,
         vv,
         p,
-        v_filtered,
+        v,
         copy(f.constants),
         zeros(T, length(f.constants)),
+        Dict{Tuple{MOI.VariableIndex,Int},T}(),
         zeros(T, length(f.constants)),
     )
 end
@@ -699,33 +736,8 @@ function _delta_parametric_affine_terms(
 end
 
 function _update_cache!(f::ParametricVectorQuadraticFunction{T}, model) where {T}
-    # Update the cached constant values
-    param_constant = copy(f.c)
-    
-    # Add parameter contributions from affine terms
-    for term in f.p
-        param_idx = p_idx(term.scalar_term.variable)
-        param_val = model.parameters[param_idx]
-        param_constant[term.output_index] += term.scalar_term.coefficient * param_val
-    end
-    
-    # Add parameter-parameter quadratic terms to constants
-    for term in f.pp
-        idx = term.output_index
-        p1 = p_idx(term.scalar_term.variable_1)
-        p2 = p_idx(term.scalar_term.variable_2)
-        param_val1 = model.parameters[p1]
-        param_val2 = model.parameters[p2]
-        
-        coef = term.scalar_term.coefficient
-        if term.scalar_term.variable_1 == term.scalar_term.variable_2
-            coef = coef / 2  # Handle diagonal terms
-        end
-        
-        param_constant[idx] += coef * param_val1 * param_val2
-    end
-    
-    f.current_constant = param_constant
+    f.current_constant = _parametric_constant(model, f)
+    f.current_terms_with_p = _parametric_affine_terms(model, f)    
     return nothing
 end
 
@@ -745,17 +757,17 @@ function _parametric_constant(
     model,
     f::ParametricVectorQuadraticFunction{T},
 ) where {T}
-    param_constant = copy(f.c)
+    param_constant = f.c
     
     # Add contributions from parameter terms in affine part
-    for term in f.p
+    for term in vector_affine_parameter_terms(f)
         param_constant[term.output_index] +=
             term.scalar_term.coefficient *
             model.parameters[p_idx(term.scalar_term.variable)]
     end
     
     # Add contributions from parameter-parameter quadratic terms
-    for term in f.pp
+    for term in vector_quadratic_parameter_parameter_terms(f)
         idx = term.output_index
         coef = term.scalar_term.coefficient /
             (term.scalar_term.variable_1 == term.scalar_term.variable_2 ? 2 : 1)
@@ -768,16 +780,17 @@ function _parametric_constant(
 end
 
 function _current_function(f::ParametricVectorQuadraticFunction{T}) where {T}
-    # Only include variable-variable quadratic terms
-    quad_terms = vector_quadratic_variable_variable_terms(f)
-    
-    # Only include variable affine terms
-    affine_terms = vector_affine_variable_terms(f)
-    
-    # Return either a VectorQuadraticFunction or VectorAffineFunction based on whether we have quadratic terms
-    if isempty(quad_terms)
-        return MOI.VectorAffineFunction(affine_terms, f.current_constant)
-    else
-        return MOI.VectorQuadraticFunction(quad_terms, affine_terms, f.current_constant)
+    affine_terms = MOI.VectorAffineFunction{T}[]
+    sizehint!(affine_terms, length(f.current_constant) + length(f.v))
+    for (var, coef) in f.current_terms_with_p
+        push!(affine_terms, MOI.VectorAffineTerm{T}(coef, var))
     end
+    for (var, coef) in f.affine_data_np
+        push!(affine_terms, MOI.VectorAffineTerm{T}(coef, var))
+    end
+    return MOI.VectorQuadraticFunction{T}(
+        f.vv,
+        affine_terms,
+        f.current_constant,
+    )
 end
