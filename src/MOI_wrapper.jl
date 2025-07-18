@@ -893,41 +893,29 @@ function _is_vector_affine(f::MOI.VectorQuadraticFunction{T}) where {T}
     return isempty(f.quadratic_terms)
 end
 
+function _is_vector_affine(::MOI.VectorAffineFunction{T}) where {T}
+    return true  # VectorAffineFunction is always affine
+end
+
 function _add_constraint_with_parameters_on_function(
     model::Optimizer,
     f::MOI.VectorQuadraticFunction{T},
     set::S,
 ) where {T,S}
-    # wrap into our parametric type
+    # Create parametric vector quadratic function
     pf = ParametricVectorQuadraticFunction(f)
     _cache_multiplicative_params!(model, pf)
     _update_cache!(pf, model)
-
-    # strip parameters and add to underlying optimizer
-    fq = _current_function(pf)
     
-    # Check if the function is actually affine after parameter evaluation
-    if _is_vector_affine(fq)
-        fa = MOI.VectorAffineFunction(fq.affine_terms, fq.constants)
-        inner_ci = MOI.add_constraint(model.optimizer, fa, set)
-        # Convert to ParametricVectorAffineFunction and store in the correct cache
-        pf_affine = ParametricVectorAffineFunction(
-            pf.p,  # parameter terms
-            pf.v,  # variable terms  
-            pf.c,  # constants
-            pf.set_constant,
-            pf.current_constant
-        )
-        model.vector_affine_constraint_cache[inner_ci] = pf_affine
-    else
-        inner_ci = MOI.add_constraint(model.optimizer, fq, set)
-        # cache for future duals/updates
-        model.vector_quadratic_constraint_cache[inner_ci] = pf
-    end
-
-    # register in our outer→inner map
+    # Get the current function after parameter substitution
+    current_func = _current_function(pf)
+    
+    # Add the constraint with whatever function type we got
+    inner_ci = MOI.add_constraint(model.optimizer, current_func, set)
+    
+    # Store in the vector quadratic cache for future updates
+    model.vector_quadratic_constraint_cache[inner_ci] = pf
     _add_to_constraint_map!(model, inner_ci)
-
     return inner_ci
 end
 

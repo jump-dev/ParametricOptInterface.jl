@@ -658,59 +658,74 @@ function _split_vector_quadratic_terms(
     return pv, pp, vv
 end
 
-function _parametric_constant(
+function _delta_parametric_affine_terms(
     model,
     f::ParametricVectorQuadraticFunction{T},
 ) where {T}
-    param_constant = copy(f.c)
-    for term in vector_affine_parameter_terms(f)
-        param_constant[term.output_index] +=
-            term.scalar_term.coefficient *
-            model.parameters[p_idx(term.scalar_term.variable)]
-    end
-    for term in vector_quadratic_parameter_parameter_terms(f)
-        idx = term.output_index
-        coef = term.scalar_term.coefficient /
-            (term.scalar_term.variable_1 == term.scalar_term.variable_2 ? 2 : 1)
-        param_constant[idx] += coef *
-            model.parameters[p_idx(term.scalar_term.variable_1)] *
-            model.parameters[p_idx(term.scalar_term.variable_2)]
-    end
-    return param_constant
-end
-
-function _delta_parametric_constant(
-    model,
-    f::ParametricVectorQuadraticFunction{T},
-) where {T}
-    delta_constant = zeros(T, length(f.c))
-    for term in vector_affine_parameter_terms(f)
-        p = p_idx(term.scalar_term.variable)
-        if !isnan(model.updated_parameters[p])
-            delta_constant[term.output_index] +=
-                term.scalar_term.coefficient *
-                (model.updated_parameters[p] - model.parameters[p])
+    delta_terms = Dict{Tuple{Int,MOI.VariableIndex},T}()
+    
+    # Handle parameter-variable quadratic terms (px) that become affine (x) when p is updated
+    for term in f.pv
+        p_idx_val = p_idx(term.scalar_term.variable_1)
+        var = term.scalar_term.variable_2
+        output_idx = term.output_index
+        
+        if haskey(model.updated_parameters, p_idx_val) && !isnan(model.updated_parameters[p_idx_val])
+            old_param_val = model.parameters[p_idx_val]
+            new_param_val = model.updated_parameters[p_idx_val]
+            delta_coef = term.scalar_term.coefficient * (new_param_val - old_param_val)
+            
+            key = (output_idx, var)
+            current_delta = get(delta_terms, key, zero(T))
+            delta_terms[key] = current_delta + delta_coef
         end
     end
-    for term in vector_quadratic_parameter_parameter_terms(f)
-        idx = term.output_index
-        p1 = p_idx(term.scalar_term.variable_1)
-        p2 = p_idx(term.scalar_term.variable_2)
-        isnan_1 = isnan(model.updated_parameters[p1])
-        isnan_2 = isnan(model.updated_parameters[p2])
-        if !isnan_1 || !isnan_2
-            new_1 = isnan_1 ? model.parameters[p1] : model.updated_parameters[p1]
-            new_2 = isnan_2 ? model.parameters[p2] : model.updated_parameters[p2]
-            coef = term.scalar_term.coefficient /
-                (term.scalar_term.variable_1 == term.scalar_term.variable_2 ? 2 : 1)
-            delta_constant[idx] += coef * (new_1 * new_2 - model.parameters[p1] * model.parameters[p2])
+    
+    # Handle parameter-only affine terms
+    for term in f.p
+        p_idx_val = p_idx(term.scalar_term.variable)
+        output_idx = term.output_index
+        
+        if haskey(model.updated_parameters, p_idx_val) && !isnan(model.updated_parameters[p_idx_val])
+            old_param_val = model.parameters[p_idx_val]
+            new_param_val = model.updated_parameters[p_idx_val]
+            
+            # This becomes a constant change, not an affine term change
+            # We'll handle this in the constant update function
         end
     end
-    return delta_constant
+    
+    return delta_terms
 end
 
 function _update_cache!(f::ParametricVectorQuadraticFunction{T}, model) where {T}
-    f.current_constant = _parametric_constant(model, f)
+    # Update the cached constant values
+    param_constant = copy(f.c)
+    
+    # Add parameter contributions from affine terms
+    for term in f.p
+        param_idx = p_idx(term.scalar_term.variable)
+        param_val = model.parameters[param_idx]
+        param_constant[term.output_index] += term.scalar_term.coefficient * param_val
+    end
+    
+    # Add parameter-parameter quadratic terms to constants
+    for term in f.pp
+        idx = term.output_index
+        p1 = p_idx(term.scalar_term.variable_1)
+        p2 = p_idx(term.scalar_term.variable_2)
+        param_val1 = model.parameters[p1]
+        param_val2 = model.parameters[p2]
+        
+        coef = term.scalar_term.coefficient
+        if term.scalar_term.variable_1 == term.scalar_term.variable_2
+            coef = coef / 2  # Handle diagonal terms
+        end
+        
+        param_constant[idx] += coef * param_val1 * param_val2
+    end
+    
+    f.current_constant = param_constant
     return nothing
 end
 
@@ -726,10 +741,43 @@ function _original_function(f::ParametricVectorQuadraticFunction{T}) where {T}
     )
 end
 
+function _parametric_constant(
+    model,
+    f::ParametricVectorQuadraticFunction{T},
+) where {T}
+    param_constant = copy(f.c)
+    
+    # Add contributions from parameter terms in affine part
+    for term in f.p
+        param_constant[term.output_index] +=
+            term.scalar_term.coefficient *
+            model.parameters[p_idx(term.scalar_term.variable)]
+    end
+    
+    # Add contributions from parameter-parameter quadratic terms
+    for term in f.pp
+        idx = term.output_index
+        coef = term.scalar_term.coefficient /
+            (term.scalar_term.variable_1 == term.scalar_term.variable_2 ? 2 : 1)
+        param_constant[idx] += coef *
+            model.parameters[p_idx(term.scalar_term.variable_1)] *
+            model.parameters[p_idx(term.scalar_term.variable_2)]
+    end
+    
+    return param_constant
+end
+
 function _current_function(f::ParametricVectorQuadraticFunction{T}) where {T}
-    return MOI.VectorQuadraticFunction{T}(
-        vector_quadratic_variable_variable_terms(f),
-        vector_affine_variable_terms(f),
-        f.current_constant,
-    )
+    # Only include variable-variable quadratic terms
+    quad_terms = vector_quadratic_variable_variable_terms(f)
+    
+    # Only include variable affine terms
+    affine_terms = vector_affine_variable_terms(f)
+    
+    # Return either a VectorQuadraticFunction or VectorAffineFunction based on whether we have quadratic terms
+    if isempty(quad_terms)
+        return MOI.VectorAffineFunction(affine_terms, f.current_constant)
+    else
+        return MOI.VectorQuadraticFunction(quad_terms, affine_terms, f.current_constant)
+    end
 end

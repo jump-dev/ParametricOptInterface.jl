@@ -300,26 +300,155 @@ function _update_vector_quadratic_constraints!(model::Optimizer)
     return
 end
 
+function _delta_parametric_constant(
+    model,
+    f::ParametricVectorQuadraticFunction{T},
+) where {T}
+    delta_constants = zeros(T, length(f.current_constant))
+    
+    # Handle parameter-only affine terms
+    for term in f.p
+        p_idx_val = p_idx(term.scalar_term.variable)
+        output_idx = term.output_index
+        
+        if haskey(model.updated_parameters, p_idx_val) && !isnan(model.updated_parameters[p_idx_val])
+            old_param_val = model.parameters[p_idx_val]
+            new_param_val = model.updated_parameters[p_idx_val]
+            delta_constants[output_idx] += term.scalar_term.coefficient * (new_param_val - old_param_val)
+        end
+    end
+    
+    # Handle parameter-parameter quadratic terms
+    for term in f.pp
+        idx = term.output_index
+        var1 = term.scalar_term.variable_1
+        var2 = term.scalar_term.variable_2
+        p1 = p_idx(var1)
+        p2 = p_idx(var2)
+        
+        if (haskey(model.updated_parameters, p1) && !isnan(model.updated_parameters[p1])) ||
+           (haskey(model.updated_parameters, p2) && !isnan(model.updated_parameters[p2]))
+            
+            old_val1 = model.parameters[p1]
+            old_val2 = model.parameters[p2]
+            new_val1 = haskey(model.updated_parameters, p1) && !isnan(model.updated_parameters[p1]) ? 
+                       model.updated_parameters[p1] : old_val1
+            new_val2 = haskey(model.updated_parameters, p2) && !isnan(model.updated_parameters[p2]) ? 
+                       model.updated_parameters[p2] : old_val2
+            
+            coef = term.scalar_term.coefficient / (var1 == var2 ? 2 : 1)
+            delta_constants[idx] += coef * (new_val1 * new_val2 - old_val1 * old_val2)
+        end
+    end
+    
+    return delta_constants
+end
+
+function _delta_parametric_quadratic_terms(
+    model::Optimizer,
+    f::ParametricVectorQuadraticFunction{T}
+) where {T}
+    delta_quad_terms = Dict{Int, Vector{MOI.ScalarQuadraticTerm{T}}}()
+    
+    for (output_idx, quad_terms) in f.quadratic_terms_with_p
+        new_terms = MOI.ScalarQuadraticTerm{T}[]
+        
+        for (vars, coeff_info) in quad_terms
+            var1, var2 = vars
+            param_coeff, current_coeff = coeff_info
+            
+            # Calculate new coefficient based on current parameter values
+            new_coeff = param_coeff
+            if haskey(model.updated_parameters, var1) && !isnan(model.updated_parameters[var1])
+                new_coeff *= model.updated_parameters[var1]
+            elseif haskey(model.parameters, var1)
+                new_coeff *= model.parameters[var1]
+            end
+            
+            if haskey(model.updated_parameters, var2) && !isnan(model.updated_parameters[var2])
+                new_coeff *= model.updated_parameters[var2]
+            elseif haskey(model.parameters, var2)
+                new_coeff *= model.parameters[var2]
+            end
+            
+            # Only add if coefficient changed
+            if !isapprox(new_coeff, current_coeff)
+                # Find the actual variable (non-parameter)
+                actual_var = _is_parameter(model, var1) ? var2 : var1
+                push!(new_terms, MOI.ScalarQuadraticTerm(new_coeff - current_coeff, actual_var, actual_var))
+            end
+        end
+        
+        if !isempty(new_terms)
+            delta_quad_terms[output_idx] = new_terms
+        end
+    end
+    
+    return delta_quad_terms
+end
+
+function _quadratic_build_change_and_up_param_func!(
+    pf::ParametricVectorQuadraticFunction{T},
+    delta_quad_terms::Dict{Int, Vector{MOI.ScalarQuadraticTerm{T}}}
+) where {T}
+    for (output_idx, terms) in delta_quad_terms
+        if haskey(pf.quadratic_terms_with_p, output_idx)
+            for term in terms
+                # Update the current coefficient in the parametric function
+                for (vars, coeff_info) in pf.quadratic_terms_with_p[output_idx]
+                    param_coeff, current_coeff = coeff_info
+                    pf.quadratic_terms_with_p[output_idx][vars] = (param_coeff, current_coeff + term.coefficient)
+                end
+            end
+        end
+    end
+end
+
 function _update_vector_quadratic_constraints!(
     model::Optimizer,
     vector_quadratic_constraint_cache_inner::DoubleDictInner{F,S,V},
-) where {F<:MOI.VectorQuadraticFunction{T},S,V} where {T}
+) where {F,S,V}
     for (inner_ci, pf) in vector_quadratic_constraint_cache_inner
-        delta_constant = _delta_parametric_constant(model, pf)
-        if !iszero(sum(abs, delta_constant))
-            pf.current_constant .+= delta_constant
-            MOI.modify(
-                model.optimizer,
-                inner_ci,
-                MOI.VectorConstantChange(pf.current_constant),
-            )
-        end
-        delta_terms = _delta_parametric_affine_terms(model, pf)
-        if !isempty(delta_terms)
-            changes = _affine_build_change_and_up_param_func(pf, delta_terms)
-            cis = fill(inner_ci, length(changes))
-            MOI.modify(model.optimizer, cis, changes)
+        # First, save the old state
+        old_constant = copy(pf.current_constant)
+        
+        # Update the parametric function cache
+        _update_cache!(pf, model)
+        
+        # Determine if constants changed
+        constant_changed = !isapprox(old_constant, pf.current_constant)
+        
+        # Get the current function after parameter updates
+        current_func = _current_function(pf)
+        
+        # Always replace the function to ensure all parameter updates are applied
+        try
+            # Try to update the function directly
+            MOI.set(model.optimizer, MOI.ConstraintFunction(), inner_ci, current_func)
+        catch e
+            # If that fails, recreate the constraint
+            constraint_set = MOI.get(model.optimizer, MOI.ConstraintSet(), inner_ci)
+            MOI.delete(model.optimizer, inner_ci)
+            
+            # Add with the new function
+            new_ci = MOI.add_constraint(model.optimizer, current_func, constraint_set)
+            
+            # Update mappings
+            for (outer_ci, old_inner_ci) in model.constraint_outer_to_inner
+                if old_inner_ci == inner_ci
+                    model.constraint_outer_to_inner[outer_ci] = new_ci
+                    break
+                end
+            end
+            
+            # Update the cache
+            vector_quadratic_constraint_cache_inner[new_ci] = pf
+            delete!(vector_quadratic_constraint_cache_inner, inner_ci)
+            
+            # Exit this iteration since we've deleted the original constraint
+            continue
         end
     end
+    
     return
 end
