@@ -909,14 +909,7 @@ function _add_constraint_with_parameters_on_function(
     
     # Get the current function after parameter substitution
     current_func = _current_function(pf)
-    
-    # Add the constraint with whatever function type we got
-    inner_ci = MOI.add_constraint(model.optimizer, current_func, set)
-    
-    # Store in the vector quadratic cache for future updates
-    model.vector_quadratic_constraint_cache[inner_ci] = pf
-    _add_to_constraint_map!(model, inner_ci)
-    return inner_ci
+    # TODO: XXXXX STOPED HERE
 end
 
 function MOI.add_constraint(

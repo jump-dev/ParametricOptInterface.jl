@@ -268,31 +268,6 @@ function _parametric_affine_terms(
     return param_terms_dict
 end
 
-function _parametric_affine_terms(
-    model,
-    f::ParametricVectorQuadraticFunction{T},
-) where {T}
-    param_terms_dict = Dict{Tuple{MOI.VariableIndex,Int},T}()
-    sizehint!(param_terms_dict, length(vector_quadratic_parameter_variable_terms(f)))
-    
-    for term in vector_quadratic_parameter_variable_terms(f)
-        p_idx_val = p_idx(term.scalar_term.variable_1)
-        var = term.scalar_term.variable_2
-        output_idx = term.output_index
-        base = get(param_terms_dict, (var, output_idx), zero(T))
-        param_terms_dict[(var, output_idx)] =
-            base + term.scalar_term.coefficient * model.parameters[p_idx_val]
-    end
-    
-    for (term, coef) in f.affine_data
-        output_idx = term.output_index
-        var = term.scalar_term.variable
-        param_terms_dict[(var, output_idx)] = coef
-    end
-    
-    return param_terms_dict
-end
-
 function _delta_parametric_affine_terms(
     model,
     f::ParametricQuadraticFunction{T},
@@ -695,6 +670,31 @@ function _split_vector_quadratic_terms(
     return pv, pp, vv
 end
 
+function _parametric_affine_terms(
+    model,
+    f::ParametricVectorQuadraticFunction{T},
+) where {T}
+    param_terms_dict = Dict{Tuple{MOI.VariableIndex,Int},T}()
+    sizehint!(param_terms_dict, length(vector_quadratic_parameter_variable_terms(f)))
+    
+    for term in vector_quadratic_parameter_variable_terms(f)
+        p_idx_val = p_idx(term.scalar_term.variable_1)
+        var = term.scalar_term.variable_2
+        output_idx = term.output_index
+        base = get(param_terms_dict, (var, output_idx), zero(T))
+        param_terms_dict[(var, output_idx)] =
+            base + term.scalar_term.coefficient * model.parameters[p_idx_val]
+    end
+    
+    for (term, coef) in f.affine_data
+        output_idx = term.output_index
+        var = term.scalar_term.variable
+        param_terms_dict[(var, output_idx)] = coef
+    end
+    
+    return param_terms_dict
+end
+
 function _delta_parametric_affine_terms(
     model,
     f::ParametricVectorQuadraticFunction{T},
@@ -780,13 +780,13 @@ function _parametric_constant(
 end
 
 function _current_function(f::ParametricVectorQuadraticFunction{T}) where {T}
-    affine_terms = MOI.VectorAffineFunction{T}[]
+    affine_terms = MOI.VectorAffineTerm{T}[]
     sizehint!(affine_terms, length(f.current_constant) + length(f.v))
-    for (var, coef) in f.current_terms_with_p
-        push!(affine_terms, MOI.VectorAffineTerm{T}(coef, var))
+    for ((var, idx), coef) in f.current_terms_with_p
+        push!(affine_terms, MOI.VectorAffineTerm{T}(idx, MOI.ScalarAffineTerm{T}(coef, var)))
     end
-    for (var, coef) in f.affine_data_np
-        push!(affine_terms, MOI.VectorAffineTerm{T}(coef, var))
+    for ((var, idx), coef) in f.affine_data_np
+        push!(affine_terms, MOI.VectorAffineTerm{T}(idx, MOI.ScalarAffineTerm{T}(coef, var)))
     end
     return MOI.VectorQuadraticFunction{T}(
         f.vv,

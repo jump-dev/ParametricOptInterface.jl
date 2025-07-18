@@ -360,26 +360,6 @@ function _delta_parametric_constant(
     return delta_constants
 end
 
-function _delta_parametric_affine_terms(
-    model,
-    f::ParametricVectorQuadraticFunction{T},
-) where {T}
-    delta_terms_dict = Dict{Tuple{MOI.VariableIndex, Int}, T}()
-    sizehint!(delta_terms_dict, length(quadratic_parameter_variable_terms(f)))
-    # remember a variable may appear more than once in pv
-    for term in f.pp
-        p = p_idx(term.scalar_term.variable_1)
-        if !isnan(model.updated_parameters[p])
-            base = get(delta_terms_dict, (term.scalar_term.variable_2, term.output_index), zero(T))
-            delta_terms_dict[(term.scalar_term.variable_2, term.output_index)] =
-                base +
-                term.coefficient *
-                (model.updated_parameters[p] - model.parameters[p])
-        end
-    end
-    return delta_terms_dict
-end
-
 function _quadratic_build_change_and_up_param_func!(
     pf::ParametricVectorQuadraticFunction{T},
     delta_quad_terms::Dict{Int, Vector{MOI.ScalarQuadraticTerm{T}}}
