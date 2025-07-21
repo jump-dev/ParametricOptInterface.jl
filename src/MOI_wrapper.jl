@@ -119,6 +119,8 @@ function MOI.is_empty(model::Optimizer)
            isempty(model.quadratic_outer_to_inner) &&
            isempty(model.quadratic_constraint_cache) &&
            isempty(model.quadratic_constraint_cache_set) &&
+           isempty(model.vector_quadratic_constraint_cache) &&
+           isempty(model.vector_quadratic_constraint_cache_set) &&
            # obj
            model.affine_objective_cache === nothing &&
            model.quadratic_objective_cache === nothing &&
@@ -154,6 +156,8 @@ function MOI.empty!(model::Optimizer{T}) where {T}
     empty!(model.quadratic_outer_to_inner)
     empty!(model.quadratic_constraint_cache)
     empty!(model.quadratic_constraint_cache_set)
+    empty!(model.vector_quadratic_constraint_cache)
+    empty!(model.vector_quadratic_constraint_cache_set)
     # obj
     model.affine_objective_cache = nothing
     model.quadratic_objective_cache = nothing
@@ -569,6 +573,10 @@ function MOI.get(
             return _original_function(
                 model.quadratic_constraint_cache[inner_ci],
             )
+        elseif haskey(model.vector_quadratic_constraint_cache, inner_ci)
+            return _original_function(
+                model.vector_quadratic_constraint_cache[inner_ci],
+            )
         else
             return convert(
                 MOI.ScalarQuadraticFunction{T},
@@ -614,6 +622,9 @@ function MOI.get(
     if haskey(model.quadratic_outer_to_inner, ci)
         inner_ci = model.quadratic_outer_to_inner[ci]
         return model.quadratic_constraint_cache_set[inner_ci]
+    elseif haskey(model.vector_quadratic_constraint_cache, ci)
+        inner_ci = model.vector_quadratic_constraint_cache[ci]
+        return model.vector_quadratic_constraint_cache_set[inner_ci]
     elseif haskey(model.affine_outer_to_inner, ci)
         inner_ci = model.affine_outer_to_inner[ci]
         return model.affine_constraint_cache_set[inner_ci]
@@ -908,8 +919,31 @@ function _add_constraint_with_parameters_on_function(
     _update_cache!(pf, model)
     
     # Get the current function after parameter substitution
-    current_func = _current_function(pf)
-    # TODO: XXXXX STOPED HERE
+    func = _current_function(pf)
+    if !_is_vector_affine(func)
+        fq = func
+        inner_ci = MOI.add_constraint(model.optimizer, fq, set)
+        model.last_quad_add_added += 1
+        outer_ci = MOI.ConstraintIndex{MOI.VectorQuadraticFunction{T},S}(
+            model.last_quad_add_added,
+        )
+        model.quadratic_outer_to_inner[outer_ci] = inner_ci
+        model.constraint_outer_to_inner[outer_ci] = inner_ci
+    else
+        fa = MOI.VectorAffineFunction(func.affine_terms, func.constants)
+        inner_ci = MOI.add_constraint(model.optimizer, fa, set)
+        model.last_quad_add_added += 1
+        outer_ci = MOI.ConstraintIndex{MOI.VectorQuadraticFunction{T},S}(
+            model.last_quad_add_added,
+        )
+        # This part is used to remember that ci came from a quadratic function
+        # It is particularly useful because sometimes the constraint mutates
+        model.quadratic_outer_to_inner[outer_ci] = inner_ci
+        model.constraint_outer_to_inner[outer_ci] = inner_ci
+    end
+    model.vector_quadratic_constraint_cache[inner_ci] = pf
+    model.vector_quadratic_constraint_cache_set[inner_ci] = set
+    return outer_ci
 end
 
 function MOI.add_constraint(
@@ -922,6 +956,22 @@ function MOI.add_constraint(
     else
         return _add_constraint_with_parameters_on_function(model, f, set)
     end
+end
+
+function MOI.delete(
+    model::Optimizer,
+    c::MOI.ConstraintIndex{F,S},
+) where {F<:MOI.VectorQuadraticFunction,S<:MOI.AbstractSet}
+    ci_inner = model.constraint_outer_to_inner[c]
+    if haskey(model.quadratic_constraint_cache, ci_inner)
+        delete!(model.quadratic_constraint_cache, ci_inner)
+        delete!(model.quadratic_constraint_cache_set, ci_inner)
+        MOI.delete(model.optimizer, ci_inner)
+    else
+        MOI.delete(model.optimizer, c)
+    end
+    delete!(model.constraint_outer_to_inner, c)
+    return
 end
 
 function MOI.delete(
