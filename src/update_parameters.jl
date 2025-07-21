@@ -404,6 +404,10 @@ function _update_vector_quadratic_constraints!(
         # end
         _update_cache!(pf, model)
         new_function = _current_function(pf)
+        if _is_vector_affine(new_function)
+            # Build new function if affine
+            new_function = MOI.VectorAffineFunction(new_function.affine_terms, new_function.constants)
+        end
         MOI.set(model.optimizer, MOI.ConstraintFunction(), inner_ci, new_function)
     end
         
