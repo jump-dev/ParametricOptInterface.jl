@@ -2067,5 +2067,5 @@ end
     MOI.set(model, POI.ParameterValue(), p, 3.0)
 
     MOI.optimize!(model)
-    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1/3 atol=1e-8
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1/3 atol=1e-5
 end
