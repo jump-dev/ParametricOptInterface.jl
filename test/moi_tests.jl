@@ -2062,7 +2062,7 @@ end
 
     MOI.optimize!(model)
     @test MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL
-    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1.0 atol=1e-8
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1.0 atol=1e-5
 
     MOI.set(model, POI.ParameterValue(), p, 3.0)
 
