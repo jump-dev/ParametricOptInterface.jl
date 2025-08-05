@@ -288,7 +288,6 @@ function update_parameters!(model::Optimizer)
     _update_quadratic_constraints!(model)
     _update_affine_objective!(model)
     _update_quadratic_objective!(model)
-    _update_vector_quadratic_constraints!(model)
 
     # Update parameters and put NaN to indicate that the parameter has been
     # updated
@@ -298,6 +297,8 @@ function update_parameters!(model::Optimizer)
             model.updated_parameters[parameter_index] = NaN
         end
     end
+
+    _update_vector_quadratic_constraints!(model)
 
     return
 end

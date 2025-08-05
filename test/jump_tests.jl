@@ -1279,10 +1279,10 @@ end
     model = Model(SCS.Optimizer)
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))
-    @constraint(model, [0, px + -1, 0] in JuMP.PSDCone(3))
+    @constraint(model, [[0 (p * x + -1)];[(p * x + -1) 0]] in JuMP.PSDCone())
     optimize!(model)
     @test value(x) ≈ 1.0 atol = 1e-5
-    set_value(p, 3.0)
+    set_parameter_value(p, 3.0)
     optimize!(model)
     @test value(x) ≈ 1/3 atol = 1e-5
 end
