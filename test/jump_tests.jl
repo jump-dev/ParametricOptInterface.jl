@@ -1275,7 +1275,7 @@ function test_parameter_Cannot_be_inf_2()
     return
 end
 
-@testset "JuMP PVQF" begin
+function test_jump_psd_cone_with_parameter()
     model = Model(SCS.Optimizer)
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))

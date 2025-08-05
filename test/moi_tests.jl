@@ -1983,39 +1983,7 @@ function test_no_quadratic_terms()
     return
 end
 
-#=
-# Initialize model with SCS solver and necessary bridges
-model = MOI.instantiate(SCS.Optimizer; with_bridge_type = Float64)
-MOI.set(model, MOI.Silent(), true)  # Disable solver output
-
-# Add variable
-x = MOI.add_variable(model)
-
-# Set objective: minimize x
-MOI.set(
-    model,
-    MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
-    MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(1.0, x)], 0.0)
-)
-MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-
-# Build constraint [0, x-1, 0] ∈ PositiveSemidefiniteConeTriangle(2)
-terms = [MOI.VectorAffineTerm(2, MOI.ScalarAffineTerm(1.0, x))]
-constants = [0.0, -1.0, 0.0]
-vec_func = MOI.VectorAffineFunction(terms, constants)
-psd_cone = MOI.PositiveSemidefiniteConeTriangle(2)
-c_index = MOI.add_constraint(model, vec_func, psd_cone)
-
-# Optimize and retrieve results
-MOI.optimize!(model)
-if MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL
-    x_val = MOI.get(model, MOI.VariablePrimal(), x)
-    println("Optimal x: ", x_val)  # Expected: x ≈ 1.0
-else
-    println("Optimization failed.")
-end
-=#
-@testset "Vector Quadratic – parameter update" begin
+function test_psd_cone_with_parameter()
     #=
     variables: x
     parameters: p
