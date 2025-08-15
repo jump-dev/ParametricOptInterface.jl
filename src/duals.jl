@@ -9,6 +9,7 @@ function _compute_dual_of_parameters!(model::Optimizer{T}) where {T}
     _update_duals_from_affine_constraints!(model)
     _update_duals_from_vector_affine_constraints!(model)
     _update_duals_from_quadratic_constraints!(model)
+    _update_duals_from_vector_quadratic_constraints!(model)
     if model.affine_objective_cache !== nothing
         _update_duals_from_objective!(model, model.affine_objective_cache)
     end
@@ -173,4 +174,34 @@ function _is_additive(model::Optimizer, cp::MOI.ConstraintIndex)
         return false
     end
     return true
+end
+
+function _update_duals_from_vector_quadratic_constraints!(model::Optimizer)
+    for (F, S) in keys(model.vector_quadratic_constraint_cache.dict)
+        vector_quadratic_constraint_cache_inner = model.vector_quadratic_constraint_cache[F, S]
+        _compute_parameters_in_ci!(model, vector_quadratic_constraint_cache_inner)
+    end
+    return
+end
+
+function _compute_parameters_in_ci!(
+    model::Optimizer{T},
+    pf::ParametricVectorQuadraticFunction{T},
+    ci::MOI.ConstraintIndex{F,S},
+) where {F,S,T}
+    cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
+    for term in pf.p
+        model.dual_value_of_parameters[p_val(term.scalar_term.variable)] -=
+            cons_dual[term.output_index] * term.scalar_term.coefficient
+    end
+    for term in pf.pp
+        coef = ifelse(term.scalar_term.variable_1 == term.scalar_term.variable_2, T(1 // 2), T(1))
+        model.dual_value_of_parameters[p_val(term.scalar_term.variable_1)] -=
+            coef * cons_dual[term.output_index] * term.scalar_term.coefficient *
+            MOI.get(model, ParameterValue(), term.scalar_term.variable_2)
+        model.dual_value_of_parameters[p_val(term.scalar_term.variable_2)] -=
+            coef * cons_dual[term.output_index] * term.scalar_term.coefficient *
+            MOI.get(model, ParameterValue(), term.scalar_term.variable_1)
+    end
+    return
 end

@@ -1982,3 +1982,58 @@ function test_no_quadratic_terms()
     @test MOI.get(optimizer, MOI.ConstraintDual(), c) ≈ -1 atol = ATOL
     return
 end
+
+function test_psd_cone_with_parameter()
+    #=
+    variables: x
+    parameters: p
+        minobjective: 1x
+        c1: [0, px + -1, 0] in PositiveSemidefiniteConeTriangle(2)
+    =#
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            SCS.Optimizer(),
+        ),
+        Float64,
+    )
+
+    model = POI.Optimizer(cached)
+    MOI.set(model, MOI.Silent(), true)
+    x = MOI.add_variable(model)
+    p =
+        first.(
+            MOI.add_constrained_variable.(
+                model,
+                MOI.Parameter(1.0),
+            ),
+        )
+
+    # Set objective: minimize x
+    obj_func = MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(1.0, x)], 0.0)
+    MOI.set(model, MOI.ObjectiveFunction{typeof(obj_func)}(), obj_func)
+    MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+
+    # Build constraint: [0, px - 1, 0] ∈ PositiveSemidefiniteConeTriangle(2)
+    quadratic_terms = [
+        MOI.VectorQuadraticTerm(
+            2,  # Index in the output vector (position 2: off-diagonal element)
+            MOI.ScalarQuadraticTerm(1.0, p, x)  # 1.0 * p * x
+        )
+    ]
+    affine_terms = MOI.VectorAffineTerm{Float64}[]  # No affine terms
+    constants = [0.0, -1.0, 0.0]  # Constants for [diag1, off-diag, diag2]
+
+    vec_func = MOI.VectorQuadraticFunction(quadratic_terms, affine_terms, constants)
+    psd_cone = MOI.PositiveSemidefiniteConeTriangle(2)
+    c_index = MOI.add_constraint(model, vec_func, psd_cone)
+
+    MOI.optimize!(model)
+    @test MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1.0 atol=1e-5
+
+    MOI.set(model, POI.ParameterValue(), p, 3.0)
+
+    MOI.optimize!(model)
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1/3 atol=1e-5
+end

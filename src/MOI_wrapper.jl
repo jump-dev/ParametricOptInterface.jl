@@ -51,6 +51,22 @@ function _has_parameters(f::MOI.ScalarQuadraticFunction{T}) where {T}
     return false
 end
 
+function _has_parameters(f::MOI.VectorQuadraticFunction)
+    # quadratic part
+    for qt in f.quadratic_terms
+        if _is_parameter(qt.scalar_term.variable_1) || _is_parameter(qt.scalar_term.variable_2)
+            return true
+        end
+    end
+    # affine part
+    for at in f.affine_terms
+        if _is_parameter(at.scalar_term.variable)
+            return true
+        end
+    end
+    return false
+end
+
 function _cache_multiplicative_params!(
     model::Optimizer{T},
     f::ParametricQuadraticFunction{T},
@@ -61,6 +77,21 @@ function _cache_multiplicative_params!(
     for term in f.pp
         push!(model.multiplicative_parameters_pp, term.variable_1.value)
         push!(model.multiplicative_parameters_pp, term.variable_2.value)
+    end
+    return
+end
+
+function _cache_multiplicative_params!(
+    model::Optimizer{T},
+    f::ParametricVectorQuadraticFunction{T},
+) where {T}
+    for term in f.pv
+        push!(model.multiplicative_parameters_pv,
+              term.scalar_term.variable_1.value)
+    end
+    for term in f.pp
+        push!(model.multiplicative_parameters_pp, term.scalar_term.variable_1.value)
+        push!(model.multiplicative_parameters_pp, term.scalar_term.variable_2.value)
     end
     return
 end
@@ -88,6 +119,8 @@ function MOI.is_empty(model::Optimizer)
            isempty(model.quadratic_outer_to_inner) &&
            isempty(model.quadratic_constraint_cache) &&
            isempty(model.quadratic_constraint_cache_set) &&
+           isempty(model.vector_quadratic_constraint_cache) &&
+           isempty(model.vector_quadratic_constraint_cache_set) &&
            # obj
            model.affine_objective_cache === nothing &&
            model.quadratic_objective_cache === nothing &&
@@ -123,6 +156,8 @@ function MOI.empty!(model::Optimizer{T}) where {T}
     empty!(model.quadratic_outer_to_inner)
     empty!(model.quadratic_constraint_cache)
     empty!(model.quadratic_constraint_cache_set)
+    empty!(model.vector_quadratic_constraint_cache)
+    empty!(model.vector_quadratic_constraint_cache_set)
     # obj
     model.affine_objective_cache = nothing
     model.quadratic_objective_cache = nothing
@@ -538,6 +573,10 @@ function MOI.get(
             return _original_function(
                 model.quadratic_constraint_cache[inner_ci],
             )
+        elseif haskey(model.vector_quadratic_constraint_cache, inner_ci)
+            return _original_function(
+                model.vector_quadratic_constraint_cache[inner_ci],
+            )
         else
             return convert(
                 MOI.ScalarQuadraticFunction{T},
@@ -583,6 +622,9 @@ function MOI.get(
     if haskey(model.quadratic_outer_to_inner, ci)
         inner_ci = model.quadratic_outer_to_inner[ci]
         return model.quadratic_constraint_cache_set[inner_ci]
+    elseif haskey(model.vector_quadratic_constraint_cache, ci)
+        inner_ci = model.vector_quadratic_constraint_cache[ci]
+        return model.vector_quadratic_constraint_cache_set[inner_ci]
     elseif haskey(model.affine_outer_to_inner, ci)
         inner_ci = model.affine_outer_to_inner[ci]
         return model.affine_constraint_cache_set[inner_ci]
@@ -856,6 +898,80 @@ function MOI.add_constraint(
     else
         return _add_constraint_with_parameters_on_function(model, f, set)
     end
+end
+
+function _is_vector_affine(f::MOI.VectorQuadraticFunction{T}) where {T}
+    return isempty(f.quadratic_terms)
+end
+
+function _is_vector_affine(::MOI.VectorAffineFunction{T}) where {T}
+    return true  # VectorAffineFunction is always affine
+end
+
+function _add_constraint_with_parameters_on_function(
+    model::Optimizer,
+    f::MOI.VectorQuadraticFunction{T},
+    set::S,
+) where {T,S}
+    # Create parametric vector quadratic function
+    pf = ParametricVectorQuadraticFunction(f)
+    _cache_multiplicative_params!(model, pf)
+    _update_cache!(pf, model)
+    
+    # Get the current function after parameter substitution
+    func = _current_function(pf)
+    if !_is_vector_affine(func)
+        fq = func
+        inner_ci = MOI.add_constraint(model.optimizer, fq, set)
+        model.last_quad_add_added += 1
+        outer_ci = MOI.ConstraintIndex{MOI.VectorQuadraticFunction{T},S}(
+            model.last_quad_add_added,
+        )
+        model.quadratic_outer_to_inner[outer_ci] = inner_ci
+        model.constraint_outer_to_inner[outer_ci] = inner_ci
+    else
+        fa = MOI.VectorAffineFunction(func.affine_terms, func.constants)
+        inner_ci = MOI.add_constraint(model.optimizer, fa, set)
+        model.last_quad_add_added += 1
+        outer_ci = MOI.ConstraintIndex{MOI.VectorQuadraticFunction{T},S}(
+            model.last_quad_add_added,
+        )
+        # This part is used to remember that ci came from a quadratic function
+        # It is particularly useful because sometimes the constraint mutates
+        model.quadratic_outer_to_inner[outer_ci] = inner_ci
+        model.constraint_outer_to_inner[outer_ci] = inner_ci
+    end
+    model.vector_quadratic_constraint_cache[inner_ci] = pf
+    model.vector_quadratic_constraint_cache_set[inner_ci] = set
+    return outer_ci
+end
+
+function MOI.add_constraint(
+    model::Optimizer,
+    f::MOI.VectorQuadraticFunction{T},
+    set::MOI.AbstractVectorSet,
+) where {T}
+    if !_has_parameters(f)
+        return _add_constraint_direct_and_cache_map!(model, f, set)
+    else
+        return _add_constraint_with_parameters_on_function(model, f, set)
+    end
+end
+
+function MOI.delete(
+    model::Optimizer,
+    c::MOI.ConstraintIndex{F,S},
+) where {F<:MOI.VectorQuadraticFunction,S<:MOI.AbstractSet}
+    ci_inner = model.constraint_outer_to_inner[c]
+    if haskey(model.quadratic_constraint_cache, ci_inner)
+        delete!(model.quadratic_constraint_cache, ci_inner)
+        delete!(model.quadratic_constraint_cache_set, ci_inner)
+        MOI.delete(model.optimizer, ci_inner)
+    else
+        MOI.delete(model.optimizer, c)
+    end
+    delete!(model.constraint_outer_to_inner, c)
+    return
 end
 
 function MOI.delete(
@@ -1409,6 +1525,13 @@ function MOI.get(
     ::DictOfParametricConstraintIndicesAndFunctions{F,S,P},
 ) where {F,S,P<:ParametricQuadraticFunction}
     return model.quadratic_constraint_cache[F, S]
+end
+
+function MOI.get(
+    model::Optimizer,
+    ::DictOfParametricConstraintIndicesAndFunctions{F,S,P},
+) where {F,S,P<:ParametricVectorQuadraticFunction}
+    return model.vector_quadratic_constraint_cache[F, S]
 end
 
 """
