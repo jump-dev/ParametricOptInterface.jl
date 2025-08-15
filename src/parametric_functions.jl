@@ -794,3 +794,4 @@ function _current_function(f::ParametricVectorQuadraticFunction{T}) where {T}
         f.current_constant,
     )
 end
+

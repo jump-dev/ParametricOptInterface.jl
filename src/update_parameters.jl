@@ -160,6 +160,10 @@ function _affine_build_change_and_up_param_func(
     return changes
 end
 
+# TODO
+# This function is currently commented out because there is no vector version
+# of MOI.ScalarCoefficientChange.
+# For the update the entire MOI.ConstraintFunction must be updated
 # function _affine_build_change_and_up_param_func(
 #     pf::ParametricVectorQuadraticFunction{T},
 #     delta_terms,
@@ -298,6 +302,15 @@ function update_parameters!(model::Optimizer)
         end
     end
 
+    # Different from the above cases, it is not possible to update
+    # vector function in-place because there is no vector version of
+    # MOI.ScalarCoefficientChange.
+    # Therefore, vector quadratic function must be update via
+    # MOI.ConstraintFunction that replaces the entire function.
+    # Consequently, this operation is much slower.
+    # Moreover, to perform the update, it is easier to use the
+    # current_function code, hence, this update must be executed
+    # after the update of the parameters cache (the loop above).
     _update_vector_quadratic_constraints!(model)
 
     return
@@ -359,23 +372,6 @@ function _delta_parametric_constant(
     end
     
     return delta_constants
-end
-
-function _quadratic_build_change_and_up_param_func!(
-    pf::ParametricVectorQuadraticFunction{T},
-    delta_quad_terms::Dict{Int, Vector{MOI.ScalarQuadraticTerm{T}}}
-) where {T}
-    for (output_idx, terms) in delta_quad_terms
-        if haskey(pf.quadratic_terms_with_p, output_idx)
-            for term in terms
-                # Update the current coefficient in the parametric function
-                for (vars, coeff_info) in pf.quadratic_terms_with_p[output_idx]
-                    param_coeff, current_coeff = coeff_info
-                    pf.quadratic_terms_with_p[output_idx][vars] = (param_coeff, current_coeff + term.coefficient)
-                end
-            end
-        end
-    end
 end
 
 function _update_vector_quadratic_constraints!(
