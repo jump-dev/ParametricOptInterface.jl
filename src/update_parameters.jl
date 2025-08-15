@@ -335,19 +335,20 @@ function _delta_parametric_constant(
     f::ParametricVectorQuadraticFunction{T},
 ) where {T}
     delta_constants = zeros(T, length(f.current_constant))
-    
+
     # Handle parameter-only affine terms
     for term in f.p
         p_idx_val = p_idx(term.scalar_term.variable)
         output_idx = term.output_index
-        
+
         if !isnan(model.updated_parameters[p_idx_val])
             old_param_val = model.parameters[p_idx_val]
             new_param_val = model.updated_parameters[p_idx_val]
-            delta_constants[output_idx] += term.scalar_term.coefficient * (new_param_val - old_param_val)
+            delta_constants[output_idx] +=
+                term.scalar_term.coefficient * (new_param_val - old_param_val)
         end
     end
-    
+
     # Handle parameter-parameter quadratic terms
     for term in f.pp
         idx = term.output_index
@@ -355,22 +356,24 @@ function _delta_parametric_constant(
         var2 = term.scalar_term.variable_2
         p1 = p_idx(var1)
         p2 = p_idx(var2)
-        
+
         if !isnan(model.updated_parameters[p1]) ||
            !isnan(model.updated_parameters[p2])
-            
             old_val1 = model.parameters[p1]
             old_val2 = model.parameters[p2]
-            new_val1 = !isnan(model.updated_parameters[p1]) ? 
-                       model.updated_parameters[p1] : old_val1
-            new_val2 = !isnan(model.updated_parameters[p2]) ? 
-                       model.updated_parameters[p2] : old_val2
-            
+            new_val1 =
+                !isnan(model.updated_parameters[p1]) ?
+                model.updated_parameters[p1] : old_val1
+            new_val2 =
+                !isnan(model.updated_parameters[p2]) ?
+                model.updated_parameters[p2] : old_val2
+
             coef = term.scalar_term.coefficient / (var1 == var2 ? 2 : 1)
-            delta_constants[idx] += coef * (new_val1 * new_val2 - old_val1 * old_val2)
+            delta_constants[idx] +=
+                coef * (new_val1 * new_val2 - old_val1 * old_val2)
         end
     end
-    
+
     return delta_constants
 end
 
@@ -403,10 +406,18 @@ function _update_vector_quadratic_constraints!(
         new_function = _current_function(pf)
         if _is_vector_affine(new_function)
             # Build new function if affine
-            new_function = MOI.VectorAffineFunction(new_function.affine_terms, new_function.constants)
+            new_function = MOI.VectorAffineFunction(
+                new_function.affine_terms,
+                new_function.constants,
+            )
         end
-        MOI.set(model.optimizer, MOI.ConstraintFunction(), inner_ci, new_function)
+        MOI.set(
+            model.optimizer,
+            MOI.ConstraintFunction(),
+            inner_ci,
+            new_function,
+        )
     end
-        
+
     return
 end

@@ -54,7 +54,8 @@ end
 function _has_parameters(f::MOI.VectorQuadraticFunction)
     # quadratic part
     for qt in f.quadratic_terms
-        if _is_parameter(qt.scalar_term.variable_1) || _is_parameter(qt.scalar_term.variable_2)
+        if _is_parameter(qt.scalar_term.variable_1) ||
+           _is_parameter(qt.scalar_term.variable_2)
             return true
         end
     end
@@ -86,12 +87,20 @@ function _cache_multiplicative_params!(
     f::ParametricVectorQuadraticFunction{T},
 ) where {T}
     for term in f.pv
-        push!(model.multiplicative_parameters_pv,
-              term.scalar_term.variable_1.value)
+        push!(
+            model.multiplicative_parameters_pv,
+            term.scalar_term.variable_1.value,
+        )
     end
     for term in f.pp
-        push!(model.multiplicative_parameters_pp, term.scalar_term.variable_1.value)
-        push!(model.multiplicative_parameters_pp, term.scalar_term.variable_2.value)
+        push!(
+            model.multiplicative_parameters_pp,
+            term.scalar_term.variable_1.value,
+        )
+        push!(
+            model.multiplicative_parameters_pp,
+            term.scalar_term.variable_2.value,
+        )
     end
     return
 end
@@ -917,7 +926,7 @@ function _add_constraint_with_parameters_on_function(
     pf = ParametricVectorQuadraticFunction(f)
     _cache_multiplicative_params!(model, pf)
     _update_cache!(pf, model)
-    
+
     # Get the current function after parameter substitution
     func = _current_function(pf)
     if !_is_vector_affine(func)

@@ -571,11 +571,21 @@ function ParametricVectorQuadraticFunction(
     sizehint!(affine_data_np, length(v))
     for term in v
         if term.scalar_term.variable in v_in_pv
-            base = get(affine_data, (term.scalar_term.variable, term.output_index), zero(T))
-            affine_data[(term.scalar_term.variable, term.output_index)] = term.scalar_term.coefficient + base
+            base = get(
+                affine_data,
+                (term.scalar_term.variable, term.output_index),
+                zero(T),
+            )
+            affine_data[(term.scalar_term.variable, term.output_index)] =
+                term.scalar_term.coefficient + base
         else
-            base = get(affine_data_np, (term.scalar_term.variable, term.output_index), zero(T))
-            affine_data_np[(term.scalar_term.variable, term.output_index)] = term.scalar_term.coefficient + base
+            base = get(
+                affine_data_np,
+                (term.scalar_term.variable, term.output_index),
+                zero(T),
+            )
+            affine_data_np[(term.scalar_term.variable, term.output_index)] =
+                term.scalar_term.coefficient + base
         end
     end
 
@@ -594,15 +604,21 @@ function ParametricVectorQuadraticFunction(
     )
 end
 
-function vector_quadratic_parameter_variable_terms(f::ParametricVectorQuadraticFunction)
+function vector_quadratic_parameter_variable_terms(
+    f::ParametricVectorQuadraticFunction,
+)
     return f.pv
 end
 
-function vector_quadratic_parameter_parameter_terms(f::ParametricVectorQuadraticFunction)
+function vector_quadratic_parameter_parameter_terms(
+    f::ParametricVectorQuadraticFunction,
+)
     return f.pp
 end
 
-function vector_quadratic_variable_variable_terms(f::ParametricVectorQuadraticFunction)
+function vector_quadratic_variable_variable_terms(
+    f::ParametricVectorQuadraticFunction,
+)
     return f.vv
 end
 
@@ -675,8 +691,11 @@ function _parametric_affine_terms(
     f::ParametricVectorQuadraticFunction{T},
 ) where {T}
     param_terms_dict = Dict{Tuple{MOI.VariableIndex,Int},T}()
-    sizehint!(param_terms_dict, length(vector_quadratic_parameter_variable_terms(f)))
-    
+    sizehint!(
+        param_terms_dict,
+        length(vector_quadratic_parameter_variable_terms(f)),
+    )
+
     for term in vector_quadratic_parameter_variable_terms(f)
         p_idx_val = p_idx(term.scalar_term.variable_1)
         var = term.scalar_term.variable_2
@@ -685,13 +704,13 @@ function _parametric_affine_terms(
         param_terms_dict[(var, output_idx)] =
             base + term.scalar_term.coefficient * model.parameters[p_idx_val]
     end
-    
+
     for (term, coef) in f.affine_data
         output_idx = term.output_index
         var = term.scalar_term.variable
         param_terms_dict[(var, output_idx)] = coef
     end
-    
+
     return param_terms_dict
 end
 
@@ -700,44 +719,50 @@ function _delta_parametric_affine_terms(
     f::ParametricVectorQuadraticFunction{T},
 ) where {T}
     delta_terms = Dict{Tuple{Int,MOI.VariableIndex},T}()
-    
+
     # Handle parameter-variable quadratic terms (px) that become affine (x) when p is updated
     for term in f.pv
         p_idx_val = p_idx(term.scalar_term.variable_1)
         var = term.scalar_term.variable_2
         output_idx = term.output_index
-        
-        if haskey(model.updated_parameters, p_idx_val) && !isnan(model.updated_parameters[p_idx_val])
+
+        if haskey(model.updated_parameters, p_idx_val) &&
+           !isnan(model.updated_parameters[p_idx_val])
             old_param_val = model.parameters[p_idx_val]
             new_param_val = model.updated_parameters[p_idx_val]
-            delta_coef = term.scalar_term.coefficient * (new_param_val - old_param_val)
-            
+            delta_coef =
+                term.scalar_term.coefficient * (new_param_val - old_param_val)
+
             key = (output_idx, var)
             current_delta = get(delta_terms, key, zero(T))
             delta_terms[key] = current_delta + delta_coef
         end
     end
-    
+
     # Handle parameter-only affine terms
     for term in f.p
         p_idx_val = p_idx(term.scalar_term.variable)
         output_idx = term.output_index
-        
-        if haskey(model.updated_parameters, p_idx_val) && !isnan(model.updated_parameters[p_idx_val])
+
+        if haskey(model.updated_parameters, p_idx_val) &&
+           !isnan(model.updated_parameters[p_idx_val])
             old_param_val = model.parameters[p_idx_val]
             new_param_val = model.updated_parameters[p_idx_val]
-            
+
             # This becomes a constant change, not an affine term change
             # We'll handle this in the constant update function
         end
     end
-    
+
     return delta_terms
 end
 
-function _update_cache!(f::ParametricVectorQuadraticFunction{T}, model) where {T}
+function _update_cache!(
+    f::ParametricVectorQuadraticFunction{T},
+    model,
+) where {T}
     f.current_constant = _parametric_constant(model, f)
-    f.current_terms_with_p = _parametric_affine_terms(model, f)    
+    f.current_terms_with_p = _parametric_affine_terms(model, f)
     return nothing
 end
 
@@ -758,24 +783,26 @@ function _parametric_constant(
     f::ParametricVectorQuadraticFunction{T},
 ) where {T}
     param_constant = f.c
-    
+
     # Add contributions from parameter terms in affine part
     for term in vector_affine_parameter_terms(f)
         param_constant[term.output_index] +=
             term.scalar_term.coefficient *
             model.parameters[p_idx(term.scalar_term.variable)]
     end
-    
+
     # Add contributions from parameter-parameter quadratic terms
     for term in vector_quadratic_parameter_parameter_terms(f)
         idx = term.output_index
-        coef = term.scalar_term.coefficient /
+        coef =
+            term.scalar_term.coefficient /
             (term.scalar_term.variable_1 == term.scalar_term.variable_2 ? 2 : 1)
-        param_constant[idx] += coef *
+        param_constant[idx] +=
+            coef *
             model.parameters[p_idx(term.scalar_term.variable_1)] *
             model.parameters[p_idx(term.scalar_term.variable_2)]
     end
-    
+
     return param_constant
 end
 
@@ -783,10 +810,16 @@ function _current_function(f::ParametricVectorQuadraticFunction{T}) where {T}
     affine_terms = MOI.VectorAffineTerm{T}[]
     sizehint!(affine_terms, length(f.current_constant) + length(f.v))
     for ((var, idx), coef) in f.current_terms_with_p
-        push!(affine_terms, MOI.VectorAffineTerm{T}(idx, MOI.ScalarAffineTerm{T}(coef, var)))
+        push!(
+            affine_terms,
+            MOI.VectorAffineTerm{T}(idx, MOI.ScalarAffineTerm{T}(coef, var)),
+        )
     end
     for ((var, idx), coef) in f.affine_data_np
-        push!(affine_terms, MOI.VectorAffineTerm{T}(idx, MOI.ScalarAffineTerm{T}(coef, var)))
+        push!(
+            affine_terms,
+            MOI.VectorAffineTerm{T}(idx, MOI.ScalarAffineTerm{T}(coef, var)),
+        )
     end
     return MOI.VectorQuadraticFunction{T}(
         f.vv,
@@ -794,4 +827,3 @@ function _current_function(f::ParametricVectorQuadraticFunction{T}) where {T}
         f.current_constant,
     )
 end
-

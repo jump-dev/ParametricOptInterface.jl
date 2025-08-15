@@ -2001,13 +2001,7 @@ function test_psd_cone_with_parameter()
     model = POI.Optimizer(cached)
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
-    p =
-        first.(
-            MOI.add_constrained_variable.(
-                model,
-                MOI.Parameter(1.0),
-            ),
-        )
+    p = first.(MOI.add_constrained_variable.(model, MOI.Parameter(1.0)),)
 
     # Set objective: minimize x
     obj_func = MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(1.0, x)], 0.0)
@@ -2015,25 +2009,24 @@ function test_psd_cone_with_parameter()
     MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
     # Build constraint: [0, px - 1, 0] ∈ PositiveSemidefiniteConeTriangle(2)
-    quadratic_terms = [
-        MOI.VectorQuadraticTerm(
-            2,  # Index in the output vector (position 2: off-diagonal element)
-            MOI.ScalarQuadraticTerm(1.0, p, x)  # 1.0 * p * x
-        )
-    ]
+    quadratic_terms = [MOI.VectorQuadraticTerm(
+        2,  # Index in the output vector (position 2: off-diagonal element)
+        MOI.ScalarQuadraticTerm(1.0, p, x),  # 1.0 * p * x
+    )]
     affine_terms = MOI.VectorAffineTerm{Float64}[]  # No affine terms
     constants = [0.0, -1.0, 0.0]  # Constants for [diag1, off-diag, diag2]
 
-    vec_func = MOI.VectorQuadraticFunction(quadratic_terms, affine_terms, constants)
+    vec_func =
+        MOI.VectorQuadraticFunction(quadratic_terms, affine_terms, constants)
     psd_cone = MOI.PositiveSemidefiniteConeTriangle(2)
     c_index = MOI.add_constraint(model, vec_func, psd_cone)
 
     MOI.optimize!(model)
     @test MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL
-    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1.0 atol=1e-5
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1.0 atol = 1e-5
 
     MOI.set(model, POI.ParameterValue(), p, 3.0)
 
     MOI.optimize!(model)
-    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1/3 atol=1e-5
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1 / 3 atol = 1e-5
 end

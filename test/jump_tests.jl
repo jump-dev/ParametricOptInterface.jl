@@ -1279,10 +1279,10 @@ function test_jump_psd_cone_with_parameter()
     model = Model(SCS.Optimizer)
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))
-    @constraint(model, [[0 (p * x + -1)];[(p * x + -1) 0]] in JuMP.PSDCone())
+    @constraint(model, [[0 (p * x + -1)]; [(p * x + -1) 0]] in JuMP.PSDCone())
     optimize!(model)
     @test value(x) ≈ 1.0 atol = 1e-5
     set_parameter_value(p, 3.0)
     optimize!(model)
-    @test value(x) ≈ 1/3 atol = 1e-5
+    @test value(x) ≈ 1 / 3 atol = 1e-5
 end

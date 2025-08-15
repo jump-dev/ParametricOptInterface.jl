@@ -178,8 +178,12 @@ end
 
 function _update_duals_from_vector_quadratic_constraints!(model::Optimizer)
     for (F, S) in keys(model.vector_quadratic_constraint_cache.dict)
-        vector_quadratic_constraint_cache_inner = model.vector_quadratic_constraint_cache[F, S]
-        _compute_parameters_in_ci!(model, vector_quadratic_constraint_cache_inner)
+        vector_quadratic_constraint_cache_inner =
+            model.vector_quadratic_constraint_cache[F, S]
+        _compute_parameters_in_ci!(
+            model,
+            vector_quadratic_constraint_cache_inner,
+        )
     end
     return
 end
@@ -195,12 +199,20 @@ function _compute_parameters_in_ci!(
             cons_dual[term.output_index] * term.scalar_term.coefficient
     end
     for term in pf.pp
-        coef = ifelse(term.scalar_term.variable_1 == term.scalar_term.variable_2, T(1 // 2), T(1))
+        coef = ifelse(
+            term.scalar_term.variable_1 == term.scalar_term.variable_2,
+            T(1 // 2),
+            T(1),
+        )
         model.dual_value_of_parameters[p_val(term.scalar_term.variable_1)] -=
-            coef * cons_dual[term.output_index] * term.scalar_term.coefficient *
+            coef *
+            cons_dual[term.output_index] *
+            term.scalar_term.coefficient *
             MOI.get(model, ParameterValue(), term.scalar_term.variable_2)
         model.dual_value_of_parameters[p_val(term.scalar_term.variable_2)] -=
-            coef * cons_dual[term.output_index] * term.scalar_term.coefficient *
+            coef *
+            cons_dual[term.output_index] *
+            term.scalar_term.coefficient *
             MOI.get(model, ParameterValue(), term.scalar_term.variable_1)
     end
     return
