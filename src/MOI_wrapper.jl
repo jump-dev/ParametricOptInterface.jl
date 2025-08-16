@@ -1281,6 +1281,10 @@ end
 # Solutions Attributes
 #
 
+function MOI.supports(model::Optimizer, attr::MOI.NLPBlock)
+    return false
+end
+
 function MOI.supports(model::Optimizer, attr::MOI.AbstractModelAttribute)
     return MOI.supports(model.optimizer, attr)
 end
