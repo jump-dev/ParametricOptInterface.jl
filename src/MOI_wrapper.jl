@@ -1281,8 +1281,18 @@ end
 # Solutions Attributes
 #
 
-function MOI.supports(model::Optimizer, attr::MOI.NLPBlock)
+function MOI.supports(::Optimizer, attr::MOI.NLPBlock)
     return false
+end
+
+function MOI.set(::Optimizer, attr::MOI.NLPBlock, val)
+    throw(MOI.UnsupportedAttribute(attr))
+    return
+end
+
+function MOI.get(::Optimizer, attr::MOI.NLPBlock)
+    throw(MOI.UnsupportedAttribute(attr))
+    return
 end
 
 function MOI.supports(model::Optimizer, attr::MOI.AbstractModelAttribute)
