@@ -323,6 +323,22 @@ function MOI.supports(
     return MOI.supports(model.optimizer, attr, tp)
 end
 
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.VariablePrimalStart,
+    v::MOI.VariableIndex,
+)
+    if _variable_in_model(model, v)
+        return MOI.get(model.optimizer, attr, v)
+    elseif _parameter_in_model(model, v)
+        # this is effectivelly a no-op, but we do validation
+        _val = model.parameters[p_idx(v)]
+        return _val
+    else
+        error("Variable not in the model")
+    end
+end
+
 function MOI.set(
     model::Optimizer,
     attr::MOI.VariablePrimalStart,
