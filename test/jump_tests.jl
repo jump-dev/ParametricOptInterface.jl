@@ -1537,4 +1537,9 @@ function test_jump_psd_cone_without_parameter_v_and_vv()
         con,
         [x, (x - 1), x * x] in MOI.PositiveSemidefiniteConeTriangle(2)
     )
+    @test_throws MOI.UnsupportedConstraint @constraint(
+        model,
+        con,
+        [x, p * (x - 1), x * x] in MOI.PositiveSemidefiniteConeTriangle(2)
+    )
 end
