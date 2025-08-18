@@ -547,16 +547,6 @@ function MOI.set(
     return
 end
 
-function MOI.set(
-    model::Optimizer,
-    attr::MOI.ConstraintName,
-    c::MOI.ConstraintIndex,
-    name::String,
-)
-    MOI.set(model.optimizer, attr, c, name)
-    return
-end
-
 function MOI.get(
     model::Optimizer,
     attr::MOI.ConstraintName,
@@ -583,14 +573,6 @@ function MOI.get(
     else
         return MOI.get(model.optimizer, attr, c)
     end
-end
-
-function MOI.get(
-    model::Optimizer,
-    attr::MOI.ConstraintName,
-    c::MOI.ConstraintIndex,
-)
-    return MOI.get(model.optimizer, attr, c)
 end
 
 function MOI.get(

@@ -1565,7 +1565,9 @@ function test_variable_and_constraint_not_registered()
         MOI.ObjectiveFunction{MOI.VariableIndex}(),
         index(x),
     )
-    @test_throws ErrorException("Cannot use a parameter as objective function alone") MOI.set(
+    @test_throws ErrorException(
+        "Cannot use a parameter as objective function alone",
+    ) MOI.set(
         backend(model2),
         MOI.ObjectiveFunction{MOI.VariableIndex}(),
         index(p),
