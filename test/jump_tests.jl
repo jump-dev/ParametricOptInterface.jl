@@ -1275,13 +1275,27 @@ function test_parameter_Cannot_be_inf_2()
 end
 
 function test_jump_psd_cone_with_parameter_pv()
-    model = Model(SCS.Optimizer)
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            SCS.Optimizer(),
+        ),
+        Float64,
+    )
+    optimizer = POI.Optimizer(cached)
+    model = direct_model(optimizer)
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))
+    # @constraint(
+    #     model,
+    #     con,
+    #     [[0 (p * x - 1)]; [(p * x - 1) 0]] in JuMP.PSDCone()
+    # );
+    # TODO: bridges do not support setting constraint function
     @constraint(
         model,
         con,
-        [[0 (p * x - 1)]; [(p * x - 1) 0]] in JuMP.PSDCone()
+        [0, (p * x - 1), 0] in MOI.PositiveSemidefiniteConeTriangle(2)
     )
     # the above constraint is equivalent to
     # - (p * x -1)^2 >=0 -> (p * x -1)^2 <= 0 -> (p * x -1) == 0 -> p*x == 1
@@ -1291,16 +1305,30 @@ function test_jump_psd_cone_with_parameter_pv()
     set_parameter_value(p, 3.0)
     optimize!(model)
     @test value(x) ≈ 1 / 3 atol = 1e-5
+    # delete(model, con)
 end
 
 function test_jump_psd_cone_with_parameter_pp()
-    model = Model(SCS.Optimizer)
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            SCS.Optimizer(),
+        ),
+        Float64,
+    )
+    optimizer = POI.Optimizer(cached)
+    model = direct_model(optimizer)
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))
+    # @constraint(
+    #     model,
+    #     con,
+    #     [[0 (x - p * p)]; [(x - p * p) 0]] in JuMP.PSDCone()
+    # )
     @constraint(
         model,
         con,
-        [[0 (x - p * p)]; [(x - p * p) 0]] in JuMP.PSDCone()
+        [0, (x - p * p), 0] in MOI.PositiveSemidefiniteConeTriangle(2)
     )
     @test is_valid(model, con)
     optimize!(model)
@@ -1308,17 +1336,32 @@ function test_jump_psd_cone_with_parameter_pp()
     set_parameter_value(p, 3.0)
     optimize!(model)
     @test value(x) ≈ 9.0 atol = 1e-5
+    # delete(model, con)
 end
 
 function test_jump_psd_cone_with_parameter_p()
-    model = Model(SCS.Optimizer)
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            SCS.Optimizer(),
+        ),
+        Float64,
+    )
+    optimizer = POI.Optimizer(cached)
+    model = direct_model(optimizer)
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))
-    @constraint(model, con, [[0 (x - p)]; [(x - p) 0]] in JuMP.PSDCone())
+    # @constraint(model, con, [[0 (x - p)]; [(x - p) 0]] in JuMP.PSDCone())
+    @constraint(
+        model,
+        con,
+        [0, (x - p), 0] in MOI.PositiveSemidefiniteConeTriangle(2)
+    )
     @test is_valid(model, con)
     optimize!(model)
     @test value(x) ≈ 1.0 atol = 1e-5
     set_parameter_value(p, 3.0)
     optimize!(model)
     @test value(x) ≈ 3.0 atol = 1e-5
+    # delete(model, con)
 end

@@ -108,6 +108,10 @@ function test_basic_tests()
     @test MOI.get(optimizer, MOI.ConstraintName(), c1) == ""
     MOI.set(optimizer, MOI.ConstraintName(), c1, "ctr123")
     @test MOI.get(optimizer, MOI.ConstraintName(), c1) == "ctr123"
+    @test_throws ErrorException MOI.set(optimizer, MOI.ConstraintPrimalStart(), cy, 4.0) #err
+    MOI.set(optimizer, MOI.ConstraintPrimalStart(), cy, 1.0)
+    MOI.set(optimizer, MOI.ConstraintDualStart(), cy, 1.0) # no-op
+    @test_throws ErrorException MOI.set(optimizer, MOI.ConstraintDualStart(), MOI.ConstraintIndex{MOI.VariableIndex, MOI.Parameter{Float64}}(18), 1.0) # err
     return
 end
 
@@ -610,6 +614,7 @@ function test_vector_parameter_affine_nonnegatives()
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 4 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 3 atol = ATOL
     @test MOI.get(model, MOI.ConstraintPrimal(), cnn) ≈ [0.0, 0.0] atol = ATOL
+    @test MOI.get(model, MOI.ConstraintPrimal(), ct) ≈ 5 atol = ATOL
     @test MOI.get(model, MOI.ObjectiveValue()) ≈ 7 atol = ATOL
     @test MOI.get(model, MOI.DualObjectiveValue()) ≈ 7 atol = ATOL
     @test MOI.get(model, MOI.ConstraintDual(), cnn) ≈ [1.0, 1.0] atol = ATOL

@@ -782,7 +782,7 @@ function _parametric_constant(
     model,
     f::ParametricVectorQuadraticFunction{T},
 ) where {T}
-    param_constant = f.c
+    param_constant = copy(f.c)
 
     # Add contributions from parameter terms in affine part
     for term in vector_affine_parameter_terms(f)
