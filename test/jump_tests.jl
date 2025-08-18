@@ -1513,7 +1513,7 @@ model = JuMP.Model(SCS.Optimizer)
 optimize!(model)
 @test value(x) ≈ 0.50000 atol = 1e-5
 
-function test_jump_psd_cone_with_parameter_v_and_vv()
+function test_jump_psd_cone_without_parameter_v_and_vv()
     cached = MOI.Bridges.full_bridge_optimizer(
         MOI.Utilities.CachingOptimizer(
             MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
