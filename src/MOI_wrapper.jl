@@ -125,7 +125,9 @@ function MOI.is_empty(model::Optimizer)
            isempty(model.affine_constraint_cache_set) &&
            # quad ctr
            model.last_quad_add_added == 0 &&
+           model.last_vec_quad_add_added == 0 &&
            isempty(model.quadratic_outer_to_inner) &&
+           isempty(model.vector_quadratic_outer_to_inner) &&
            isempty(model.quadratic_constraint_cache) &&
            isempty(model.quadratic_constraint_cache_set) &&
            isempty(model.vector_quadratic_constraint_cache) &&
@@ -162,7 +164,9 @@ function MOI.empty!(model::Optimizer{T}) where {T}
     empty!(model.affine_constraint_cache_set)
     # quad ctr
     model.last_quad_add_added = 0
+    model.last_vec_quad_add_added = 0
     empty!(model.quadratic_outer_to_inner)
+    empty!(model.vector_quadratic_outer_to_inner)
     empty!(model.quadratic_constraint_cache)
     empty!(model.quadratic_constraint_cache_set)
     empty!(model.vector_quadratic_constraint_cache)
@@ -311,6 +315,15 @@ function _add_to_constraint_map!(
     ci::MOI.ConstraintIndex{F,S},
 ) where {F<:MOI.ScalarQuadraticFunction,S}
     model.last_quad_add_added += 1
+    model.constraint_outer_to_inner[ci] = ci
+    return
+end
+
+function _add_to_constraint_map!(
+    model::Optimizer,
+    ci::MOI.ConstraintIndex{F,S},
+) where {F<:MOI.VectorQuadraticFunction,S}
+    model.last_vec_quad_add_added += 1
     model.constraint_outer_to_inner[ci] = ci
     return
 end
@@ -513,6 +526,25 @@ end
 function MOI.set(
     model::Optimizer,
     attr::MOI.ConstraintName,
+    c::MOI.ConstraintIndex{MOI.VectorQuadraticFunction{T},S},
+    name::String,
+) where {T,S<:MOI.AbstractSet}
+    if haskey(model.vector_quadratic_outer_to_inner, c)
+        MOI.set(
+            model.optimizer,
+            attr,
+            model.vector_quadratic_outer_to_inner[c],
+            name,
+        )
+    else
+        MOI.set(model.optimizer, attr, c, name)
+    end
+    return
+end
+
+function MOI.set(
+    model::Optimizer,
+    attr::MOI.ConstraintName,
     c::MOI.ConstraintIndex{MOI.ScalarAffineFunction{T},S},
     name::String,
 ) where {T,S<:MOI.AbstractSet}
@@ -541,6 +573,22 @@ function MOI.get(
 ) where {T,S<:MOI.AbstractSet}
     if haskey(model.quadratic_outer_to_inner, c)
         return MOI.get(model.optimizer, attr, model.quadratic_outer_to_inner[c])
+    else
+        return MOI.get(model.optimizer, attr, c)
+    end
+end
+
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.ConstraintName,
+    c::MOI.ConstraintIndex{MOI.VectorQuadraticFunction{T},S},
+) where {T,S<:MOI.AbstractSet}
+    if haskey(model.vector_quadratic_outer_to_inner, c)
+        return MOI.get(
+            model.optimizer,
+            attr,
+            model.vector_quadratic_outer_to_inner[c],
+        )
     else
         return MOI.get(model.optimizer, attr, c)
     end
@@ -606,13 +654,21 @@ function MOI.get(
             return _original_function(
                 model.quadratic_constraint_cache[inner_ci],
             )
-        elseif haskey(model.vector_quadratic_constraint_cache, inner_ci)
+        else
+            return convert(
+                MOI.ScalarQuadraticFunction{T},
+                MOI.get(model.optimizer, attr, inner_ci),
+            )
+        end
+    elseif haskey(model.vector_quadratic_outer_to_inner, ci)
+        inner_ci = model.vector_quadratic_outer_to_inner[ci]
+        if haskey(model.vector_quadratic_constraint_cache, inner_ci)
             return _original_function(
                 model.vector_quadratic_constraint_cache[inner_ci],
             )
         else
             return convert(
-                MOI.ScalarQuadraticFunction{T},
+                MOI.VectorQuadraticFunction{T},
                 MOI.get(model.optimizer, attr, inner_ci),
             )
         end
@@ -655,8 +711,8 @@ function MOI.get(
     if haskey(model.quadratic_outer_to_inner, ci)
         inner_ci = model.quadratic_outer_to_inner[ci]
         return model.quadratic_constraint_cache_set[inner_ci]
-    elseif haskey(model.vector_quadratic_constraint_cache, ci)
-        inner_ci = model.vector_quadratic_constraint_cache[ci]
+    elseif haskey(model.vector_quadratic_outer_to_inner, ci)
+        inner_ci = model.vector_quadratic_outer_to_inner[ci]
         return model.vector_quadratic_constraint_cache_set[inner_ci]
     elseif haskey(model.affine_outer_to_inner, ci)
         inner_ci = model.affine_outer_to_inner[ci]
@@ -956,22 +1012,22 @@ function _add_constraint_with_parameters_on_function(
     if !_is_vector_affine(func)
         fq = func
         inner_ci = MOI.add_constraint(model.optimizer, fq, set)
-        model.last_quad_add_added += 1
+        model.last_vec_quad_add_added += 1
         outer_ci = MOI.ConstraintIndex{MOI.VectorQuadraticFunction{T},S}(
-            model.last_quad_add_added,
+            model.last_vec_quad_add_added,
         )
-        model.quadratic_outer_to_inner[outer_ci] = inner_ci
+        model.vector_quadratic_outer_to_inner[outer_ci] = inner_ci
         model.constraint_outer_to_inner[outer_ci] = inner_ci
     else
         fa = MOI.VectorAffineFunction(func.affine_terms, func.constants)
         inner_ci = MOI.add_constraint(model.optimizer, fa, set)
-        model.last_quad_add_added += 1
+        model.last_vec_quad_add_added += 1
         outer_ci = MOI.ConstraintIndex{MOI.VectorQuadraticFunction{T},S}(
-            model.last_quad_add_added,
+            model.last_vec_quad_add_added,
         )
         # This part is used to remember that ci came from a quadratic function
         # It is particularly useful because sometimes the constraint mutates
-        model.quadratic_outer_to_inner[outer_ci] = inner_ci
+        model.vector_quadratic_outer_to_inner[outer_ci] = inner_ci
         model.constraint_outer_to_inner[outer_ci] = inner_ci
     end
     model.vector_quadratic_constraint_cache[inner_ci] = pf
@@ -995,10 +1051,11 @@ function MOI.delete(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
 ) where {F<:MOI.VectorQuadraticFunction,S<:MOI.AbstractSet}
-    ci_inner = model.constraint_outer_to_inner[c]
-    if haskey(model.quadratic_constraint_cache, ci_inner)
-        delete!(model.quadratic_constraint_cache, ci_inner)
-        delete!(model.quadratic_constraint_cache_set, ci_inner)
+    if haskey(model.vector_quadratic_outer_to_inner, c)
+        ci_inner = model.vector_quadratic_outer_to_inner[c]
+        delete!(model.vector_quadratic_outer_to_inner, c)
+        delete!(model.vector_quadratic_constraint_cache, ci_inner)
+        delete!(model.vector_quadratic_constraint_cache_set, ci_inner)
         MOI.delete(model.optimizer, ci_inner)
     else
         MOI.delete(model.optimizer, c)
