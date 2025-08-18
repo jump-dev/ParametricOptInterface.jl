@@ -439,7 +439,18 @@ end
 function MOI.is_valid(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
-) where {F<:MOI.ScalarAffineFunction,S<:MOI.AbstractSet}
+) where {
+    F<:Union{
+        MOI.ScalarAffineFunction,
+        MOI.ScalarQuadraticFunction,
+        MOI.VectorAffineFunction,
+        MOI.VectorQuadraticFunction,
+    },
+    S<:MOI.AbstractSet,
+}
+    if haskey(model.constraint_outer_to_inner, c)
+        return true
+    end
     return MOI.is_valid(model.optimizer, c)
 end
 
