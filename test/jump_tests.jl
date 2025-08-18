@@ -1537,6 +1537,7 @@ function test_variable_and_constraint_not_registered()
     set_silent(model2)
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))
+    @variable(model, p1 in MOI.Parameter(1.0))
     @variable(model2, p2 in MOI.Parameter(1.0))
     @constraint(model, con, [x - p] in MOI.Nonnegatives(1))
     @test_throws ErrorException("Variable not in the model") MOI.set(
@@ -1553,12 +1554,12 @@ function test_variable_and_constraint_not_registered()
     @test_throws ErrorException("Parameter not in the model") MOI.get(
         backend(model2),
         MOI.ConstraintFunction(),
-        index(ParameterRef(p)),
+        index(ParameterRef(p1)),
     )
     @test_throws ErrorException("Parameter not in the model") MOI.get(
         backend(model2),
         MOI.ConstraintSet(),
-        index(ParameterRef(p)),
+        index(ParameterRef(p1)),
     )
     @test_throws ErrorException("Variable not in the model") MOI.set(
         backend(model2),
