@@ -1500,19 +1500,6 @@ function test_jump_psd_cone_with_parameter_p_v_pp()
     return delete(model, con)
 end
 
-p = 1.0
-model = JuMP.Model(SCS.Optimizer)
-@variable(model, x)
-@constraint(
-    model,
-    con,
-    [x, x * (x - 1), x] in MOI.PositiveSemidefiniteConeTriangle(2)
-)
-@objective(model, Min, x)
-@test is_valid(model, con)
-optimize!(model)
-@test value(x) ≈ 0.50000 atol = 1e-5
-
 function test_jump_psd_cone_without_parameter_v_and_vv()
     cached = MOI.Bridges.full_bridge_optimizer(
         MOI.Utilities.CachingOptimizer(
