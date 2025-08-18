@@ -705,10 +705,12 @@ function _parametric_affine_terms(
             base + term.scalar_term.coefficient * model.parameters[p_idx_val]
     end
 
-    for (term, coef) in f.affine_data
-        output_idx = term.output_index
-        var = term.scalar_term.variable
-        param_terms_dict[(var, output_idx)] = coef
+    # TODO: check if affine data should only contains variables that appear in pv
+    for (var, coef) in f.affine_data
+        if !haskey(param_terms_dict, var)
+            param_terms_dict[var] = zero(T)
+        end
+        param_terms_dict[var] += coef
     end
 
     return param_terms_dict

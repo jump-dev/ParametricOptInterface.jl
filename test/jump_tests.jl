@@ -1390,27 +1390,110 @@ end
 # @test is_valid(model, con)
 # optimize!(model)
 # @test value(x) ≈ 0.416888 atol = 1e-5
-# function test_jump_psd_cone_with_parameter_quadratic()
-#     cached = MOI.Bridges.full_bridge_optimizer(
-#         MOI.Utilities.CachingOptimizer(
-#             MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-#             SCS.Optimizer(),
-#         ),
-#         Float64,
-#     )
-#     optimizer = POI.Optimizer(cached)
-#     model = direct_model(optimizer)
-#     @variable(model, x)
-#     @variable(model, p in MOI.Parameter(1.0))
-#     @constraint(
-#         model,
-#         con,
-#         [p * x, (2 * x - 3), p * 3 * x] in MOI.PositiveSemidefiniteConeTriangle(2)
-#     )
-#     @objective(model, Min, x)
-#     @test is_valid(model, con)
-#     optimize!(model)
-#     @test value(x) ≈ 0.803845 atol = 1e-5
-# end
+function test_jump_psd_cone_with_parameter_px_x_px()
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            SCS.Optimizer(),
+        ),
+        Float64,
+    )
+    optimizer = POI.Optimizer(cached)
+    model = direct_model(optimizer)
+    @variable(model, x)
+    @variable(model, p in MOI.Parameter(1.0))
+    @constraint(
+        model,
+        con,
+        [p * x, (2 * x - 3), p * 3 * x] in MOI.PositiveSemidefiniteConeTriangle(2)
+    )
+    @objective(model, Min, x)
+    @test is_valid(model, con)
+    optimize!(model)
+    @test value(x) ≈ 0.803845 atol = 1e-5
+    set_parameter_value(p, 3.0)
+    optimize!(model)
+    @test value(x) ≈ 0.416888 atol = 1e-5
+    delete(model, con)
+end
  
- 
+function test_jump_psd_cone_with_parameter_pp_x_px()
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            SCS.Optimizer(),
+        ),
+        Float64,
+    )
+    optimizer = POI.Optimizer(cached)
+    model = direct_model(optimizer)
+    @variable(model, x)
+    @variable(model, p in MOI.Parameter(1.0))
+    @constraint(
+        model,
+        con,
+        [p * p, (2 * x - 3), p * 3 * x] in MOI.PositiveSemidefiniteConeTriangle(2)
+    )
+    @objective(model, Min, x)
+    @test is_valid(model, con)
+    optimize!(model)
+    @test value(x) ≈ 0.7499854 atol = 1e-5
+    set_parameter_value(p, 3.0)
+    optimize!(model)
+    @test value(x) ≈ 0.0971795 atol = 1e-5
+    delete(model, con)
+end
+
+function test_jump_psd_cone_with_parameter_p_x_px()
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            SCS.Optimizer(),
+        ),
+        Float64,
+    )
+    optimizer = POI.Optimizer(cached)
+    model = direct_model(optimizer)
+    @variable(model, x)
+    @variable(model, p in MOI.Parameter(1.0))
+    @constraint(
+        model,
+        con,
+        [p, (2 * x - 3), p * 3 * x] in MOI.PositiveSemidefiniteConeTriangle(2)
+    )
+    @objective(model, Min, x)
+    @test is_valid(model, con)
+    optimize!(model)
+    @test value(x) ≈ 0.7499854 atol = 1e-5
+    set_parameter_value(p, 3.0)
+    optimize!(model)
+    @test value(x) ≈ 0.0971795 atol = 1e-5
+    delete(model, con)
+end
+
+function test_jump_psd_cone_with_parameter_p_x_pp()
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            SCS.Optimizer(),
+        ),
+        Float64,
+    )
+    optimizer = POI.Optimizer(cached)
+    model = direct_model(optimizer)
+    @variable(model, x)
+    @variable(model, p in MOI.Parameter(1.0))
+    @constraint(
+        model,
+        con,
+        [p, (2 * x - 3), p * 3 * p] in MOI.PositiveSemidefiniteConeTriangle(2)
+    )
+    @objective(model, Min, x)
+    @test is_valid(model, con)
+    optimize!(model)
+    @test value(x) ≈ 0.633969 atol = 1e-5
+    set_parameter_value(p, 3.0)
+    optimize!(model)
+    @test value(x) ≈ -2.9999734 atol = 1e-5
+    delete(model, con)
+end
