@@ -427,11 +427,10 @@ function test_jump_set_variable_start_value()
     @variable(model, p in MOI.Parameter(0.0))
     set_start_value(x, 1.0)
     @test start_value(x) == 1
-    err = ErrorException(
-        "MathOptInterface.VariablePrimalStart() is not supported for parameters",
-    )
-    @test_throws err set_start_value(p, 1.0)
-    @test_throws err start_value(p)
+    @test_throws ErrorException(
+        "The parameter $(index(p)) value is 0.0, but trying to set VariablePrimalStart 1.0",
+    ) set_start_value(p, 1.0)
+    @test start_value(p) == 0.0
     return
 end
 

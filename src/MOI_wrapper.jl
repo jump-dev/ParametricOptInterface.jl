@@ -323,6 +323,22 @@ function MOI.supports(
     return MOI.supports(model.optimizer, attr, tp)
 end
 
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.VariablePrimalStart,
+    v::MOI.VariableIndex,
+)
+    if _variable_in_model(model, v)
+        return MOI.get(model.optimizer, attr, v)
+    elseif _parameter_in_model(model, v)
+        # this is effectivelly a no-op, but we do validation
+        _val = model.parameters[p_idx(v)]
+        return _val
+    else
+        error("Variable not in the model")
+    end
+end
+
 function MOI.set(
     model::Optimizer,
     attr::MOI.VariablePrimalStart,
@@ -413,17 +429,25 @@ end
 function MOI.is_valid(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
-) where {
-    F<:Union{MOI.VariableIndex,MOI.VectorOfVariables,MOI.VectorAffineFunction},
-    S<:MOI.AbstractSet,
-}
+) where {F<:Union{MOI.VariableIndex,MOI.VectorOfVariables},S<:MOI.AbstractSet}
     return MOI.is_valid(model.optimizer, c)
 end
 
 function MOI.is_valid(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
-) where {F<:MOI.ScalarAffineFunction,S<:MOI.AbstractSet}
+) where {
+    F<:Union{
+        MOI.ScalarAffineFunction,
+        MOI.ScalarQuadraticFunction,
+        MOI.VectorAffineFunction,
+        MOI.VectorQuadraticFunction,
+    },
+    S<:MOI.AbstractSet,
+}
+    if haskey(model.constraint_outer_to_inner, c)
+        return true
+    end
     return MOI.is_valid(model.optimizer, c)
 end
 
