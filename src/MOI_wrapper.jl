@@ -319,15 +319,6 @@ function _add_to_constraint_map!(
     return
 end
 
-function _add_to_constraint_map!(
-    model::Optimizer,
-    ci::MOI.ConstraintIndex{F,S},
-) where {F<:MOI.VectorQuadraticFunction,S}
-    model.last_vec_quad_add_added += 1
-    model.constraint_outer_to_inner[ci] = ci
-    return
-end
-
 function MOI.supports(
     model::Optimizer,
     attr::MOI.AbstractVariableAttribute,
