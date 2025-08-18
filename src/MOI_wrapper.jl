@@ -429,10 +429,7 @@ end
 function MOI.is_valid(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
-) where {
-    F<:Union{MOI.VariableIndex,MOI.VectorOfVariables},
-    S<:MOI.AbstractSet,
-}
+) where {F<:Union{MOI.VariableIndex,MOI.VectorOfVariables},S<:MOI.AbstractSet}
     return MOI.is_valid(model.optimizer, c)
 end
 
