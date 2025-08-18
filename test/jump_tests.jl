@@ -1366,30 +1366,6 @@ function test_jump_psd_cone_with_parameter_p()
     return delete(model, con)
 end
 
-# p=1.0
-# model = JuMP.Model(SCS.Optimizer)
-# @variable(model, x)
-# @constraint(
-#     model,
-#     con,
-#     [p * x, (2 * x - 3), p * 3 * x] in MOI.PositiveSemidefiniteConeTriangle(2)
-# )
-# @objective(model, Min, x)
-# @test is_valid(model, con)
-# optimize!(model)
-# @test value(x) ≈ 0.803845 atol = 1e-5
-# p=3.0
-# model = JuMP.Model(SCS.Optimizer)
-# @variable(model, x)
-# @constraint(
-#     model,
-#     con,
-#     [p * x, (2 * x - 3), p * 3 * x] in MOI.PositiveSemidefiniteConeTriangle(2)
-# )
-# @objective(model, Min, x)
-# @test is_valid(model, con)
-# optimize!(model)
-# @test value(x) ≈ 0.416888 atol = 1e-5
 function test_jump_psd_cone_with_parameter_pv_v_pv()
     cached = MOI.Bridges.full_bridge_optimizer(
         MOI.Utilities.CachingOptimizer(
@@ -1541,5 +1517,57 @@ function test_jump_psd_cone_without_parameter_v_and_vv()
         model,
         con,
         [x, p * (x - 1), x * x] in MOI.PositiveSemidefiniteConeTriangle(2)
+    )
+end
+
+function test_variable_and_constraint_not_registered()
+    cached1 = MOI.Utilities.CachingOptimizer(
+        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+        SCS.Optimizer(),
+    )
+    optimizer1 = POI.Optimizer(cached1)
+    cached2 = MOI.Utilities.CachingOptimizer(
+        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+        SCS.Optimizer(),
+    )
+    optimizer2 = POI.Optimizer(cached2)
+    model = direct_model(optimizer1)
+    model2 = direct_model(optimizer2)
+    set_silent(model)
+    set_silent(model2)
+    @variable(model, x)
+    @variable(model, p in MOI.Parameter(1.0))
+    @variable(model2, p2 in MOI.Parameter(1.0))
+    @constraint(model, con, [x - p] in MOI.Nonnegatives(1))
+    @test_throws ErrorException("Variable not in the model") MOI.set(
+        backend(model2),
+        MOI.VariablePrimalStart(),
+        index(x),
+        1.0,
+    )
+    @test_throws ErrorException("Variable not in the model") MOI.get(
+        backend(model2),
+        MOI.VariablePrimalStart(),
+        index(x),
+    )
+    @test_throws ErrorException("Parameter not in the model") MOI.get(
+        backend(model2),
+        MOI.ConstraintFunction(),
+        index(ParameterRef(p)),
+    )
+    @test_throws ErrorException("Parameter not in the model") MOI.get(
+        backend(model2),
+        MOI.ConstraintSet(),
+        index(ParameterRef(p)),
+    )
+    @test_throws ErrorException("Variable not in the model") MOI.set(
+        backend(model2),
+        MOI.ObjectiveFunction{MOI.VariableIndex}(),
+        index(x),
+    )
+    @test_throws ErrorException("Cannot use a parameter as objective function alone") MOI.set(
+        backend(model2),
+        MOI.ObjectiveFunction{MOI.VariableIndex}(),
+        index(p),
     )
 end
