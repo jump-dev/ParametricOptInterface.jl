@@ -108,10 +108,20 @@ function test_basic_tests()
     @test MOI.get(optimizer, MOI.ConstraintName(), c1) == ""
     MOI.set(optimizer, MOI.ConstraintName(), c1, "ctr123")
     @test MOI.get(optimizer, MOI.ConstraintName(), c1) == "ctr123"
-    @test_throws ErrorException MOI.set(optimizer, MOI.ConstraintPrimalStart(), cy, 4.0) #err
+    @test_throws ErrorException MOI.set(
+        optimizer,
+        MOI.ConstraintPrimalStart(),
+        cy,
+        4.0,
+    ) #err
     MOI.set(optimizer, MOI.ConstraintPrimalStart(), cy, 1.0)
     MOI.set(optimizer, MOI.ConstraintDualStart(), cy, 1.0) # no-op
-    @test_throws ErrorException MOI.set(optimizer, MOI.ConstraintDualStart(), MOI.ConstraintIndex{MOI.VariableIndex, MOI.Parameter{Float64}}(18), 1.0) # err
+    @test_throws ErrorException MOI.set(
+        optimizer,
+        MOI.ConstraintDualStart(),
+        MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{Float64}}(18),
+        1.0,
+    ) # err
     return
 end
 
