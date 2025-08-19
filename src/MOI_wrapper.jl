@@ -519,11 +519,11 @@ function MOI.set(
     c::MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},S},
     name::String,
 ) where {T,S<:MOI.AbstractSet}
+    c_aux = c
     if haskey(model.quadratic_outer_to_inner, c)
-        MOI.set(model.optimizer, attr, model.quadratic_outer_to_inner[c], name)
-    else
-        MOI.set(model.optimizer, attr, c, name)
+        c_aux = model.quadratic_outer_to_inner[c]
     end
+    MOI.set(model.optimizer, attr, c, name)
     return
 end
 
@@ -533,16 +533,11 @@ function MOI.set(
     c::MOI.ConstraintIndex{MOI.VectorQuadraticFunction{T},S},
     name::String,
 ) where {T,S<:MOI.AbstractSet}
+    c_aux = c
     if haskey(model.vector_quadratic_outer_to_inner, c)
-        MOI.set(
-            model.optimizer,
-            attr,
-            model.vector_quadratic_outer_to_inner[c],
-            name,
-        )
-    else
-        MOI.set(model.optimizer, attr, c, name)
+        c_aux = model.vector_quadratic_outer_to_inner[c]
     end
+    MOI.set(model.optimizer, attr, c_aux, name)
     return
 end
 
@@ -565,11 +560,11 @@ function MOI.get(
     attr::MOI.ConstraintName,
     c::MOI.ConstraintIndex{MOI.ScalarQuadraticFunction{T},S},
 ) where {T,S<:MOI.AbstractSet}
+    c_aux = c
     if haskey(model.quadratic_outer_to_inner, c)
-        return MOI.get(model.optimizer, attr, model.quadratic_outer_to_inner[c])
-    else
-        return MOI.get(model.optimizer, attr, c)
+        c_aux = model.quadratic_outer_to_inner[c]
     end
+    return MOI.get(model.optimizer, attr, c_aux)
 end
 
 function MOI.get(
@@ -577,15 +572,11 @@ function MOI.get(
     attr::MOI.ConstraintName,
     c::MOI.ConstraintIndex{MOI.VectorQuadraticFunction{T},S},
 ) where {T,S<:MOI.AbstractSet}
+    c_aux = c
     if haskey(model.vector_quadratic_outer_to_inner, c)
-        return MOI.get(
-            model.optimizer,
-            attr,
-            model.vector_quadratic_outer_to_inner[c],
-        )
-    else
-        return MOI.get(model.optimizer, attr, c)
+        c_aux = model.vector_quadratic_outer_to_inner[c]
     end
+    return MOI.get(model.optimizer, attr, c_aux)
 end
 
 function MOI.get(
@@ -979,10 +970,6 @@ function _is_vector_affine(f::MOI.VectorQuadraticFunction{T}) where {T}
     return isempty(f.quadratic_terms)
 end
 
-function _is_vector_affine(::MOI.VectorAffineFunction{T}) where {T}
-    return true  # VectorAffineFunction is always affine
-end
-
 function _add_constraint_with_parameters_on_function(
     model::Optimizer,
     f::MOI.VectorQuadraticFunction{T},
@@ -1037,15 +1024,15 @@ function MOI.delete(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
 ) where {F<:MOI.VectorQuadraticFunction,S<:MOI.AbstractSet}
+    c_aux = c
     if haskey(model.vector_quadratic_outer_to_inner, c)
         ci_inner = model.vector_quadratic_outer_to_inner[c]
         delete!(model.vector_quadratic_outer_to_inner, c)
         delete!(model.vector_quadratic_constraint_cache, ci_inner)
         delete!(model.vector_quadratic_constraint_cache_set, ci_inner)
-        MOI.delete(model.optimizer, ci_inner)
-    else
-        MOI.delete(model.optimizer, c)
+        c_aux = ci_inner
     end
+    MOI.delete(model.optimizer, c_aux)
     delete!(model.constraint_outer_to_inner, c)
     return
 end
@@ -1054,15 +1041,16 @@ function MOI.delete(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
 ) where {F<:MOI.ScalarQuadraticFunction,S<:MOI.AbstractSet}
+    c_aux = c
     if haskey(model.quadratic_outer_to_inner, c)
         ci_inner = model.quadratic_outer_to_inner[c]
         delete!(model.quadratic_outer_to_inner, c)
         delete!(model.quadratic_constraint_cache, ci_inner)
         delete!(model.quadratic_constraint_cache_set, ci_inner)
         MOI.delete(model.optimizer, ci_inner)
-    else
-        MOI.delete(model.optimizer, c)
+        c_aux = ci_inner
     end
+    MOI.delete(model.optimizer, c_aux)
     delete!(model.constraint_outer_to_inner, c)
     return
 end

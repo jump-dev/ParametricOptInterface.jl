@@ -1297,6 +1297,16 @@ function test_jump_psd_cone_with_parameter_pv()
         con,
         [0, (p * x - 1), 0] in MOI.PositiveSemidefiniteConeTriangle(2)
     )
+    @test MOI.get(
+        backend(model),
+        MOI.ConstraintFunction(),
+        index(con),
+    ) isa MOI.VectorQuadraticFunction{Float64}
+    @test MOI.get(
+        backend(model),
+        MOI.ConstraintSet(),
+        index(con),
+    ) isa MOI.PositiveSemidefiniteConeTriangle
     # the above constraint is equivalent to
     # - (p * x -1)^2 >=0 -> (p * x -1)^2 <= 0 -> (p * x -1) == 0 -> p*x == 1
     @test is_valid(model, con)
