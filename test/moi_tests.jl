@@ -2073,3 +2073,14 @@ function test_psd_cone_with_parameter()
     MOI.set(model, MOI.ConstraintName(), c_index, "psd_cone")
     @test MOI.get(model, MOI.ConstraintName(), c_index) == "psd_cone"
 end
+
+function test_copy_model()
+    model = MOI.Utilities.Model{Float64}()
+    x = MOI.add_variable(model)
+    c = MOI.add_constraint(model, 1.0 * x, MOI.EqualTo(1.0))
+    MOI.set(model, MOI.ConstraintName(), c, "c")
+    poi = POI.Optimizer(GLPK.Optimizer())
+    MOI.copy_to(poi, model)
+    MOI.optimize!(poi)
+    @test MOI.get(poi, MOI.VariablePrimal(), x) ≈ 1.0
+end
