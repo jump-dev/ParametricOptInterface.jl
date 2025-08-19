@@ -2065,6 +2065,10 @@ function test_issue_185()
         C = MOI.ConstraintIndex{F{Float64},MOI.EqualTo{Float64}}
         @test !MOI.supports(model, MOI.ConstraintName(), C)
     end
+    return
+end
+
+function test_issue_185_vector()
     inner = Model185_2{Float64}()
     mock = MOI.Utilities.MockOptimizer(inner; supports_names = false)
     model = POI.Optimizer(MOI.Bridges.full_bridge_optimizer(mock, Float64))
