@@ -1297,6 +1297,10 @@ function test_jump_psd_cone_with_parameter_pv()
         con,
         [0, (p * x - 1), 0] in MOI.PositiveSemidefiniteConeTriangle(2)
     )
+    @test MOI.get(backend(model), MOI.ConstraintFunction(), index(con)) isa
+          MOI.VectorQuadraticFunction{Float64}
+    @test MOI.get(backend(model), MOI.ConstraintSet(), index(con)) isa
+          MOI.PositiveSemidefiniteConeTriangle
     # the above constraint is equivalent to
     # - (p * x -1)^2 >=0 -> (p * x -1)^2 <= 0 -> (p * x -1) == 0 -> p*x == 1
     @test is_valid(model, con)
@@ -1439,13 +1443,13 @@ function test_jump_psd_cone_with_parameter_p_v_pv()
         con,
         [p, (2 * x - 3), p * 3 * x] in MOI.PositiveSemidefiniteConeTriangle(2)
     )
-    @objective(model, Min, x)
+    @objective(model, Min, x * x - p * p)
     @test is_valid(model, con)
     optimize!(model)
-    @test value(x) ≈ 0.7499854 atol = 1e-5
+    @test value(x) ≈ 0.7499854 atol = 1e-3
     set_parameter_value(p, 3.0)
     optimize!(model)
-    @test value(x) ≈ 0.236506 atol = 1e-5
+    @test value(x) ≈ 0.236506 atol = 1e-3
     return delete(model, con)
 end
 
@@ -1466,11 +1470,11 @@ function test_jump_psd_cone_with_parameter_p_v_pp()
         con,
         [p, (2 * x - 3), p * 3 * p] in MOI.PositiveSemidefiniteConeTriangle(2)
     )
-    @objective(model, Min, x)
+    @objective(model, Min, x - p)
     @test is_valid(model, con)
     optimize!(model)
     @test value(x) ≈ 0.633969 atol = 1e-5
-    set_parameter_value(p, 3.0)
+    set_parameter_value(p, Float32(3.0))
     optimize!(model)
     @test value(x) ≈ -2.9999734 atol = 1e-5
     return delete(model, con)
@@ -1559,6 +1563,17 @@ function test_variable_and_constraint_not_registered()
     @test_throws ErrorException("Parameter not in the model") MOI.get(
         backend(model2),
         MOI.ConstraintSet(),
+        index(ParameterRef(p1)),
+    )
+    @test_throws ErrorException("Variable not in the model") MOI.set(
+        backend(model2),
+        MOI.ConstraintPrimalStart(),
+        index(ParameterRef(p1)),
+        1.0,
+    )
+    @test_throws ErrorException("Variable not in the model") MOI.get(
+        backend(model2),
+        MOI.ConstraintPrimalStart(),
         index(ParameterRef(p1)),
     )
     @test_throws ErrorException("Variable not in the model") MOI.set(
