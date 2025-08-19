@@ -513,6 +513,19 @@ function MOI.supports(
            MOI.supports(model.optimizer, attr, MOI.ConstraintIndex{G,S})
 end
 
+function MOI.supports(
+    model::Optimizer,
+    attr::MOI.ConstraintName,
+    ::Type{MOI.ConstraintIndex{F,S}},
+) where {T,F<:MOI.VectorQuadraticFunction{T},S}
+    G = MOI.VectorAffineFunction{T}
+    # We can't tell at type-time whether the constraints will be quadratic or
+    # lowered to affine, so we return the conservative choice for supports of
+    # needing to support names for both quadratic and affine constraints.
+    return MOI.supports(model.optimizer, attr, MOI.ConstraintIndex{F,S}) &&
+           MOI.supports(model.optimizer, attr, MOI.ConstraintIndex{G,S})
+end
+
 function MOI.set(
     model::Optimizer,
     attr::MOI.ConstraintName,
