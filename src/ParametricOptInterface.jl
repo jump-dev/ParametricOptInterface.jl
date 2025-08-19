@@ -130,13 +130,21 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
 
     # quadratic constraitn data
     last_quad_add_added::Int64
+    last_vec_quad_add_added::Int64
     # Store the map for SQFs (some might be transformed into SAF)
     # for instance p*p + var -> ScalarAffine(var)
     quadratic_outer_to_inner::DoubleDict{MOI.ConstraintIndex}
+    vector_quadratic_outer_to_inner::DoubleDict{MOI.ConstraintIndex}
     # Clever cache of data (inner key)
     quadratic_constraint_cache::DoubleDict{ParametricQuadraticFunction{T}}
     # Store original constraint set (inner key)
     quadratic_constraint_cache_set::DoubleDict{MOI.AbstractScalarSet}
+    # Vector quadratic function data
+    vector_quadratic_constraint_cache::DoubleDict{
+        ParametricVectorQuadraticFunction{T},
+    }
+    # Store original constraint set (inner key)
+    vector_quadratic_constraint_cache_set::DoubleDict{MOI.AbstractVectorSet}
 
     # objective function data
     # Clever cache of data (at most one can be !== nothing)
@@ -206,9 +214,13 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             DoubleDict{MOI.AbstractScalarSet}(),
             # quadratic constraint
             0,
+            0,
+            DoubleDict{MOI.ConstraintIndex}(),
             DoubleDict{MOI.ConstraintIndex}(),
             DoubleDict{ParametricQuadraticFunction{T}}(),
             DoubleDict{MOI.AbstractScalarSet}(),
+            DoubleDict{ParametricVectorQuadraticFunction{T}}(),
+            DoubleDict{MOI.AbstractVectorSet}(),
             # objective
             nothing,
             nothing,

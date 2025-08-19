@@ -427,11 +427,10 @@ function test_jump_set_variable_start_value()
     @variable(model, p in MOI.Parameter(0.0))
     set_start_value(x, 1.0)
     @test start_value(x) == 1
-    err = ErrorException(
-        "MathOptInterface.VariablePrimalStart() is not supported for parameters",
-    )
-    @test_throws err set_start_value(p, 1.0)
-    @test_throws err start_value(p)
+    @test_throws ErrorException(
+        "The parameter $(index(p)) value is 0.0, but trying to set VariablePrimalStart 1.0",
+    ) set_start_value(p, 1.0)
+    @test start_value(p) == 0.0
     return
 end
 
@@ -1273,4 +1272,338 @@ function test_parameter_Cannot_be_inf_2()
     @objective(model, Min, sum(x))
     @test_throws AssertionError MOI.set(model, POI.ParameterValue(), p, Inf)
     return
+end
+
+function test_jump_psd_cone_with_parameter_pv()
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            SCS.Optimizer(),
+        ),
+        Float64,
+    )
+    optimizer = POI.Optimizer(cached)
+    model = direct_model(optimizer)
+    @variable(model, x)
+    @variable(model, p in MOI.Parameter(1.0))
+    # @constraint(
+    #     model,
+    #     con,
+    #     [[0 (p * x - 1)]; [(p * x - 1) 0]] in JuMP.PSDCone()
+    # );
+    # TODO: bridges do not support setting constraint function
+    @constraint(
+        model,
+        con,
+        [0, (p * x - 1), 0] in MOI.PositiveSemidefiniteConeTriangle(2)
+    )
+    @test MOI.get(backend(model), MOI.ConstraintFunction(), index(con)) isa
+          MOI.VectorQuadraticFunction{Float64}
+    @test MOI.get(backend(model), MOI.ConstraintSet(), index(con)) isa
+          MOI.PositiveSemidefiniteConeTriangle
+    # the above constraint is equivalent to
+    # - (p * x -1)^2 >=0 -> (p * x -1)^2 <= 0 -> (p * x -1) == 0 -> p*x == 1
+    @test is_valid(model, con)
+    optimize!(model)
+    @test value(x) ≈ 1.0 atol = 1e-5
+    set_parameter_value(p, 3.0)
+    optimize!(model)
+    @test value(x) ≈ 1 / 3 atol = 1e-5
+    return delete(model, con)
+end
+
+function test_jump_psd_cone_with_parameter_pp()
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            SCS.Optimizer(),
+        ),
+        Float64,
+    )
+    optimizer = POI.Optimizer(cached)
+    model = direct_model(optimizer)
+    @variable(model, x)
+    @variable(model, p in MOI.Parameter(1.0))
+    # @constraint(
+    #     model,
+    #     con,
+    #     [[0 (x - p * p)]; [(x - p * p) 0]] in JuMP.PSDCone()
+    # )
+    @constraint(
+        model,
+        con,
+        [0, (x - p * p), 0] in MOI.PositiveSemidefiniteConeTriangle(2)
+    )
+    @test is_valid(model, con)
+    optimize!(model)
+    @test value(x) ≈ 1.0 atol = 1e-5
+    set_parameter_value(p, 3.0)
+    optimize!(model)
+    @test value(x) ≈ 9.0 atol = 1e-5
+    return delete(model, con)
+end
+
+function test_jump_psd_cone_with_parameter_p()
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            SCS.Optimizer(),
+        ),
+        Float64,
+    )
+    optimizer = POI.Optimizer(cached)
+    model = direct_model(optimizer)
+    @variable(model, x)
+    @variable(model, p in MOI.Parameter(1.0))
+    # @constraint(model, con, [[0 (x - p)]; [(x - p) 0]] in JuMP.PSDCone())
+    @constraint(
+        model,
+        con,
+        [0, (x - p), 0] in MOI.PositiveSemidefiniteConeTriangle(2)
+    )
+    @test is_valid(model, con)
+    optimize!(model)
+    @test value(x) ≈ 1.0 atol = 1e-5
+    set_parameter_value(p, 3.0)
+    optimize!(model)
+    @test value(x) ≈ 3.0 atol = 1e-5
+    return delete(model, con)
+end
+
+function test_jump_psd_cone_with_parameter_pv_v_pv()
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            SCS.Optimizer(),
+        ),
+        Float64,
+    )
+    optimizer = POI.Optimizer(cached)
+    model = direct_model(optimizer)
+    @variable(model, x)
+    @variable(model, p in MOI.Parameter(1.0))
+    @constraint(
+        model,
+        con,
+        [p * x, (2 * x - 3), p * 3 * x] in
+        MOI.PositiveSemidefiniteConeTriangle(2)
+    )
+    @objective(model, Min, x)
+    @test is_valid(model, con)
+    optimize!(model)
+    @test value(x) ≈ 0.803845 atol = 1e-5
+    set_parameter_value(p, 3.0)
+    optimize!(model)
+    @test value(x) ≈ 0.416888 atol = 1e-5
+    return delete(model, con)
+end
+
+function test_jump_psd_cone_with_parameter_pp_v_pv()
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            SCS.Optimizer(),
+        ),
+        Float64,
+    )
+    optimizer = POI.Optimizer(cached)
+    model = direct_model(optimizer)
+    @variable(model, x)
+    @variable(model, p in MOI.Parameter(1.0))
+    @constraint(
+        model,
+        con,
+        [p * p, (2 * x - 3), p * 3 * x] in
+        MOI.PositiveSemidefiniteConeTriangle(2)
+    )
+    @objective(model, Min, x)
+    @test is_valid(model, con)
+    optimize!(model)
+    @test value(x) ≈ 0.7499854 atol = 1e-5
+    set_parameter_value(p, 3.0)
+    optimize!(model)
+    @test value(x) ≈ 0.0971795 atol = 1e-5
+    return delete(model, con)
+end
+
+function test_jump_psd_cone_with_parameter_p_v_pv()
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            SCS.Optimizer(),
+        ),
+        Float64,
+    )
+    optimizer = POI.Optimizer(cached)
+    model = direct_model(optimizer)
+    @variable(model, x)
+    @variable(model, p in MOI.Parameter(1.0))
+    @constraint(
+        model,
+        con,
+        [p, (2 * x - 3), p * 3 * x] in MOI.PositiveSemidefiniteConeTriangle(2)
+    )
+    @objective(model, Min, x * x - p * p)
+    @test is_valid(model, con)
+    optimize!(model)
+    @test value(x) ≈ 0.7499854 atol = 1e-3
+    set_parameter_value(p, 3.0)
+    optimize!(model)
+    @test value(x) ≈ 0.236506 atol = 1e-3
+    return delete(model, con)
+end
+
+function test_jump_psd_cone_with_parameter_p_v_pp()
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            SCS.Optimizer(),
+        ),
+        Float64,
+    )
+    optimizer = POI.Optimizer(cached)
+    model = direct_model(optimizer)
+    @variable(model, x)
+    @variable(model, p in MOI.Parameter(1.0))
+    @constraint(
+        model,
+        con,
+        [p, (2 * x - 3), p * 3 * p] in MOI.PositiveSemidefiniteConeTriangle(2)
+    )
+    @objective(model, Min, x - p)
+    @test is_valid(model, con)
+    optimize!(model)
+    @test value(x) ≈ 0.633969 atol = 1e-5
+    set_parameter_value(p, Float32(3.0))
+    optimize!(model)
+    @test value(x) ≈ -2.9999734 atol = 1e-5
+    return delete(model, con)
+end
+
+function test_jump_psd_cone_without_parameter_v_and_vv()
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            SCS.Optimizer(),
+        ),
+        Float64,
+    )
+    optimizer = POI.Optimizer(cached)
+    model = direct_model(optimizer)
+    @variable(model, x)
+    @variable(model, p in MOI.Parameter(1.0))
+    @constraint(
+        model,
+        con,
+        [x, (x - 1), x] in MOI.PositiveSemidefiniteConeTriangle(2)
+    )
+    @test is_valid(model, con)
+    optimize!(model)
+    @test value(x) ≈ 0.50000 atol = 1e-5
+    @test MOI.get(
+        backend(model),
+        MOI.ConstraintPrimalStart(),
+        index(ParameterRef(p)),
+    ) == 1.0
+    delete(model, con)
+    unregister(model, :con)
+    @test_throws MOI.UnsupportedConstraint @constraint(
+        model,
+        con,
+        [p * p, x * (x - 1), p] in MOI.PositiveSemidefiniteConeTriangle(2)
+    )
+    @test_throws MOI.UnsupportedConstraint @constraint(
+        model,
+        con,
+        [x * x, (x - 1), 0.0] in MOI.PositiveSemidefiniteConeTriangle(2)
+    )
+    @test_throws MOI.UnsupportedConstraint @constraint(
+        model,
+        con,
+        [p, (x - 1), x * x] in MOI.PositiveSemidefiniteConeTriangle(2)
+    )
+    @test_throws MOI.UnsupportedConstraint @constraint(
+        model,
+        con,
+        [x, p * (x - 1), x * x] in MOI.PositiveSemidefiniteConeTriangle(2)
+    )
+    @test_throws ErrorException(
+        "Constraint attribute MathOptInterface.ConstraintName() cannot be set for $(index(ParameterRef(p)))",
+    ) MOI.set(
+        backend(model),
+        MOI.ConstraintName(),
+        index(ParameterRef(p)),
+        "name",
+    )
+    @test_throws MOI.UnsupportedAttribute MOI.supports(
+        backend(model),
+        MOI.ConstraintName(),
+        MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter},
+    )
+end
+
+function test_variable_and_constraint_not_registered()
+    cached1 = MOI.Utilities.CachingOptimizer(
+        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+        SCS.Optimizer(),
+    )
+    optimizer1 = POI.Optimizer(cached1)
+    cached2 = MOI.Utilities.CachingOptimizer(
+        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+        SCS.Optimizer(),
+    )
+    optimizer2 = POI.Optimizer(cached2)
+    model = direct_model(optimizer1)
+    model2 = direct_model(optimizer2)
+    set_silent(model)
+    set_silent(model2)
+    @variable(model, x)
+    @variable(model, p in MOI.Parameter(1.0))
+    @variable(model, p1 in MOI.Parameter(1.0))
+    @variable(model2, p2 in MOI.Parameter(1.0))
+    @constraint(model, con, [x - p] in MOI.Nonnegatives(1))
+    @test_throws ErrorException("Variable not in the model") MOI.set(
+        backend(model2),
+        MOI.VariablePrimalStart(),
+        index(x),
+        1.0,
+    )
+    @test_throws ErrorException("Variable not in the model") MOI.get(
+        backend(model2),
+        MOI.VariablePrimalStart(),
+        index(x),
+    )
+    @test_throws ErrorException("Parameter not in the model") MOI.get(
+        backend(model2),
+        MOI.ConstraintFunction(),
+        index(ParameterRef(p1)),
+    )
+    @test_throws ErrorException("Parameter not in the model") MOI.get(
+        backend(model2),
+        MOI.ConstraintSet(),
+        index(ParameterRef(p1)),
+    )
+    @test_throws ErrorException("Variable not in the model") MOI.set(
+        backend(model2),
+        MOI.ConstraintPrimalStart(),
+        index(ParameterRef(p1)),
+        1.0,
+    )
+    @test_throws ErrorException("Variable not in the model") MOI.get(
+        backend(model2),
+        MOI.ConstraintPrimalStart(),
+        index(ParameterRef(p1)),
+    )
+    @test_throws ErrorException("Variable not in the model") MOI.set(
+        backend(model2),
+        MOI.ObjectiveFunction{MOI.VariableIndex}(),
+        index(x),
+    )
+    @test_throws ErrorException(
+        "Cannot use a parameter as objective function alone",
+    ) MOI.set(
+        backend(model2),
+        MOI.ObjectiveFunction{MOI.VariableIndex}(),
+        index(p),
+    )
 end

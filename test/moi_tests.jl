@@ -108,6 +108,20 @@ function test_basic_tests()
     @test MOI.get(optimizer, MOI.ConstraintName(), c1) == ""
     MOI.set(optimizer, MOI.ConstraintName(), c1, "ctr123")
     @test MOI.get(optimizer, MOI.ConstraintName(), c1) == "ctr123"
+    @test_throws ErrorException MOI.set(
+        optimizer,
+        MOI.ConstraintPrimalStart(),
+        cy,
+        4.0,
+    ) #err
+    MOI.set(optimizer, MOI.ConstraintPrimalStart(), cy, 1.0)
+    MOI.set(optimizer, MOI.ConstraintDualStart(), cy, 1.0) # no-op
+    @test_throws ErrorException MOI.set(
+        optimizer,
+        MOI.ConstraintDualStart(),
+        MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{Float64}}(18),
+        1.0,
+    ) # err
     return
 end
 
@@ -610,6 +624,7 @@ function test_vector_parameter_affine_nonnegatives()
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 4 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 3 atol = ATOL
     @test MOI.get(model, MOI.ConstraintPrimal(), cnn) ≈ [0.0, 0.0] atol = ATOL
+    @test MOI.get(model, MOI.ConstraintPrimal(), ct) ≈ 5 atol = ATOL
     @test MOI.get(model, MOI.ObjectiveValue()) ≈ 7 atol = ATOL
     @test MOI.get(model, MOI.DualObjectiveValue()) ≈ 7 atol = ATOL
     @test MOI.get(model, MOI.ConstraintDual(), cnn) ≈ [1.0, 1.0] atol = ATOL
@@ -1806,6 +1821,11 @@ function test_getters()
         MOI.Zeros,
         POI.ParametricVectorAffineFunction{Float64},
     )
+    T4 = (
+        MOI.VectorAffineFunction{Float64},
+        MOI.Zeros,
+        POI.ParametricVectorQuadraticFunction{Float64},
+    )
     @test MOI.get(optimizer, POI.ListOfParametricConstraintTypesPresent()) ==
           [T1]
     @test length(
@@ -1835,6 +1855,16 @@ function test_getters()
                 T3[1],
                 T3[2],
                 T3[3],
+            }(),
+        ),
+    )
+    @test isempty(
+        MOI.get(
+            optimizer,
+            POI.DictOfParametricConstraintIndicesAndFunctions{
+                T4[1],
+                T4[2],
+                T4[3],
             }(),
         ),
     )
@@ -1870,6 +1900,16 @@ function test_getters()
                 T3[1],
                 T3[2],
                 T3[3],
+            }(),
+        ),
+    )
+    @test isempty(
+        MOI.get(
+            optimizer,
+            POI.DictOfParametricConstraintIndicesAndFunctions{
+                T4[1],
+                T4[2],
+                T4[3],
             }(),
         ),
     )
@@ -1909,6 +1949,16 @@ function test_getters()
             }(),
         ),
     ) == 1
+    @test isempty(
+        MOI.get(
+            optimizer,
+            POI.DictOfParametricConstraintIndicesAndFunctions{
+                T4[1],
+                T4[2],
+                T4[3],
+            }(),
+        ),
+    )
     @test MOI.get(optimizer, POI.ParametricObjectiveType()) == Nothing
     MOI.set(
         optimizer,
@@ -2004,4 +2054,68 @@ function test_issue_185()
         @test !MOI.supports(model, MOI.ConstraintName(), C)
     end
     return
+end
+
+function test_psd_cone_with_parameter()
+    #=
+    variables: x
+    parameters: p
+        minobjective: 1x
+        c1: [0, px + -1, 0] in PositiveSemidefiniteConeTriangle(2)
+    =#
+    cached = MOI.Bridges.full_bridge_optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            SCS.Optimizer(),
+        ),
+        Float64,
+    )
+
+    model = POI.Optimizer(cached)
+    MOI.set(model, MOI.Silent(), true)
+    x = MOI.add_variable(model)
+    p = first.(MOI.add_constrained_variable.(model, MOI.Parameter(1.0)),)
+
+    # Set objective: minimize x
+    obj_func = MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(1.0, x)], 0.0)
+    MOI.set(model, MOI.ObjectiveFunction{typeof(obj_func)}(), obj_func)
+    MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+
+    # Build constraint: [0, px - 1, 0] ∈ PositiveSemidefiniteConeTriangle(2)
+    quadratic_terms = [MOI.VectorQuadraticTerm(
+        2,  # Index in the output vector (position 2: off-diagonal element)
+        MOI.ScalarQuadraticTerm(1.0, p, x),  # 1.0 * p * x
+    )]
+    affine_terms = MOI.VectorAffineTerm{Float64}[]  # No affine terms
+    constants = [0.0, -1.0, 0.0]  # Constants for [diag1, off-diag, diag2]
+
+    vec_func =
+        MOI.VectorQuadraticFunction(quadratic_terms, affine_terms, constants)
+    psd_cone = MOI.PositiveSemidefiniteConeTriangle(2)
+    c_index = MOI.add_constraint(model, vec_func, psd_cone)
+
+    MOI.optimize!(model)
+    @test MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1.0 atol = 1e-5
+
+    MOI.set(model, POI.ParameterValue(), p, 3.0)
+
+    MOI.optimize!(model)
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1 / 3 atol = 1e-5
+
+    # test constraint name
+    @test MOI.get(model, MOI.ConstraintName(), c_index) == ""
+    MOI.set(model, MOI.ConstraintName(), c_index, "psd_cone")
+    @test MOI.get(model, MOI.ConstraintName(), c_index) == "psd_cone"
+end
+
+function test_copy_model()
+    model = MOI.Utilities.Model{Float64}()
+    x = MOI.add_variable(model)
+    c = MOI.add_constraint(model, 1.0 * x, MOI.EqualTo(1.0))
+    MOI.set(model, MOI.ConstraintName(), c, "c")
+    poi = POI.Optimizer(GLPK.Optimizer())
+    MOI.copy_to(poi, model)
+    MOI.optimize!(poi)
+    @test MOI.get(poi, MOI.VariablePrimal(), x) ≈ 1.0
 end
