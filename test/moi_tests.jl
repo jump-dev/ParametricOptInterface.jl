@@ -2067,4 +2067,9 @@ function test_psd_cone_with_parameter()
 
     MOI.optimize!(model)
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1 / 3 atol = 1e-5
+
+    # test constraint name
+    @test MOI.get(model, MOI.ConstraintName(), c_index) == ""
+    MOI.set(model, MOI.ConstraintName(), c_index, "psd_cone")
+    @test MOI.get(model, MOI.ConstraintName(), c_index) == "psd_cone"
 end
