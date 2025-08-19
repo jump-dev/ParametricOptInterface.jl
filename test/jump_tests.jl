@@ -1528,11 +1528,11 @@ function test_jump_psd_cone_without_parameter_v_and_vv()
         [x, p * (x - 1), x * x] in MOI.PositiveSemidefiniteConeTriangle(2)
     )
     @test_throws ErrorException(
-        "Constraint attribute MathOptInterface.ConstraintName() cannot be set for $(index(ParameterRef(pref)))",
+        "Constraint attribute MathOptInterface.ConstraintName() cannot be set for $(index(ParameterRef(p)))",
     ) MOI.set(
         backend(model),
         MOI.ConstraintName(),
-        index(ParameterRef(pref)),
+        index(ParameterRef(p)),
         "name",
     )
     @test_throws MOI.UnsupportedAttribute MOI.supports(
