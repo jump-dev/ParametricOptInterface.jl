@@ -1500,6 +1500,11 @@ function test_jump_psd_cone_without_parameter_v_and_vv()
     @test is_valid(model, con)
     optimize!(model)
     @test value(x) ≈ 0.50000 atol = 1e-5
+    @test MOI.get(
+        backend(model),
+        MOI.ConstraintPrimalStart(),
+        index(ParameterRef(p)),
+    ) == 1.0
     delete(model, con)
     unregister(model, :con)
     @test_throws MOI.UnsupportedConstraint @constraint(
@@ -1510,7 +1515,7 @@ function test_jump_psd_cone_without_parameter_v_and_vv()
     @test_throws MOI.UnsupportedConstraint @constraint(
         model,
         con,
-        [x * x, (x - 1), p] in MOI.PositiveSemidefiniteConeTriangle(2)
+        [x * x, (x - 1), 0.0] in MOI.PositiveSemidefiniteConeTriangle(2)
     )
     @test_throws MOI.UnsupportedConstraint @constraint(
         model,
@@ -1522,6 +1527,13 @@ function test_jump_psd_cone_without_parameter_v_and_vv()
         con,
         [x, p * (x - 1), x * x] in MOI.PositiveSemidefiniteConeTriangle(2)
     )
+    @test_throws ErrorException("Constraint attribute MathOptInterface.ConstraintName() cannot be set for $(index(ParameterRef(pref)))") MOI.set(
+        backend(model),
+        MOI.ConstraintName(),
+        index(ParameterRef(pref)),
+        "name",
+    )
+    @test_throws MOI.UnsupportedAttribute MOI.supports(backend(model), MOI.ConstraintName(), MOI.ConstraintIndex{MOI.VariableIndex, MOI.Parameter})
 end
 
 function test_variable_and_constraint_not_registered()

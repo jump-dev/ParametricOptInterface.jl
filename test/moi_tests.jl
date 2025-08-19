@@ -1821,6 +1821,11 @@ function test_getters()
         MOI.Zeros,
         POI.ParametricVectorAffineFunction{Float64},
     )
+    T4 = (
+        MOI.VectorAffineFunction{Float64},
+        MOI.Zeros,
+        POI.ParametricVectorQuadraticFunction{Float64},
+    )
     @test MOI.get(optimizer, POI.ListOfParametricConstraintTypesPresent()) ==
           [T1]
     @test length(
@@ -1850,6 +1855,16 @@ function test_getters()
                 T3[1],
                 T3[2],
                 T3[3],
+            }(),
+        ),
+    )
+    @test isempty(
+        MOI.get(
+            optimizer,
+            POI.DictOfParametricConstraintIndicesAndFunctions{
+                T4[1],
+                T4[2],
+                T4[3],
             }(),
         ),
     )
@@ -1885,6 +1900,16 @@ function test_getters()
                 T3[1],
                 T3[2],
                 T3[3],
+            }(),
+        ),
+    )
+    @test isempty(
+        MOI.get(
+            optimizer,
+            POI.DictOfParametricConstraintIndicesAndFunctions{
+                T4[1],
+                T4[2],
+                T4[3],
             }(),
         ),
     )
@@ -1924,6 +1949,16 @@ function test_getters()
             }(),
         ),
     ) == 1
+    @test isempty(
+        MOI.get(
+            optimizer,
+            POI.DictOfParametricConstraintIndicesAndFunctions{
+                T4[1],
+                T4[2],
+                T4[3],
+            }(),
+        ),
+    )
     @test MOI.get(optimizer, POI.ParametricObjectiveType()) == Nothing
     MOI.set(
         optimizer,
