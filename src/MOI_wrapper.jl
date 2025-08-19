@@ -1047,7 +1047,6 @@ function MOI.delete(
         delete!(model.quadratic_outer_to_inner, c)
         delete!(model.quadratic_constraint_cache, ci_inner)
         delete!(model.quadratic_constraint_cache_set, ci_inner)
-        MOI.delete(model.optimizer, ci_inner)
         c_aux = ci_inner
     end
     MOI.delete(model.optimizer, c_aux)
