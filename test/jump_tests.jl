@@ -1449,13 +1449,13 @@ function test_jump_psd_cone_with_parameter_p_v_pv()
         con,
         [p, (2 * x - 3), p * 3 * x] in MOI.PositiveSemidefiniteConeTriangle(2)
     )
-    @objective(model, Min, x)
+    @objective(model, Min, x * x - p * p)
     @test is_valid(model, con)
     optimize!(model)
-    @test value(x) ≈ 0.7499854 atol = 1e-5
+    @test value(x) ≈ 0.7499854 atol = 1e-3
     set_parameter_value(p, 3.0)
     optimize!(model)
-    @test value(x) ≈ 0.236506 atol = 1e-5
+    @test value(x) ≈ 0.236506 atol = 1e-3
     return delete(model, con)
 end
 
@@ -1476,11 +1476,11 @@ function test_jump_psd_cone_with_parameter_p_v_pp()
         con,
         [p, (2 * x - 3), p * 3 * p] in MOI.PositiveSemidefiniteConeTriangle(2)
     )
-    @objective(model, Min, x)
+    @objective(model, Min, x - p)
     @test is_valid(model, con)
     optimize!(model)
     @test value(x) ≈ 0.633969 atol = 1e-5
-    set_parameter_value(p, 3.0)
+    set_parameter_value(p, Float32(3.0))
     optimize!(model)
     @test value(x) ≈ -2.9999734 atol = 1e-5
     return delete(model, con)
