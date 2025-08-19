@@ -523,7 +523,7 @@ function MOI.set(
     if haskey(model.quadratic_outer_to_inner, c)
         c_aux = model.quadratic_outer_to_inner[c]
     end
-    MOI.set(model.optimizer, attr, c, name)
+    MOI.set(model.optimizer, attr, c_aux, name)
     return
 end
 
