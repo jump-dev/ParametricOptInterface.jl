@@ -1998,6 +1998,29 @@ function test_no_quadratic_terms()
     return
 end
 
+MOI.Utilities.@model(
+    Model185,
+    (),
+    (MOI.EqualTo,),
+    (),
+    (),
+    (),
+    (MOI.ScalarAffineFunction,),
+    (),
+    ()
+);
+
+function test_issue_185()
+    inner = Model185{Float64}()
+    mock = MOI.Utilities.MockOptimizer(inner; supports_names = false)
+    model = POI.Optimizer(MOI.Bridges.full_bridge_optimizer(mock, Float64))
+    for F in (MOI.ScalarAffineFunction, MOI.ScalarQuadraticFunction)
+        C = MOI.ConstraintIndex{F{Float64},MOI.EqualTo{Float64}}
+        @test !MOI.supports(model, MOI.ConstraintName(), C)
+    end
+    return
+end
+
 function test_psd_cone_with_parameter()
     #=
     variables: x
