@@ -2069,7 +2069,7 @@ function test_issue_185()
     mock = MOI.Utilities.MockOptimizer(inner; supports_names = false)
     model = POI.Optimizer(MOI.Bridges.full_bridge_optimizer(mock, Float64))
     for F in (MOI.VectorAffineFunction, MOI.VectorQuadraticFunction)
-        C = MOI.ConstraintIndex{F{Float64}, MOI.PositiveSemidefiniteConeTriangle}
+        C = MOI.ConstraintIndex{F{Float64},MOI.PositiveSemidefiniteConeTriangle}
         @test !MOI.supports(model, MOI.ConstraintName(), C)
     end
     return
