@@ -1573,6 +1573,17 @@ function test_variable_and_constraint_not_registered()
     )
     @test_throws ErrorException("Variable not in the model") MOI.set(
         backend(model2),
+        MOI.ConstraintPrimalStart(),
+        index(ParameterRef(p1)),
+        1.0
+    )
+    @test_throws ErrorException("Variable not in the model") MOI.get(
+        backend(model2),
+        MOI.ConstraintPrimalStart(),
+        index(ParameterRef(p1)),
+    )
+    @test_throws ErrorException("Variable not in the model") MOI.set(
+        backend(model2),
         MOI.ObjectiveFunction{MOI.VariableIndex}(),
         index(x),
     )

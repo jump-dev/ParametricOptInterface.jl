@@ -1451,6 +1451,19 @@ function MOI.get(
     return model.parameters[p_idx(v)]
 end
 
+function MOI.get(
+    model::Optimizer,
+    ::MOI.ConstraintPrimalStart,
+    c::MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}},
+) where {T}
+    v = MOI.VariableIndex(c.value)
+    if _parameter_in_model(model, v)
+        return model.parameters[p_idx(v)]
+    else
+        error("Variable not in the model")
+    end
+end
+
 function MOI.set(
     model::Optimizer,
     ::MOI.ConstraintPrimalStart,
