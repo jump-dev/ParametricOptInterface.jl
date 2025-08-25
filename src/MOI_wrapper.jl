@@ -317,7 +317,8 @@ function MOI.add_constrained_variable(
 )
     inner_vi, inner_ci = MOI.add_constrained_variable(model.optimizer, set)
     outer_vi = _add_variable(model, inner_vi)
-    outer_ci = MOI.ConstraintIndex{MOI.VariableIndex,typeof(set)}(outer_vi.value)
+    outer_ci =
+        MOI.ConstraintIndex{MOI.VariableIndex,typeof(set)}(outer_vi.value)
     model.constraint_outer_to_inner[outer_ci] = inner_ci
     return outer_vi, outer_ci
 end
