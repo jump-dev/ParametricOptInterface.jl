@@ -180,12 +180,11 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
 
     # extension data
     ext::Dict{Symbol,Any}
-    function Optimizer(
+    function Optimizer{T}(
         optimizer::OT;
         evaluate_duals::Bool = true,
         save_original_objective_and_constraints::Bool = true,
-    ) where {OT}
-        T = Float64
+    ) where {T,OT}
         return new{T,OT}(
             optimizer,
             MOI.Utilities.CleverDicts.CleverDict{ParameterIndex,T}(
@@ -247,6 +246,8 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
         )
     end
 end
+
+Optimizer(args...; kws...) = Optimizer{Float64}(args...; kws...)
 
 function _next_variable_index!(model::Optimizer)
     return model.last_variable_index_added += 1
