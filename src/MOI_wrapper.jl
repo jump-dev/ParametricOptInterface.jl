@@ -270,16 +270,6 @@ function MOI.supports_add_constrained_variables(
     return MOI.supports_add_constrained_variables(model.optimizer, MOI.Reals)
 end
 
-function _assert_parameter_is_finite(set::MOI.Parameter{T}) where {T}
-    if !isfinite(set.value)
-        throw(
-            AssertionError(
-                "Parameter value must be a finite number. Got $(set.value)",
-            ),
-        )
-    end
-end
-
 function MOI.supports_add_constrained_variable(
     model::Optimizer,
     ::Type{S},
@@ -292,6 +282,16 @@ function MOI.supports_add_constrained_variables(
     ::Type{S},
 ) where {S<:MOI.AbstractVectorSet}
     return MOI.supports_add_constrained_variables(model.optimizer, S)
+end
+
+function _assert_parameter_is_finite(set::MOI.Parameter{T}) where {T}
+    if !isfinite(set.value)
+        throw(
+            AssertionError(
+                "Parameter value must be a finite number. Got $(set.value)",
+            ),
+        )
+    end
 end
 
 function MOI.add_constrained_variable(
@@ -316,7 +316,10 @@ function MOI.add_constrained_variable(
     set::MOI.AbstractScalarSet,
 )
     inner_vi, inner_ci = MOI.add_constrained_variable(model.optimizer, set)
-    return _add_variable(model, inner_vi), inner_ci # FIXME map inner_ci
+    outer_vi = _add_variable(model, inner_vi)
+    outer_ci = MOI.ConstraintIndex{MOI.VariableIndex,typeof(set)}(outer_vi.value)
+    model.constraint_outer_to_inner[outer_ci] = inner_ci
+    return outer_vi, outer_ci
 end
 
 function MOI.add_constrained_variables(
@@ -324,7 +327,8 @@ function MOI.add_constrained_variables(
     set::MOI.AbstractVectorSet,
 )
     inner_vis, inner_ci = MOI.add_constrained_variables(model.optimizer, set)
-    return _add_variable.(Ref(model), inner_vis), inner_ci # FIXME map inner_ci
+    _add_to_constraint_map!(model, inner_ci)
+    return _add_variable.(model, inner_vis), inner_ci
 end
 
 function _add_to_constraint_map!(model::Optimizer, ci)

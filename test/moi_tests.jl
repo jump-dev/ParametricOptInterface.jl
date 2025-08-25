@@ -2143,12 +2143,13 @@ function test_copy_model()
     @test MOI.get(poi, MOI.VariablePrimal(), x) ≈ 1.0
 end
 
-function test_constrained_variable()
+function test_constrained_variable_glpk()
     optimizer = POI.Optimizer(GLPK.Optimizer())
     MOI.set(optimizer, MOI.Silent(), true)
     set = MOI.LessThan(1.0)
-    @test MOI.supports_add_constrained_variable(optmizer, typeof(set))
+    @test MOI.supports_add_constrained_variable(optimizer, typeof(set))
     x, c = MOI.add_constrained_variable(optimizer, set)
+    @test x.value == c.value
     @test c isa MOI.ConstraintIndex{typeof(x),typeof(set)}
     @test MOI.get(optimizer, MOI.ConstraintFunction(), c) ≈ x
     @test MOI.get(optimizer, MOI.ConstraintSet(), c) == set
@@ -2166,12 +2167,13 @@ end
 
 include("no_free_model.jl")
 
-function test_constrained_variable()
+function test_constrained_variable_no_free()
     optimizer = POI.Optimizer(NoFreeVariablesModel{Float64}())
     set = MOI.LessThan(1.0)
     @test MOI.supports_add_constrained_variable(optimizer, typeof(set))
     x, c = MOI.add_constrained_variable(optimizer, set)
     @test c isa MOI.ConstraintIndex{typeof(x),typeof(set)}
+    @test x.value == c.value
     @test MOI.get(optimizer, MOI.ConstraintFunction(), c) ≈ x
     @test MOI.get(optimizer, MOI.ConstraintSet(), c) == set
     @test MOI.supports(optimizer, MOI.VariableName(), typeof(x))
