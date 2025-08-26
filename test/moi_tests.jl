@@ -2091,7 +2091,7 @@ function test_psd_cone_with_parameter()
     model = POI.Optimizer(cached)
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
-    p = first.(MOI.add_constrained_variable.(model, MOI.Parameter(1.0)),)
+    p = first.(MOI.add_constrained_variable.(model, MOI.Parameter(1.0)))
 
     # Set objective: minimize x
     obj_func = MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(1.0, x)], 0.0)
