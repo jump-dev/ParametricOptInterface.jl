@@ -716,49 +716,80 @@ function _parametric_affine_terms(
     return param_terms_dict
 end
 
-# TODO: USED once we update _update_vector_quadratic_constraints!
-# function _delta_parametric_affine_terms(
-#     model,
-#     f::ParametricVectorQuadraticFunction{T},
-# ) where {T}
-#     delta_terms = Dict{Tuple{Int,MOI.VariableIndex},T}()
+function _delta_parametric_constant(
+    model,
+    f::ParametricVectorQuadraticFunction{T},
+) where {T}
+    delta_constants = zeros(T, length(f.current_constant))
 
-#     # Handle parameter-variable quadratic terms (px) that become affine (x) when p is updated
-#     for term in f.pv
-#         p_idx_val = p_idx(term.scalar_term.variable_1)
-#         var = term.scalar_term.variable_2
-#         output_idx = term.output_index
+    # Handle parameter-only affine terms
+    for term in f.p
+        p_idx_val = p_idx(term.scalar_term.variable)
+        output_idx = term.output_index
 
-#         if haskey(model.updated_parameters, p_idx_val) &&
-#            !isnan(model.updated_parameters[p_idx_val])
-#             old_param_val = model.parameters[p_idx_val]
-#             new_param_val = model.updated_parameters[p_idx_val]
-#             delta_coef =
-#                 term.scalar_term.coefficient * (new_param_val - old_param_val)
+        if !isnan(model.updated_parameters[p_idx_val])
+            old_param_val = model.parameters[p_idx_val]
+            new_param_val = model.updated_parameters[p_idx_val]
+            delta_constants[output_idx] +=
+                term.scalar_term.coefficient * (new_param_val - old_param_val)
+        end
+    end
 
-#             key = (output_idx, var)
-#             current_delta = get(delta_terms, key, zero(T))
-#             delta_terms[key] = current_delta + delta_coef
-#         end
-#     end
+    # Handle parameter-parameter quadratic terms
+    for term in f.pp
+        idx = term.output_index
+        var1 = term.scalar_term.variable_1
+        var2 = term.scalar_term.variable_2
+        p1 = p_idx(var1)
+        p2 = p_idx(var2)
 
-#     # Handle parameter-only affine terms
-#     for term in f.p
-#         p_idx_val = p_idx(term.scalar_term.variable)
-#         output_idx = term.output_index
+        if !isnan(model.updated_parameters[p1]) ||
+           !isnan(model.updated_parameters[p2])
+            old_val1 = model.parameters[p1]
+            old_val2 = model.parameters[p2]
+            new_val1 =
+                !isnan(model.updated_parameters[p1]) ?
+                model.updated_parameters[p1] : old_val1
+            new_val2 =
+                !isnan(model.updated_parameters[p2]) ?
+                model.updated_parameters[p2] : old_val2
 
-#         if haskey(model.updated_parameters, p_idx_val) &&
-#            !isnan(model.updated_parameters[p_idx_val])
-#             old_param_val = model.parameters[p_idx_val]
-#             new_param_val = model.updated_parameters[p_idx_val]
+            coef = term.scalar_term.coefficient / (var1 == var2 ? 2 : 1)
+            delta_constants[idx] +=
+                coef * (new_val1 * new_val2 - old_val1 * old_val2)
+        end
+    end
 
-#             # This becomes a constant change, not an affine term change
-#             # We'll handle this in the constant update function
-#         end
-#     end
+    return delta_constants
+end
 
-#     return delta_terms
-# end
+function _delta_parametric_affine_terms(
+    model,
+    f::ParametricVectorQuadraticFunction{T},
+) where {T}
+    delta_terms = Dict{Tuple{Int,MOI.VariableIndex},T}()
+
+    # Handle parameter-variable quadratic terms (px) that become affine (x) when p is updated
+    for term in f.pv
+        p_idx_val = p_idx(term.scalar_term.variable_1)
+        var = term.scalar_term.variable_2
+        output_idx = term.output_index
+
+        if haskey(model.updated_parameters, p_idx_val) &&
+           !isnan(model.updated_parameters[p_idx_val])
+            old_param_val = model.parameters[p_idx_val]
+            new_param_val = model.updated_parameters[p_idx_val]
+            delta_coef =
+                term.scalar_term.coefficient * (new_param_val - old_param_val)
+
+            key = (output_idx, var)
+            current_delta = get(delta_terms, key, zero(T))
+            delta_terms[key] = current_delta + delta_coef
+        end
+    end
+
+    return delta_terms
+end
 
 function _update_cache!(
     f::ParametricVectorQuadraticFunction{T},
