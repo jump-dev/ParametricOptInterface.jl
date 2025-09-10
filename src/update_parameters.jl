@@ -292,7 +292,7 @@ function update_parameters!(model::Optimizer)
     _update_quadratic_constraints!(model)
     _update_affine_objective!(model)
     _update_quadratic_objective!(model)
-    needs_update = _vector_quadratic_constraints_needs_update(model)
+    needs_update_vec_quad = _vector_quadratic_constraints_needs_update(model)
 
     # Update parameters and put NaN to indicate that the parameter has been
     # updated
@@ -312,7 +312,7 @@ function update_parameters!(model::Optimizer)
     # Moreover, to perform the update, it is easier to use the
     # current_function code, hence, this update must be executed
     # after the update of the parameters cache (the loop above).
-    if needs_update
+    if needs_update_vec_quad
         _update_vector_quadratic_constraints!(model)
     end
 
@@ -342,7 +342,6 @@ function _vector_quadratic_constraints_needs_update(
     vector_quadratic_constraint_cache_inner::DoubleDictInner{F,S,V},
 ) where {F,S,V}
     for (inner_ci, pf) in vector_quadratic_constraint_cache_inner
-
         delta_constants = _delta_parametric_constant(model, pf)
         if !iszero(delta_constants)
             return true
@@ -351,27 +350,7 @@ function _vector_quadratic_constraints_needs_update(
         if !isempty(delta_quad_terms)
             return true
         end
-        # if !iszero(delta_constants)
-        #     pf.current_constant .+= delta_constants
-        #     MOI.modify(
-        #         model.optimizer,
-        #         inner_ci,
-        #         MOI.VectorConstantChange(pf.current_constant),
-        #     )
-        # end
-        # delta_quad_terms = _delta_parametric_affine_terms(model, pf)
-        # if !isempty(delta_quad_terms)
-        #     _quadratic_build_change_and_up_param_func!(pf, delta_quad_terms)
-        #     changes = Vector{MOI.ScalarQuadraticTermChange{T}}()
-        #     for (output_idx, terms) in delta_quad_terms
-        #         for term in terms
-        #             push!(changes, MOI.ScalarQuadraticTermChange(output_idx, term))
-        #         end
-        #     end
-        #     MOI.modify(model.optimizer, inner_ci, changes)
-        # end
     end
-
     return false
 end
 
