@@ -6,7 +6,7 @@
 function test_jump_direct_affine_parameters()
     optimizer = POI.Optimizer(GLPK.Optimizer())
     model = direct_model(optimizer)
-    @variable(model, x[i=1:2] >= 0)
+    @variable(model, x[i = 1:2] >= 0)
     @variable(model, y in MOI.Parameter(0.0))
     @variable(model, w in MOI.Parameter(0.0))
     @variable(model, z in MOI.Parameter(0.0))
@@ -29,7 +29,7 @@ end
 function test_jump_direct_parameter_times_variable()
     optimizer = POI.Optimizer(GLPK.Optimizer())
     model = direct_model(optimizer)
-    @variable(model, x[i=1:2] >= 0)
+    @variable(model, x[i = 1:2] >= 0)
     @variable(model, y in MOI.Parameter(0.0))
     @variable(model, w in MOI.Parameter(0.0))
     @variable(model, z in MOI.Parameter(0.0))
@@ -51,7 +51,7 @@ end
 
 function test_jump_affine_parameters()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
-    @variable(model, x[i=1:2] >= 0)
+    @variable(model, x[i = 1:2] >= 0)
     @variable(model, y in MOI.Parameter(0.0))
     @variable(model, w in MOI.Parameter(0.0))
     @variable(model, z in MOI.Parameter(0.0))
@@ -73,7 +73,7 @@ end
 
 function test_jump_parameter_times_variable()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
-    @variable(model, x[i=1:2] >= 0)
+    @variable(model, x[i = 1:2] >= 0)
     @variable(model, y in MOI.Parameter(0.0))
     @variable(model, w in MOI.Parameter(0.0))
     @variable(model, z in MOI.Parameter(0.0))
@@ -103,8 +103,8 @@ function test_jump_constraintfunction_getter()
             ),
         ),
     )
-    vx = @variable(model, x[i=1:2])
-    vp = @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
+    vx = @variable(model, x[i = 1:2])
+    vp = @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
     c1 = @constraint(model, con, sum(x) + sum(p) >= 1)
     c2 = @constraint(model, conq, sum(x .* p) >= 1)
     c3 = @constraint(model, conqa, sum(x .* p) + x[1]^2 + x[1] + p[1] >= 1)
@@ -254,8 +254,8 @@ end
 function test_jump_interpret_parameteric_bounds()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
-    @variable(model, x[i=1:2])
-    @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
+    @variable(model, x[i = 1:2])
+    @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
     @constraint(model, [i in 1:2], x[i] >= p[i])
     @objective(model, Min, sum(x))
     optimize!(model)
@@ -283,8 +283,8 @@ end
 function test_jump_interpret_parameteric_bounds_expression()
     model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
-    @variable(model, x[i=1:2])
-    @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
+    @variable(model, x[i = 1:2])
+    @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
     @constraint(model, [i in 1:2], x[i] >= p[i] + p[1])
     @objective(model, Min, sum(x))
     optimize!(model)
@@ -312,8 +312,8 @@ end
 function test_jump_direct_interpret_parameteric_bounds()
     model = direct_model(POI.Optimizer(GLPK.Optimizer()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
-    @variable(model, x[i=1:2])
-    @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
+    @variable(model, x[i = 1:2])
+    @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
     @constraint(model, [i in 1:2], x[i] >= p[i])
     @objective(model, Min, sum(x))
     optimize!(model)
@@ -339,8 +339,8 @@ end
 function test_jump_direct_interpret_parameteric_bounds_no_interpretation()
     model = direct_model(POI.Optimizer(GLPK.Optimizer()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_CONSTRAINTS)
-    @variable(model, x[i=1:2])
-    @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
+    @variable(model, x[i = 1:2])
+    @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
     @constraint(model, [i in 1:2], x[i] >= p[i])
     @objective(model, Min, sum(x))
     optimize!(model)
@@ -369,8 +369,8 @@ end
 function test_jump_direct_interpret_parameteric_bounds_change()
     model = direct_model(POI.Optimizer(GLPK.Optimizer()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
-    @variable(model, x[i=1:2])
-    @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
+    @variable(model, x[i = 1:2])
+    @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
     @constraint(model, [i in 1:2], x[i] >= p[i])
     @test_throws ErrorException @constraint(model, [i in 1:2], 2x[i] >= p[i])
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_CONSTRAINTS)
@@ -387,8 +387,8 @@ end
 function test_jump_direct_interpret_parameteric_bounds_both()
     model = direct_model(POI.Optimizer(GLPK.Optimizer()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.BOUNDS_AND_CONSTRAINTS)
-    @variable(model, x[i=1:2])
-    @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
+    @variable(model, x[i = 1:2])
+    @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
     @constraint(model, [i in 1:2], x[i] >= p[i])
     @constraint(model, [i in 1:2], 2x[i] >= p[i])
     @objective(model, Min, sum(x))
@@ -403,8 +403,8 @@ end
 function test_jump_direct_interpret_parameteric_bounds_invalid()
     model = direct_model(POI.Optimizer(GLPK.Optimizer()))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
-    @variable(model, x[i=1:2])
-    @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
+    @variable(model, x[i = 1:2])
+    @variable(model, p[i = 1:2] in MOI.Parameter.(-1.0))
     @test_throws ErrorException @constraint(
         model,
         [i in 1:2],
@@ -1388,13 +1388,20 @@ function test_jump_psd_cone_with_parameter_pv_v_pv()
         [p * x, (2 * x - 3), p * 3 * x] in
         MOI.PositiveSemidefiniteConeTriangle(2)
     )
+    # which is (p * x) * (p * 3 *x) - (2 * x - 3) ^ 2 >= 0
+    # that simplifies to: p^2 * 3 * x^2 - 4 * x^2 + 12 * x - 9 >= 0
+    # then: (p^2 * 3 - 4) * x^2 + 12 * x - 9 >= 0
+    # for p == 1: -1 * x^2 + 12 * x - 9 >= 0
+    # for p == 3: 23 * x^2 + 12 * x - 9 >= 0
     @objective(model, Min, x)
     @test is_valid(model, con)
     optimize!(model)
     @test value(x) ≈ 0.803845 atol = 1e-5
+    @test value(x) ≈ 6 - 3 * sqrt(3) atol = 1e-5
     set_parameter_value(p, 3.0)
     optimize!(model)
     @test value(x) ≈ 0.416888 atol = 1e-5
+    @test value(x) ≈ (9 * sqrt(3) - 6) / 23 atol = 1e-5
     return delete(model, con)
 end
 
