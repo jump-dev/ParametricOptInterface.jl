@@ -1388,13 +1388,20 @@ function test_jump_psd_cone_with_parameter_pv_v_pv()
         [p * x, (2 * x - 3), p * 3 * x] in
         MOI.PositiveSemidefiniteConeTriangle(2)
     )
+    # which is (p * x) * (p * 3 *x) - (2 * x - 3) ^ 2 >= 0
+    # that simplifies to: p^2 * 3 * x^2 - 4 * x^2 + 12 * x - 9 >= 0
+    # then: (p^2 * 3 - 4) * x^2 + 12 * x - 9 >= 0
+    # for p == 1: -1 * x^2 + 12 * x - 9 >= 0
+    # for p == 3: 23 * x^2 + 12 * x - 9 >= 0
     @objective(model, Min, x)
     @test is_valid(model, con)
     optimize!(model)
     @test value(x) ≈ 0.803845 atol = 1e-5
+    @test value(x) ≈ 6 - 3 * sqrt(3) atol = 1e-5
     set_parameter_value(p, 3.0)
     optimize!(model)
     @test value(x) ≈ 0.416888 atol = 1e-5
+    @test value(x) ≈ (9 * sqrt(3) - 6) / 23 atol = 1e-5
     return delete(model, con)
 end
 

@@ -17,7 +17,7 @@ function moi_add_variables(N::Int)
             MOI.Utilities.AUTOMATIC,
         ),
     )
-    @variable(model, x[i = 1:N])
+    @variable(model, x[i=1:N])
     return nothing
 end
 
@@ -30,7 +30,7 @@ function poi_add_variables(N::Int)
             ),
         ),
     )
-    @variable(model, x[i = 1:N])
+    @variable(model, x[i=1:N])
     return nothing
 end
 
@@ -43,7 +43,7 @@ function poi_add_parameters(N::Int)
             ),
         ),
     )
-    @variable(model, x[i = 1:N] in MOI.Parameter(1.0))
+    @variable(model, x[i=1:N] in MOI.Parameter(1.0))
     return nothing
 end
 
@@ -56,7 +56,7 @@ function poi_add_parameters_and_variables(N::Int)
             ),
         ),
     )
-    @variable(model, x[i = 1:N] in MOI.Parameter(1.0))
+    @variable(model, x[i=1:N] in MOI.Parameter(1.0))
     return nothing
 end
 
@@ -69,7 +69,7 @@ function poi_add_parameters_and_variables_alternating(N::Int)
             ),
         ),
     )
-    for i in 1:Int(N / 2)
+    for i in 1:Int(N/2)
         @variable(model)
         @variable(model, set = MOI.Parameter(1.0))
     end
@@ -83,8 +83,8 @@ function moi_add_saf_ctr(N::Int, M::Int)
             MOI.Utilities.AUTOMATIC,
         ),
     )
-    @variable(model, x[i = 1:N])
-    @constraint(model, cons[i = 1:M], sum(x) >= 1)
+    @variable(model, x[i=1:N])
+    @constraint(model, cons[i=1:M], sum(x) >= 1)
     return nothing
 end
 
@@ -97,8 +97,8 @@ function poi_add_saf_ctr(N::Int, M::Int)
             ),
         ),
     )
-    @variable(model, x[i = 1:N])
-    @constraint(model, cons[i = 1:M], sum(x) >= 1)
+    @variable(model, x[i=1:N])
+    @constraint(model, cons[i=1:M], sum(x) >= 1)
     return nothing
 end
 
@@ -111,9 +111,9 @@ function poi_add_saf_variables_and_parameters_ctr(N::Int, M::Int)
             ),
         ),
     )
-    @variable(model, x[i = 1:Int(N / 2)])
-    @variable(model, p[i = 1:Int(N / 2)] in MOI.Parameter.(0))
-    @constraint(model, con[i = 1:M], sum(x) + sum(p) >= 1)
+    @variable(model, x[i=1:Int(N/2)])
+    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(0))
+    @constraint(model, con[i=1:M], sum(x) + sum(p) >= 1)
     return nothing
 end
 
@@ -129,9 +129,9 @@ function poi_add_saf_variables_and_parameters_ctr_parameter_update(
             ),
         ),
     )
-    @variable(model, x[i = 1:Int(N / 2)])
-    @variable(model, p[i = 1:Int(N / 2)] in MOI.Parameter.(0))
-    @constraint(model, con[i = 1:M], sum(x) + sum(p) >= 1)
+    @variable(model, x[i=1:Int(N/2)])
+    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(0))
+    @constraint(model, con[i=1:M], sum(x) + sum(p) >= 1)
     MOI.set.(model, POI.ParameterValue(), p, 0.5)
     POI.update_parameters!(backend(model))
     return nothing
@@ -144,8 +144,8 @@ function moi_add_sqf_variables_ctr(N::Int, M::Int)
             MOI.Utilities.AUTOMATIC,
         ),
     )
-    @variable(model, x[i = 1:N])
-    @constraint(model, con[i = 1:M], dot(x, x) >= 1)
+    @variable(model, x[i=1:N])
+    @constraint(model, con[i=1:M], dot(x, x) >= 1)
     return nothing
 end
 
@@ -158,8 +158,8 @@ function poi_add_sqf_variables_ctr(N::Int, M::Int)
             ),
         ),
     )
-    @variable(model, x[i = 1:N])
-    @constraint(model, con[i = 1:M], dot(x, x) >= 1)
+    @variable(model, x[i=1:N])
+    @constraint(model, con[i=1:M], dot(x, x) >= 1)
     return nothing
 end
 
@@ -172,9 +172,9 @@ function poi_add_sqf_variables_parameters_ctr(N::Int, M::Int)
             ),
         ),
     )
-    @variable(model, x[i = 1:Int(N / 2)])
-    @variable(model, p[i = 1:Int(N / 2)] in MOI.Parameter.(1))
-    @constraint(model, con[i = 1:M], dot(x, p) >= 1)
+    @variable(model, x[i=1:Int(N/2)])
+    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
+    @constraint(model, con[i=1:M], dot(x, p) >= 1)
     return nothing
 end
 
@@ -187,9 +187,9 @@ function poi_add_sqf_variables_parameters_ctr_parameter_update(N::Int, M::Int)
             ),
         ),
     )
-    @variable(model, x[i = 1:Int(N / 2)])
-    @variable(model, p[i = 1:Int(N / 2)] in MOI.Parameter.(1))
-    @constraint(model, con[i = 1:M], dot(x, p) >= 1)
+    @variable(model, x[i=1:Int(N/2)])
+    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
+    @constraint(model, con[i=1:M], dot(x, p) >= 1)
     MOI.set.(model, POI.ParameterValue(), p, 0.5)
     POI.update_parameters!(backend(model))
     return nothing
@@ -204,9 +204,9 @@ function poi_add_sqf_parameters_parameters_ctr(N::Int, M::Int)
             ),
         ),
     )
-    @variable(model, x[i = 1:Int(N / 2)])
-    @variable(model, p[i = 1:Int(N / 2)] in MOI.Parameter.(1))
-    @constraint(model, con[i = 1:M], dot(p, p) >= 1)
+    @variable(model, x[i=1:Int(N/2)])
+    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
+    @constraint(model, con[i=1:M], dot(p, p) >= 1)
     return nothing
 end
 
@@ -219,9 +219,9 @@ function poi_add_sqf_parameters_parameters_ctr_parameter_update(N::Int, M::Int)
             ),
         ),
     )
-    @variable(model, x[i = 1:Int(N / 2)])
-    @variable(model, p[i = 1:Int(N / 2)] in MOI.Parameter.(1))
-    @constraint(model, con[i = 1:M], dot(p, p) >= 1)
+    @variable(model, x[i=1:Int(N/2)])
+    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
+    @constraint(model, con[i=1:M], dot(p, p) >= 1)
     MOI.set.(model, POI.ParameterValue(), p, 0.5)
     POI.update_parameters!(backend(model))
     return nothing
@@ -234,7 +234,7 @@ function moi_add_saf_obj(N::Int, M::Int)
             MOI.Utilities.AUTOMATIC,
         ),
     )
-    @variable(model, x[i = 1:N])
+    @variable(model, x[i=1:N])
     @objective(model, Min, sum(x))
     return nothing
 end
@@ -248,7 +248,7 @@ function poi_add_saf_obj(N::Int, M::Int)
             ),
         ),
     )
-    @variable(model, x[i = 1:N])
+    @variable(model, x[i=1:N])
     for _ in 1:M
         @objective(model, Min, sum(x))
     end
@@ -264,8 +264,8 @@ function poi_add_saf_variables_and_parameters_obj(N::Int, M::Int)
             ),
         ),
     )
-    @variable(model, x[i = 1:Int(N / 2)])
-    @variable(model, p[i = 1:Int(N / 2)] in MOI.Parameter.(1))
+    @variable(model, x[i=1:Int(N/2)])
+    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
     for _ in 1:M
         @objective(model, Min, sum(x) + sum(p))
     end
@@ -284,8 +284,8 @@ function poi_add_saf_variables_and_parameters_obj_parameter_update(
             ),
         ),
     )
-    @variable(model, x[i = 1:Int(N / 2)])
-    @variable(model, p[i = 1:Int(N / 2)] in MOI.Parameter.(1))
+    @variable(model, x[i=1:Int(N/2)])
+    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
     for _ in 1:M
         @objective(model, Min, sum(x) + sum(p))
     end
@@ -303,7 +303,7 @@ function moi_add_sqf_variables_obj(N::Int, M::Int)
             MOI.Utilities.AUTOMATIC,
         ),
     )
-    @variable(model, x[i = 1:N])
+    @variable(model, x[i=1:N])
     for _ in 1:M
         @objective(model, Min, dot(x, x))
     end
@@ -319,7 +319,7 @@ function poi_add_sqf_variables_obj(N::Int, M::Int)
             ),
         ),
     )
-    @variable(model, x[i = 1:N])
+    @variable(model, x[i=1:N])
     for _ in 1:M
         @objective(model, Min, dot(x, x))
     end
@@ -335,8 +335,8 @@ function poi_add_sqf_variables_parameters_obj(N::Int, M::Int)
             ),
         ),
     )
-    @variable(model, x[i = 1:Int(N / 2)])
-    @variable(model, p[i = 1:Int(N / 2)] in MOI.Parameter.(1))
+    @variable(model, x[i=1:Int(N/2)])
+    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
     for _ in 1:M
         @objective(model, Min, dot(x, p))
     end
@@ -352,8 +352,8 @@ function poi_add_sqf_variables_parameters_obj_parameter_update(N::Int, M::Int)
             ),
         ),
     )
-    @variable(model, x[i = 1:Int(N / 2)])
-    @variable(model, p[i = 1:Int(N / 2)] in MOI.Parameter.(1))
+    @variable(model, x[i=1:Int(N/2)])
+    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
     for _ in 1:M
         @objective(model, Min, dot(x, p))
     end
@@ -373,8 +373,8 @@ function poi_add_sqf_parameters_parameters_obj(N::Int, M::Int)
             ),
         ),
     )
-    @variable(model, x[i = 1:Int(N / 2)])
-    @variable(model, p[i = 1:Int(N / 2)] in MOI.Parameter.(1))
+    @variable(model, x[i=1:Int(N/2)])
+    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
     for _ in 1:M
         @objective(model, Min, dot(p, p))
     end
@@ -390,8 +390,8 @@ function poi_add_sqf_parameters_parameters_obj_parameter_update(N::Int, M::Int)
             ),
         ),
     )
-    @variable(model, x[i = 1:Int(N / 2)])
-    @variable(model, p[i = 1:Int(N / 2)] in MOI.Parameter.(1))
+    @variable(model, x[i=1:Int(N/2)])
+    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
     for _ in 1:M
         @objective(model, Min, dot(p, p))
     end
