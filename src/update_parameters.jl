@@ -171,11 +171,10 @@ function _affine_build_change_and_up_param_func(
     end
     new_terms = Dict{MOI.VariableIndex,Vector{Tuple{Int64,T}}}()
     for ((var, output_idx), coef) in pf.current_terms_with_p
-        if iszero(coef)
-            continue
+        if !iszero(coef)
+            base = get!(new_terms, var, Tuple{Int64,T}[])
+            push!(base, (output_idx, coef))
         end
-        base = get!(new_terms, var, Tuple{Int64,T}[])
-        push!(base, (output_idx, coef))
     end
     changes = Vector{MOI.MultirowChange}(undef, length(new_terms))
     for (i, (var, tuples)) in enumerate(new_terms)
