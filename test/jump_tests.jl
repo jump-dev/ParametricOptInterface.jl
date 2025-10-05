@@ -556,7 +556,7 @@ end
 function test_jump_dual_multiple_parameters_1()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
     @variable(model, x[1:6] in MOI.Parameter.(ones(6) .* 4.0))
-    @variable(model, y[1:6])
+    @variable(model, y[1:6] <= 0.0)
     @constraint(model, ctr1, 3 * y[1] >= 2 - 7 * x[3])
     @constraint(model, ctr2, 3 * y[1] >= 2 - 7 * x[3])
     @constraint(model, ctr3, 3 * y[1] >= 2 - 7 * x[3])
