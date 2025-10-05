@@ -1677,6 +1677,13 @@ function test_jump_errors()
 end
 
 function test_print()
-
+    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+    @variable(model, p in MOI.Parameter(1.0))
+    @variable(model, x)
+    @constraint(model, con, x >= p)
+    @objective(model, Min, x)
+    filename = tempdir() * "/test.lp"
+    write_to_file(model, filename)
+    readlines(filename) |> println
     return
 end
