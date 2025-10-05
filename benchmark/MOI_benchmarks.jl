@@ -16,7 +16,7 @@ const POI = ParametricOptInterface
 SOLVER = HiGHS
 
 if SOLVER == HiGHS
-    MAX_ITER_PARAM = "it_lim"
+    MAX_ITER_PARAM = "simplex_iteration_limit"
 elseif SOLVER == Gurobi
     MAX_ITER_PARAM = "IterationLimit"
 elseif SOLVER == Xpress
