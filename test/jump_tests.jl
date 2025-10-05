@@ -1574,12 +1574,12 @@ function test_variable_and_constraint_not_registered()
         backend(model2),
         MOI.ConstraintFunction(),
         index(ParameterRef(p1)),
-    ) #ok
+    )
     @test_throws MOI.InvalidIndex MOI.get(
         backend(model2),
         MOI.ConstraintSet(),
         index(ParameterRef(p1)),
-    ) #ok
+    )
     @test_throws MOI.InvalidIndex MOI.set(
         backend(model2),
         MOI.ConstraintPrimalStart(),
@@ -1603,4 +1603,75 @@ function test_variable_and_constraint_not_registered()
         MOI.ObjectiveFunction{MOI.VariableIndex}(),
         index(p),
     )
+    MOI.set(backend(model2), MOI.VariablePrimalStart(), index(p2), 1.0)
+    @test_throws ErrorException MOI.set(
+        backend(model2),
+        MOI.VariablePrimalStart(),
+        index(p2),
+        10.0,
+    )
+    @test_throws MOI.InvalidIndex MOI.set(
+        backend(model2),
+        MOI.VariablePrimalStart(),
+        MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 100),
+        10.0,
+    )
+    @test_throws MOI.InvalidIndex MOI.get(
+        backend(model2),
+        MOI.VariablePrimalStart(),
+        MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 100),
+    )
+    @test_throws ErrorException MOI.delete(backend(model2), index(p2))
+    @test_throws MOI.InvalidIndex MOI.delete(
+        backend(model2),
+        MOI.ConstraintIndex{
+            MOI.VectorQuadraticFunction{Float64},
+            MOI.Nonpositives,
+        }(
+            1,
+        ),
+    )
+    @test_throws MOI.InvalidIndex MOI.delete(
+        backend(model2),
+        MOI.ConstraintIndex{
+            MOI.ScalarQuadraticFunction{Float64},
+            MOI.EqualTo{Float64},
+        }(
+            1,
+        ),
+    )
+    @test_throws MOI.InvalidIndex MOI.get(
+        backend(model2),
+        MOI.VariablePrimal(),
+        MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 100),
+    )
+    return
+end
+
+function test_jump_errors()
+    cached1 = MOI.Utilities.CachingOptimizer(
+        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+        SCS.Optimizer(),
+    )
+    optimizer1 = POI.Optimizer(cached1)
+    model1 = direct_model(optimizer1)
+    @test_throws MOI.UnsupportedAttribute MOI.get(
+        backend(model1),
+        MOI.NLPBlock(),
+    )
+    @test_throws ErrorException MOI.get(
+        backend(model1),
+        MOI.ListOfConstraintAttributesSet{
+            MOI.VectorQuadraticFunction{Float64},
+            MOI.Nonpositives,
+        }(),
+    )
+    @test_throws ErrorException MOI.get(
+        backend(model1),
+        MOI.ListOfConstraintAttributesSet{
+            MOI.ScalarQuadraticFunction{Float64},
+            MOI.EqualTo{Float64},
+        }(),
+    )
+    return
 end

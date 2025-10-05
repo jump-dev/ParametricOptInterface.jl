@@ -1365,11 +1365,11 @@ function MOI.get(
     model::Optimizer,
     ::MOI.ListOfConstraintAttributesSet{F,S},
 ) where {F,S}
-    if F === MOI.ScalarQuadraticFunction
+    if F <: MOI.ScalarQuadraticFunction
         error(
             "MOI.ListOfConstraintAttributesSet is not implemented for ScalarQuadraticFunction in ParametricOptInterface.",
         )
-    elseif F === MOI.VectorQuadraticFunction
+    elseif F <: MOI.VectorQuadraticFunction
         error(
             "MOI.ListOfConstraintAttributesSet is not implemented for VectorQuadraticFunction in ParametricOptInterface.",
         )
@@ -1446,12 +1446,10 @@ end
 
 function MOI.set(::Optimizer, attr::MOI.NLPBlock, val)
     throw(MOI.UnsupportedAttribute(attr))
-    return
 end
 
 function MOI.get(::Optimizer, attr::MOI.NLPBlock)
     throw(MOI.UnsupportedAttribute(attr))
-    return
 end
 
 function MOI.supports(model::Optimizer, attr::MOI.AbstractModelAttribute)
