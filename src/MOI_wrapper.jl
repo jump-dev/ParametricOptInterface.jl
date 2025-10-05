@@ -263,13 +263,6 @@ function MOI.supports_add_constrained_variable(
     return true
 end
 
-function MOI.supports_add_constrained_variables(
-    model::Optimizer,
-    ::Type{MOI.Reals},
-)
-    return MOI.supports_add_constrained_variables(model.optimizer, MOI.Reals)
-end
-
 function MOI.supports_add_constrained_variable(
     model::Optimizer,
     ::Type{S},
