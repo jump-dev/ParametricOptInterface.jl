@@ -33,12 +33,10 @@ function test_basic_tests()
     @test !MOI.is_valid(optimizer, z)
     @test MOI.is_valid(optimizer, cy)
     @test !MOI.is_valid(optimizer, cz)
-    @test_throws ErrorException("Cannot constrain a parameter") MOI.add_constraint(
-        optimizer,
-        y,
-        MOI.EqualTo(0.0),
-    )
-    @test_throws ErrorException("Variable not in the model") MOI.add_constraint(
+    @test_throws ErrorException(
+        "Cannot constrain a parameter in ParametricOptInterface.",
+    ) MOI.add_constraint(optimizer, y, MOI.EqualTo(0.0))
+    @test_throws MOI.InvalidIndex MOI.add_constraint(
         optimizer,
         z,
         MOI.GreaterThan(0.0),
@@ -61,7 +59,7 @@ function test_basic_tests()
     MOI.optimize!(optimizer)
     @test MOI.get(optimizer, MOI.ObjectiveValue()) == 2
     @test MOI.get(optimizer, MOI.VariablePrimal(), x[1]) == 2
-    @test_throws ErrorException("Variable not in the model") MOI.get(
+    @test_throws MOI.InvalidIndex{MOI.VariableIndex}(MOI.VariableIndex(4)) MOI.get(
         optimizer,
         MOI.VariablePrimal(),
         z,
@@ -71,7 +69,7 @@ function test_basic_tests()
     @test MOI.get(optimizer, POI.ListOfParameterIndices()) ==
           POI.ParameterIndex[POI.ParameterIndex(1)]
     MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(1.0))
-    @test_throws ErrorException("Parameter not in the model") MOI.set(
+    @test_throws MOI.InvalidIndex MOI.set(
         optimizer,
         MOI.ConstraintSet(),
         cz,
@@ -116,7 +114,7 @@ function test_basic_tests()
     ) #err
     MOI.set(optimizer, MOI.ConstraintPrimalStart(), cy, 1.0)
     MOI.set(optimizer, MOI.ConstraintDualStart(), cy, 1.0) # no-op
-    @test_throws ErrorException MOI.set(
+    @test_throws MOI.InvalidIndex MOI.set(
         optimizer,
         MOI.ConstraintDualStart(),
         MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{Float64}}(18),
@@ -224,19 +222,21 @@ function test_modification_multiple()
     return
 end
 
-function test_moi_glpk()
-    # TODO see why tests error or fail
-    MOI.Test.runtests(
-        MOI.Bridges.full_bridge_optimizer(
-            POI.Optimizer(GLPK.Optimizer()),
-            Float64,
-        ),
-        MOI.Test.Config();
-        exclude = [
-            # GLPK returns INVALID_MODEL instead of INFEASIBLE
-            "test_constraint_ZeroOne_bounds_3",
-        ],
+function test_moi_highs()
+    model = MOI.Bridges.full_bridge_optimizer(
+        POI.Optimizer(HiGHS.Optimizer()),
+        Float64,
     )
+    MOI.set(model, MOI.Silent(), true)
+    MOI.set(model, MOI.RawOptimizerAttribute("presolve"), "off")
+    MOI.Test.runtests(model, MOI.Test.Config(; atol = 1e-7); exclude = [])
+
+    model = POI.Optimizer(
+        MOI.instantiate(HiGHS.Optimizer; with_bridge_type = Float64),
+    )
+    MOI.set(model, MOI.Silent(), true)
+    MOI.set(model, MOI.RawOptimizerAttribute("presolve"), "off")
+    MOI.Test.runtests(model, MOI.Test.Config(; atol = 1e-7); exclude = [])
     return
 end
 
@@ -1403,7 +1403,7 @@ function test_qp_objective_parameter_times_parameter()
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 6.0, atol = ATOL)
     MOI.set(optimizer, POI.ParameterValue(), y, 5)
     MOI.set(optimizer, POI.ParameterValue(), z, 5.0)
-    @test_throws ErrorException MOI.set(
+    @test_throws MOI.InvalidIndex MOI.set(
         optimizer,
         POI.ParameterValue(),
         MOI.VariableIndex(10872368175),

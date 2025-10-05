@@ -3,11 +3,11 @@
 #
 
 function _is_variable(v::MOI.VariableIndex)
-    return v.value < PARAMETER_INDEX_THRESHOLD
+    return !_is_parameter(v)
 end
 
 function _is_parameter(v::MOI.VariableIndex)
-    return v.value > PARAMETER_INDEX_THRESHOLD
+    return PARAMETER_INDEX_THRESHOLD < v.value < PARAMETER_INDEX_THRESHOLD_MAX
 end
 
 function _has_parameters(f::MOI.ScalarAffineFunction{T}) where {T}
@@ -114,8 +114,6 @@ function MOI.is_empty(model::Optimizer)
            isempty(model.parameters) &&
            isempty(model.parameters_name) &&
            isempty(model.updated_parameters) &&
-           isempty(model.variables) &&
-           model.last_variable_index_added == 0 &&
            model.last_parameter_index_added == PARAMETER_INDEX_THRESHOLD &&
            isempty(model.constraint_outer_to_inner) &&
            # affine ctr
@@ -153,8 +151,6 @@ function MOI.empty!(model::Optimizer{T}) where {T}
     empty!(model.parameters)
     empty!(model.parameters_name)
     empty!(model.updated_parameters)
-    empty!(model.variables)
-    model.last_variable_index_added = 0
     model.last_parameter_index_added = PARAMETER_INDEX_THRESHOLD
     empty!(model.constraint_outer_to_inner)
     # affine ctr
@@ -194,9 +190,9 @@ end
 #
 
 function MOI.is_valid(model::Optimizer, vi::MOI.VariableIndex)
-    if haskey(model.variables, vi)
+    if haskey(model.parameters, p_idx(vi))
         return true
-    elseif haskey(model.parameters, p_idx(vi))
+    elseif MOI.is_valid(model.optimizer, vi)
         return true
     end
     return false
@@ -248,8 +244,12 @@ function MOI.get(model::Optimizer, tp::Type{MOI.VariableIndex}, attr::String)
 end
 
 function _add_variable(model::Optimizer, inner_vi)
-    _next_variable_index!(model)
-    return MOI.Utilities.CleverDicts.add_item(model.variables, inner_vi)
+    if _is_parameter(inner_vi)
+        error(
+            "Attempted to add a variable but got a parameter index. The inner solver should not create variables with index >= $PARAMETER_INDEX_THRESHOLD, (got $(inner_vi.value)).",
+        )
+    end
+    return inner_vi
 end
 
 function MOI.add_variable(model::Optimizer)
@@ -368,15 +368,15 @@ function MOI.get(
     attr::MOI.VariablePrimalStart,
     v::MOI.VariableIndex,
 )
-    if _variable_in_model(model, v)
-        return MOI.get(model.optimizer, attr, v)
-    elseif _parameter_in_model(model, v)
-        # this is effectivelly a no-op, but we do validation
-        _val = model.parameters[p_idx(v)]
-        return _val
-    else
-        error("Variable not in the model")
+    if _is_parameter(v)
+        if haskey(model.parameters, p_idx(v))
+            return model.parameters[p_idx(v)]
+        else
+            throw(MOI.InvalidIndex(v))
+        end
     end
+    # inner model will throw if not valid
+    return MOI.get(model.optimizer, attr, v)
 end
 
 function MOI.set(
@@ -385,9 +385,10 @@ function MOI.set(
     v::MOI.VariableIndex,
     val,
 )
-    if _variable_in_model(model, v)
-        MOI.set(model.optimizer, attr, v, val)
-    elseif _parameter_in_model(model, v)
+    if _is_parameter(v)
+        if !haskey(model.parameters, p_idx(v))
+            throw(MOI.InvalidIndex(v))
+        end
         # this is effectivelly a no-op, but we do validation
         _val = model.parameters[p_idx(v)]
         if val != _val
@@ -395,10 +396,9 @@ function MOI.set(
                 "The parameter $v value is $_val, but trying to set VariablePrimalStart $val",
             )
         end
-    else
-        error("Variable not in the model")
+        return
     end
-    return
+    return MOI.set(model.optimizer, attr, v, val)
 end
 
 function MOI.set(
@@ -407,11 +407,10 @@ function MOI.set(
     v::MOI.VariableIndex,
     val,
 )
-    if _variable_in_model(model, v)
-        MOI.set(model.optimizer, attr, v, val)
-    else
-        error("$attr is not supported for parameters")
+    if _is_parameter(v)
+        error("$attr is not supported for parameters in ParametricOptInterface")
     end
+    return MOI.set(model.optimizer, attr, v, val)
 end
 
 function MOI.get(
@@ -419,15 +418,19 @@ function MOI.get(
     attr::MOI.AbstractVariableAttribute,
     v::MOI.VariableIndex,
 )
-    if _variable_in_model(model, v)
-        return MOI.get(model.optimizer, attr, model.variables[v])
-    else
-        error("$attr is not supported for parameters")
+    if _is_parameter(v)
+        error("$attr is not supported for parameters in ParametricOptInterface")
     end
+    return MOI.get(model.optimizer, attr, v)
 end
 
 function MOI.delete(model::Optimizer, v::MOI.VariableIndex)
-    delete!(model.variables, v)
+    if !MOI.is_valid(model, v)
+        throw(MOI.InvalidIndex(v))
+    end
+    if _is_parameter(v)
+        error("Cannot delete parameters in ParametricOptInterface.")
+    end
     MOI.delete(model.optimizer, v)
     MOI.delete(model.original_objective_cache, v)
     # TODO - what happens if the variable was in a SAF that was converted to bounds?
@@ -437,6 +440,7 @@ function MOI.delete(model::Optimizer, v::MOI.VariableIndex)
         model.constraint_outer_to_inner,
     )
         _delete_variable_index_constraint(
+            model,
             model.constraint_outer_to_inner,
             F,
             S,
@@ -446,11 +450,28 @@ function MOI.delete(model::Optimizer, v::MOI.VariableIndex)
     return
 end
 
-function _delete_variable_index_constraint(d, F, S, v)
+function _delete_variable_index_constraint(model, d, F, S, v)
     return
 end
 
 function _delete_variable_index_constraint(
+    model,
+    d,
+    F::Type{MOI.VectorOfVariables},
+    S,
+    v,
+)
+    inner = d[F, S]
+    for (key, val) in inner
+        if !MOI.is_valid(model.optimizer, val)
+            delete!(inner, key)
+        end
+    end
+    return
+end
+
+function _delete_variable_index_constraint(
+    model,
     d,
     F::Type{MOI.VariableIndex},
     S,
@@ -714,7 +735,7 @@ function MOI.get(
 ) where {T}
     p = MOI.VariableIndex(cp.value)
     if !_parameter_in_model(model, p)
-        error("Parameter not in the model")
+        throw(MOI.InvalidIndex(cp))
     end
     return p
 end
@@ -758,7 +779,7 @@ function MOI.set(
     _assert_parameter_is_finite(set)
     p = MOI.VariableIndex(cp.value)
     if !_parameter_in_model(model, p)
-        error("Parameter not in the model")
+        throw(MOI.InvalidIndex(cp))
     end
     return model.updated_parameters[p_idx(p)] = set.value
 end
@@ -770,7 +791,7 @@ function MOI.get(
 ) where {T}
     p = MOI.VariableIndex(cp.value)
     if !_parameter_in_model(model, p)
-        error("Parameter not in the model")
+        throw(MOI.InvalidIndex(cp))
     end
     val = model.updated_parameters[p_idx(p)]
     if isnan(val)
@@ -786,7 +807,9 @@ function MOI.modify(
 ) where {F,S,T}
     if haskey(model.quadratic_constraint_cache, c) ||
        haskey(model.affine_constraint_cache, c)
-        error("Parametric constraint cannot be modified")
+        error(
+            "Parametric constraint cannot be modified in ParametricOptInterface, because it would conflict with parameter updates. You can update the parameters instead.",
+        )
     end
     MOI.modify(model.optimizer, c, chg)
     return
@@ -803,10 +826,10 @@ function MOI.add_constraint(
     f::MOI.VariableIndex,
     set::MOI.AbstractScalarSet,
 )
-    if !_is_variable(f)
-        error("Cannot constrain a parameter")
-    elseif !_variable_in_model(model, f)
-        error("Variable not in the model")
+    if _is_parameter(f)
+        error("Cannot constrain a parameter in ParametricOptInterface.")
+    elseif !MOI.is_valid(model, f)
+        throw(MOI.InvalidIndex(f))
     end
     return _add_constraint_direct_and_cache_map!(model, f, set)
 end
@@ -822,7 +845,7 @@ function _add_constraint_with_parameters_on_function(
             poi_ci = _add_vi_constraint(model, pf, set)
         else
             error(
-                "It was not possible to interpret this constraint as a variable bound.",
+                "It was not possible to interpret this constraint as a variable bound. You can change the `ConstraintsInterpretation` to BOUNDS_AND_CONSTRAINTS or ONLY_CONSTRAINTS to allow this constraint to be added as a general constraint.",
             )
         end
     elseif model.constraints_interpretation == ONLY_CONSTRAINTS
@@ -901,7 +924,9 @@ function MOI.add_constraint(
     set::MOI.AbstractVectorSet,
 )
     if _has_parameters(f)
-        error("VectorOfVariables does not allow parameters")
+        error(
+            "VectorOfVariables does not allow parameters in ParametricOptInterface.",
+        )
     end
     return _add_constraint_direct_and_cache_map!(model, f, set)
 end
@@ -1073,6 +1098,9 @@ function MOI.delete(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
 ) where {F<:MOI.VectorQuadraticFunction,S<:MOI.AbstractSet}
+    if !MOI.is_valid(model, c)
+        throw(MOI.InvalidIndex(c))
+    end
     c_aux = c
     if haskey(model.vector_quadratic_outer_to_inner, c)
         ci_inner = model.vector_quadratic_outer_to_inner[c]
@@ -1090,6 +1118,9 @@ function MOI.delete(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
 ) where {F<:MOI.ScalarQuadraticFunction,S<:MOI.AbstractSet}
+    if !MOI.is_valid(model, c)
+        throw(MOI.InvalidIndex(c))
+    end
     c_aux = c
     if haskey(model.quadratic_outer_to_inner, c)
         ci_inner = model.quadratic_outer_to_inner[c]
@@ -1107,6 +1138,9 @@ function MOI.delete(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
 ) where {F<:MOI.ScalarAffineFunction,S<:MOI.AbstractSet}
+    if !MOI.is_valid(model, c)
+        throw(MOI.InvalidIndex(c))
+    end
     if haskey(model.affine_outer_to_inner, c)
         ci_inner = model.affine_outer_to_inner[c]
         delete!(model.affine_outer_to_inner, c)
@@ -1124,6 +1158,9 @@ function MOI.delete(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
 ) where {F<:Union{MOI.VariableIndex,MOI.VectorOfVariables},S<:MOI.AbstractSet}
+    if !MOI.is_valid(model, c)
+        throw(MOI.InvalidIndex(c))
+    end
     MOI.delete(model.optimizer, c)
     delete!(model.constraint_outer_to_inner, c)
     return
@@ -1133,6 +1170,9 @@ function MOI.delete(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
 ) where {F<:MOI.VectorAffineFunction,S<:MOI.AbstractSet}
+    if !MOI.is_valid(model, c)
+        throw(MOI.InvalidIndex(c))
+    end
     ci_inner = model.constraint_outer_to_inner[c]
     if haskey(model.vector_affine_constraint_cache, ci_inner)
         delete!(model.vector_affine_constraint_cache, ci_inner)
@@ -1147,6 +1187,13 @@ end
 #
 # Objective
 #
+
+function MOI.supports(
+    model::Optimizer,
+    attr::MOI.ObjectiveFunction{T},
+) where {T}
+    return false
+end
 
 function MOI.supports(
     model::Optimizer,
@@ -1177,7 +1224,9 @@ function MOI.modify(
     if model.quadratic_objective_cache !== nothing ||
        model.affine_objective_cache !== nothing ||
        !isempty(model.quadratic_objective_cache_product)
-        error("Parametric objective cannot be modified")
+        error(
+            "A parametric objective cannot be modified as it would conflict with the parameter update mechanism. Please set a new objective or use parameters to perform such updates.",
+        )
     end
     MOI.modify(model.optimizer, c, chg)
     MOI.modify(model.original_objective_cache, c, chg)
@@ -1261,11 +1310,14 @@ function MOI.set(
     v::MOI.VariableIndex,
 )
     if _is_parameter(v)
-        error("Cannot use a parameter as objective function alone")
-    elseif !_variable_in_model(model, v)
-        error("Variable not in the model")
+        # TODO
+        error(
+            "Cannot use a parameter as objective function alone in ParametricOptInterface.",
+        )
+    elseif !MOI.is_valid(model, v)
+        throw(MOI.InvalidIndex(v))
     end
-    MOI.set(model.optimizer, attr, model.variables[v])
+    MOI.set(model.optimizer, attr, v)
     MOI.set(model.original_objective_cache, attr, v)
     return
 end
@@ -1313,9 +1365,13 @@ function MOI.get(
     model::Optimizer,
     ::MOI.ListOfConstraintAttributesSet{F,S},
 ) where {F,S}
-    if F === MOI.ScalarQuadraticFunction
+    if F <: MOI.ScalarQuadraticFunction
         error(
-            "MOI.ListOfConstraintAttributesSet is not implemented for ScalarQuadraticFunction.",
+            "MOI.ListOfConstraintAttributesSet is not implemented for ScalarQuadraticFunction in ParametricOptInterface.",
+        )
+    elseif F <: MOI.VectorQuadraticFunction
+        error(
+            "MOI.ListOfConstraintAttributesSet is not implemented for VectorQuadraticFunction in ParametricOptInterface.",
         )
     end
     return MOI.get(model.optimizer, MOI.ListOfConstraintAttributesSet{F,S}())
@@ -1327,7 +1383,7 @@ function MOI.get(model::Optimizer, ::MOI.NumberOfVariables)
 end
 
 function MOI.get(model::Optimizer, ::MOI.NumberOfConstraints{F,S}) where {S,F}
-    return length(model.constraint_outer_to_inner[F, S])
+    return Int64(length(model.constraint_outer_to_inner[F, S]))
 end
 
 function MOI.get(model::Optimizer, ::MOI.ListOfVariableIndices)
@@ -1390,12 +1446,10 @@ end
 
 function MOI.set(::Optimizer, attr::MOI.NLPBlock, val)
     throw(MOI.UnsupportedAttribute(attr))
-    return
 end
 
 function MOI.get(::Optimizer, attr::MOI.NLPBlock)
     throw(MOI.UnsupportedAttribute(attr))
-    return
 end
 
 function MOI.supports(model::Optimizer, attr::MOI.AbstractModelAttribute)
@@ -1415,13 +1469,14 @@ function MOI.get(
     attr::MOI.VariablePrimal,
     v::MOI.VariableIndex,
 )
-    if _parameter_in_model(model, v)
-        return model.parameters[p_idx(v)]
-    elseif _variable_in_model(model, v)
-        return MOI.get(model.optimizer, attr, model.variables[v])
-    else
-        error("Variable not in the model")
+    if _is_parameter(v)
+        if haskey(model.parameters, p_idx(v))
+            return model.parameters[p_idx(v)]
+        else
+            throw(MOI.InvalidIndex(v))
+        end
     end
+    return MOI.get(model.optimizer, attr, v)
 end
 
 function MOI.get(
@@ -1476,7 +1531,7 @@ function MOI.set(
 )
     optimizer_ci = get(model.constraint_outer_to_inner, c, nothing)
     if optimizer_ci === nothing
-        error("Constraint $c not in the model")
+        throw(MOI.InvalidIndex(c))
     end
     return MOI.set(model.optimizer, attr, optimizer_ci, val)
 end
@@ -1487,7 +1542,9 @@ function MOI.set(
     c::MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}},
     val,
 ) where {T}
-    return error("Constraint attribute $attr cannot be set for $c")
+    return error(
+        "Constraint attribute $attr cannot be set for $c in ParametricOptInterface.",
+    )
 end
 
 function MOI.get(
@@ -1508,7 +1565,7 @@ function MOI.get(
     if _parameter_in_model(model, v)
         return model.parameters[p_idx(v)]
     else
-        error("Variable not in the model")
+        throw(MOI.InvalidIndex(c))
     end
 end
 
@@ -1527,7 +1584,7 @@ function MOI.set(
             )
         end
     else
-        error("Variable not in the model")
+        throw(MOI.InvalidIndex(c))
     end
     return
 end
@@ -1540,7 +1597,7 @@ function MOI.set(
 ) where {T}
     v = MOI.VariableIndex(c.value)
     if !_parameter_in_model(model, v)
-        error("Variable not in the model")
+        throw(MOI.InvalidIndex(c))
     end
     return
 end
@@ -1681,7 +1738,7 @@ A model attribute for the number of pure variables in the model.
 struct NumberOfPureVariables <: MOI.AbstractModelAttribute end
 
 function MOI.get(model::Optimizer, ::NumberOfPureVariables)
-    return length(model.variables)
+    return MOI.get(model.optimizer, MOI.NumberOfVariables())
 end
 
 """
@@ -1692,7 +1749,7 @@ A model attribute for the list of pure variable indices in the model.
 struct ListOfPureVariableIndices <: MOI.AbstractModelAttribute end
 
 function MOI.get(model::Optimizer, ::ListOfPureVariableIndices)
-    return collect(keys(model.variables))::Vector{MOI.VariableIndex}
+    return MOI.get(model.optimizer, MOI.ListOfVariableIndices())
 end
 
 """
