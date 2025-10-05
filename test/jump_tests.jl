@@ -1535,7 +1535,7 @@ function test_jump_psd_cone_without_parameter_v_and_vv()
         [x, p * (x - 1), x * x] in MOI.PositiveSemidefiniteConeTriangle(2)
     )
     @test_throws ErrorException(
-        "Constraint attribute MathOptInterface.ConstraintName() cannot be set for $(index(ParameterRef(p)))",
+        "Constraint attribute MathOptInterface.ConstraintName() cannot be set for $(index(ParameterRef(p))) in ParametricOptInterface.",
     ) MOI.set(
         backend(model),
         MOI.ConstraintName(),
@@ -1555,59 +1555,49 @@ function test_variable_and_constraint_not_registered()
         SCS.Optimizer(),
     )
     optimizer1 = POI.Optimizer(cached1)
+    model1 = direct_model(optimizer1)
     cached2 = MOI.Utilities.CachingOptimizer(
         MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
         SCS.Optimizer(),
     )
     optimizer2 = POI.Optimizer(cached2)
-    model = direct_model(optimizer1)
     model2 = direct_model(optimizer2)
-    set_silent(model)
+    set_silent(model1)
     set_silent(model2)
-    @variable(model, x)
-    @variable(model, p in MOI.Parameter(1.0))
-    @variable(model, p1 in MOI.Parameter(1.0))
+    @variable(model1, x)
+    @variable(model1, p in MOI.Parameter(1.0))
+    @variable(model1, p1 in MOI.Parameter(1.0))
     @variable(model2, p2 in MOI.Parameter(1.0))
-    @constraint(model, con, [x - p] in MOI.Nonnegatives(1))
-    @test_throws ErrorException("Variable not in the model") MOI.set(
-        backend(model2),
-        MOI.VariablePrimalStart(),
-        index(x),
-        1.0,
-    )
-    @test_throws ErrorException("Variable not in the model") MOI.get(
-        backend(model2),
-        MOI.VariablePrimalStart(),
-        index(x),
-    )
-    @test_throws ErrorException("Parameter not in the model") MOI.get(
+    @constraint(model1, con, [x - p] in MOI.Nonnegatives(1))
+    @test !MOI.is_valid(backend(model2), index(x))
+    @test_throws MOI.InvalidIndex MOI.get(
         backend(model2),
         MOI.ConstraintFunction(),
         index(ParameterRef(p1)),
-    )
-    @test_throws ErrorException("Parameter not in the model") MOI.get(
+    ) #ok
+    @test_throws MOI.InvalidIndex MOI.get(
         backend(model2),
         MOI.ConstraintSet(),
         index(ParameterRef(p1)),
-    )
-    @test_throws ErrorException("Variable not in the model") MOI.set(
+    ) #ok
+    @test_throws MOI.InvalidIndex MOI.set(
         backend(model2),
         MOI.ConstraintPrimalStart(),
         index(ParameterRef(p1)),
         1.0,
     )
-    @test_throws ErrorException("Variable not in the model") MOI.get(
+    @test_throws MOI.InvalidIndex MOI.get(
         backend(model2),
         MOI.ConstraintPrimalStart(),
         index(ParameterRef(p1)),
     )
-    @test_throws ErrorException("Variable not in the model") MOI.set(
+    @test_throws MOI.InvalidIndex MOI.set(
         backend(model2),
         MOI.ObjectiveFunction{MOI.VariableIndex}(),
         index(x),
     )
     @test_throws ErrorException(
-        "Cannot use a parameter as objective function alone",
+        "Cannot use a parameter as objective function alone in ParametricOptInterface.",
     ) MOI.set(
         backend(model2),
         MOI.ObjectiveFunction{MOI.VariableIndex}(),

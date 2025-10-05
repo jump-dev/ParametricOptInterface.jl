@@ -18,6 +18,7 @@ const MOI = MathOptInterface
 const SIMPLE_SCALAR_SETS{T} =
     Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}}
 
+const PARAMETER_INDEX_THRESHOLD_MAX = typemax(Int64) # div(typemax(Int64),2)+1
 const PARAMETER_INDEX_THRESHOLD = Int64(4_611_686_018_427_387_904) # div(typemax(Int64),2)+1
 
 struct ParameterIndex
@@ -249,26 +250,23 @@ end
 
 Optimizer(args...; kws...) = Optimizer{Float64}(args...; kws...)
 
-function _next_variable_index!(model::Optimizer)
-    return model.last_variable_index_added += 1
-end
-
 function _next_parameter_index!(model::Optimizer)
     return model.last_parameter_index_added += 1
 end
 
+# TODO: remove this
 function _update_number_of_parameters!(model::Optimizer)
     return model.number_of_parameters_in_model += 1
 end
 
 function _parameter_in_model(model::Optimizer, v::MOI.VariableIndex)
-    return PARAMETER_INDEX_THRESHOLD <
-           v.value <=
-           model.last_parameter_index_added
-end
-
-function _variable_in_model(model::Optimizer, v::MOI.VariableIndex)
-    return 0 < v.value <= model.last_variable_index_added
+    if !_is_parameter(v)
+        return false
+    elseif haskey(model.parameters, p_idx(v))
+        return true
+    else
+        return false
+    end
 end
 
 include("duals.jl")

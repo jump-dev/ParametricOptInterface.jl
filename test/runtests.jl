@@ -7,6 +7,7 @@ using JuMP
 using Test
 
 import GLPK
+import HiGHS
 import Ipopt
 import SCS
 
