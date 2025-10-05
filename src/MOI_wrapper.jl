@@ -1383,7 +1383,7 @@ function MOI.get(model::Optimizer, ::MOI.NumberOfVariables)
 end
 
 function MOI.get(model::Optimizer, ::MOI.NumberOfConstraints{F,S}) where {S,F}
-    return length(model.constraint_outer_to_inner[F, S])
+    return Int64(length(model.constraint_outer_to_inner[F, S]))
 end
 
 function MOI.get(model::Optimizer, ::MOI.ListOfVariableIndices)
