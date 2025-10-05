@@ -16,8 +16,8 @@ const MOI = MathOptInterface
 using ParameterJuMP
 using JuMP
 
-using GLPK
-const OPTIMIZER = GLPK.Optimizer
+using HiGHS
+const OPTIMIZER = HiGHS.Optimizer
 using TimerOutputs
 
 using LinearAlgebra

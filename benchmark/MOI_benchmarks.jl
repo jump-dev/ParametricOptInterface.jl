@@ -6,16 +6,16 @@
 push!(LOAD_PATH, "./src")
 using ParametricOptInterface
 using MathOptInterface
-using GLPK
+using HiGHS
 import Random
 #using SparseArrays
 using TimerOutputs
 
 const MOI = MathOptInterface
 const POI = ParametricOptInterface
-SOLVER = GLPK
+SOLVER = HiGHS
 
-if SOLVER == GLPK
+if SOLVER == HiGHS
     MAX_ITER_PARAM = "it_lim"
 elseif SOLVER == Gurobi
     MAX_ITER_PARAM = "IterationLimit"

@@ -13,7 +13,7 @@ function test_basic_tests()
             x* = {2-y,0}
             obj = 2
     """
-    optimizer = POI.Optimizer(GLPK.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer())
     MOI.set(optimizer, MOI.Silent(), true)
     x = MOI.add_variables(optimizer, 2)
     y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
@@ -319,7 +319,7 @@ function test_moi_ListOfConstraintTypesPresent()
 end
 
 function test_production_problem_example()
-    optimizer = POI.Optimizer(GLPK.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer())
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 1.0]
     A2 = [1.0, 2.0, 1.0]
@@ -397,7 +397,7 @@ function test_production_problem_example()
 end
 
 function test_production_problem_example_duals()
-    optimizer = POI.Optimizer(GLPK.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer())
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 3.0]
     A2 = [1.0, 2.0, 0.5]
@@ -486,7 +486,7 @@ function test_production_problem_example_parameters_for_duals_and_intervals()
     cached = MOI.Bridges.full_bridge_optimizer(
         MOI.Utilities.CachingOptimizer(
             MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            GLPK.Optimizer(),
+            HiGHS.Optimizer(),
         ),
         Float64,
     )
@@ -1714,7 +1714,7 @@ function test_compute_conflict!()
 end
 
 function test_duals_not_available()
-    optimizer = POI.Optimizer(GLPK.Optimizer(); evaluate_duals = false)
+    optimizer = POI.Optimizer(HiGHS.Optimizer(); evaluate_duals = false)
     MOI.set(optimizer, MOI.Silent(), true)
     x = MOI.add_variables(optimizer, 2)
     y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
@@ -1748,7 +1748,7 @@ function test_duals_not_available()
 end
 
 function test_duals_without_parameters()
-    optimizer = POI.Optimizer(GLPK.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer())
     MOI.set(optimizer, MOI.Silent(), true)
     x = MOI.add_variables(optimizer, 3)
     y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
@@ -2008,7 +2008,7 @@ function test_getters()
 end
 
 function test_no_quadratic_terms()
-    optimizer = POI.Optimizer(GLPK.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer())
     MOI.set(optimizer, MOI.Silent(), true)
     x = MOI.add_variable(optimizer)
     func = MOI.Utilities.canonical(1.0 * x * x + 1.0 * x - 1.0 * x * x)
@@ -2131,14 +2131,14 @@ function test_copy_model()
     x = MOI.add_variable(model)
     c = MOI.add_constraint(model, 1.0 * x, MOI.EqualTo(1.0))
     MOI.set(model, MOI.ConstraintName(), c, "c")
-    poi = POI.Optimizer(GLPK.Optimizer())
+    poi = POI.Optimizer(HiGHS.Optimizer())
     MOI.copy_to(poi, model)
     MOI.optimize!(poi)
     @test MOI.get(poi, MOI.VariablePrimal(), x) ≈ 1.0
 end
 
-function test_constrained_variable_glpk()
-    optimizer = POI.Optimizer(GLPK.Optimizer())
+function test_constrained_variable_HiGHS()
+    optimizer = POI.Optimizer(HiGHS.Optimizer())
     MOI.set(optimizer, MOI.Silent(), true)
     set = MOI.LessThan(1.0)
     @test MOI.supports_add_constrained_variable(optimizer, typeof(set))
