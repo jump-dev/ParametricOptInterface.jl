@@ -261,6 +261,7 @@ function test_moi_ipopt()
         MOI.Test.Config(
             atol = 1e-4,
             rtol = 1e-4,
+            infeasible_status = MOI.LOCALLY_INFEASIBLE,
             optimal_status = MOI.LOCALLY_SOLVED,
             exclude = Any[
                 MOI.ConstraintBasisStatus,
@@ -270,20 +271,18 @@ function test_moi_ipopt()
         );
         exclude = String[
             # Tests purposefully excluded:
+            #  - NORM_LIMIT when run on macOS-M1. See #315
+            "test_linear_transform",
             #  - Upstream: ZeroBridge does not support ConstraintDual
             "test_conic_linear_VectorOfVariables_2",
             #  - Excluded because this test is optional
             "test_model_ScalarFunctionConstantNotZero",
-            #  - Excluded because Ipopt returns NORM_LIMIT instead of
-            #    DUAL_INFEASIBLE
-            "test_solve_TerminationStatus_DUAL_INFEASIBLE",
             #  - Excluded because Ipopt returns INVALID_MODEL instead of
             #    LOCALLY_SOLVED
             "test_linear_VectorAffineFunction_empty_row",
-            #  - Excluded because Ipopt returns LOCALLY_INFEASIBLE instead of
-            #    INFEASIBLE
-            "INFEASIBLE",
-            "test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_",
+            #  - CachingOptimizer does not throw if optimizer not attached
+            "test_model_copy_to_UnsupportedAttribute",
+            "test_model_copy_to_UnsupportedConstraint",
         ],
     )
     return
@@ -458,14 +457,16 @@ function test_production_problem_example_duals()
     MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(1.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 7.0, atol = ATOL)
-    @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]
+    @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 0.0, atol = ATOL)
+    @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 1.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cy), 9.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cz), 0.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cw), -2.0, atol = ATOL)
     MOI.set(optimizer, MOI.ConstraintSet(), cw, MOI.Parameter(0.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 3.0, atol = ATOL)
-    @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]
+    @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 0.0, atol = ATOL)
+    @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 1.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cy), 9.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cz), 0.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cw), -2.0, atol = ATOL)
