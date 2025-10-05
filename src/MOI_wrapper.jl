@@ -245,7 +245,9 @@ end
 
 function _add_variable(model::Optimizer, inner_vi)
     if _is_parameter(inner_vi)
-        error("Attempted to add a variable but got a parameter index. The inner solver should not create variables with index >= $PARAMETER_INDEX_THRESHOLD, (got $(inner_vi.value)).")
+        error(
+            "Attempted to add a variable but got a parameter index. The inner solver should not create variables with index >= $PARAMETER_INDEX_THRESHOLD, (got $(inner_vi.value)).",
+        )
     end
     return inner_vi
 end
@@ -452,7 +454,13 @@ function _delete_variable_index_constraint(model, d, F, S, v)
     return
 end
 
-function _delete_variable_index_constraint(model, d, F::Type{MOI.VectorOfVariables}, S, v)
+function _delete_variable_index_constraint(
+    model,
+    d,
+    F::Type{MOI.VectorOfVariables},
+    S,
+    v,
+)
     inner = d[F, S]
     for (key, val) in inner
         if !MOI.is_valid(model.optimizer, val)
@@ -799,7 +807,9 @@ function MOI.modify(
 ) where {F,S,T}
     if haskey(model.quadratic_constraint_cache, c) ||
        haskey(model.affine_constraint_cache, c)
-        error("Parametric constraint cannot be modified in ParametricOptInterface, because it would conflict with parameter updates. You can update the parameters instead.")
+        error(
+            "Parametric constraint cannot be modified in ParametricOptInterface, because it would conflict with parameter updates. You can update the parameters instead.",
+        )
     end
     MOI.modify(model.optimizer, c, chg)
     return
@@ -914,7 +924,9 @@ function MOI.add_constraint(
     set::MOI.AbstractVectorSet,
 )
     if _has_parameters(f)
-        error("VectorOfVariables does not allow parameters in ParametricOptInterface.")
+        error(
+            "VectorOfVariables does not allow parameters in ParametricOptInterface.",
+        )
     end
     return _add_constraint_direct_and_cache_map!(model, f, set)
 end
@@ -1212,7 +1224,9 @@ function MOI.modify(
     if model.quadratic_objective_cache !== nothing ||
        model.affine_objective_cache !== nothing ||
        !isempty(model.quadratic_objective_cache_product)
-        error("A parametric objective cannot be modified as it would conflict with the parameter update mechanism. Please set a new objective or use parameters to perform such updates.")
+        error(
+            "A parametric objective cannot be modified as it would conflict with the parameter update mechanism. Please set a new objective or use parameters to perform such updates.",
+        )
     end
     MOI.modify(model.optimizer, c, chg)
     MOI.modify(model.original_objective_cache, c, chg)
@@ -1297,7 +1311,9 @@ function MOI.set(
 )
     if _is_parameter(v)
         # TODO
-        error("Cannot use a parameter as objective function alone in ParametricOptInterface.")
+        error(
+            "Cannot use a parameter as objective function alone in ParametricOptInterface.",
+        )
     elseif !MOI.is_valid(model, v)
         throw(MOI.InvalidIndex(v))
     end
@@ -1528,7 +1544,9 @@ function MOI.set(
     c::MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}},
     val,
 ) where {T}
-    return error("Constraint attribute $attr cannot be set for $c in ParametricOptInterface.")
+    return error(
+        "Constraint attribute $attr cannot be set for $c in ParametricOptInterface.",
+    )
 end
 
 function MOI.get(

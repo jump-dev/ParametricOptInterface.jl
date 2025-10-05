@@ -33,11 +33,9 @@ function test_basic_tests()
     @test !MOI.is_valid(optimizer, z)
     @test MOI.is_valid(optimizer, cy)
     @test !MOI.is_valid(optimizer, cz)
-    @test_throws ErrorException("Cannot constrain a parameter in ParametricOptInterface.") MOI.add_constraint(
-        optimizer,
-        y,
-        MOI.EqualTo(0.0),
-    )
+    @test_throws ErrorException(
+        "Cannot constrain a parameter in ParametricOptInterface.",
+    ) MOI.add_constraint(optimizer, y, MOI.EqualTo(0.0))
     @test_throws MOI.InvalidIndex MOI.add_constraint(
         optimizer,
         z,
@@ -61,7 +59,7 @@ function test_basic_tests()
     MOI.optimize!(optimizer)
     @test MOI.get(optimizer, MOI.ObjectiveValue()) == 2
     @test MOI.get(optimizer, MOI.VariablePrimal(), x[1]) == 2
-    @test_throws  MOI.InvalidIndex{MOI.VariableIndex}(MOI.VariableIndex(4)) MOI.get(
+    @test_throws MOI.InvalidIndex{MOI.VariableIndex}(MOI.VariableIndex(4)) MOI.get(
         optimizer,
         MOI.VariablePrimal(),
         z,
@@ -226,27 +224,19 @@ end
 
 function test_moi_highs()
     model = MOI.Bridges.full_bridge_optimizer(
-            POI.Optimizer(HiGHS.Optimizer()),
-            Float64,
-        )
+        POI.Optimizer(HiGHS.Optimizer()),
+        Float64,
+    )
     MOI.set(model, MOI.Silent(), true)
     MOI.set(model, MOI.RawOptimizerAttribute("presolve"), "off")
-    MOI.Test.runtests(
-        model,
-        MOI.Test.Config(; atol = 1e-7);
-        exclude = [
-        ],
-    )
+    MOI.Test.runtests(model, MOI.Test.Config(; atol = 1e-7); exclude = [])
 
-    model = POI.Optimizer(MOI.instantiate(HiGHS.Optimizer; with_bridge_type = Float64))
+    model = POI.Optimizer(
+        MOI.instantiate(HiGHS.Optimizer; with_bridge_type = Float64),
+    )
     MOI.set(model, MOI.Silent(), true)
     MOI.set(model, MOI.RawOptimizerAttribute("presolve"), "off")
-    MOI.Test.runtests(
-        model,
-        MOI.Test.Config(; atol = 1e-7);
-        exclude = [
-        ],
-    )
+    MOI.Test.runtests(model, MOI.Test.Config(; atol = 1e-7); exclude = [])
     return
 end
 
