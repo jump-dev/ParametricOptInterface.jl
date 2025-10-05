@@ -101,8 +101,8 @@ optimization model.
 ## Example
 
 ```julia-repl
-julia> ParametricOptInterface.Optimizer(GLPK.Optimizer())
-ParametricOptInterface.Optimizer{Float64,GLPK.Optimizer}
+julia> ParametricOptInterface.Optimizer(HiGHS.Optimizer())
+ParametricOptInterface.Optimizer{Float64,HiGHS.Optimizer}
 ```
 """
 mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer

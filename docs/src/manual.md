@@ -14,7 +14,7 @@ A main concern is to efficiently implement this new type, as one typical usage i
 
 ## How it works
 
-The main idea applied in POI is that the interaction between the solver, e.g. `GLPK`, and the optimization model will be handled by `MOI` as usual. Because of that, `POI` is a higher level wrapper around `MOI`, responsible for receiving variables, constants and parameters, and forwarding to the lower level model only variables and constants.
+The main idea applied in POI is that the interaction between the solver, e.g. `HiGHS`, and the optimization model will be handled by `MOI` as usual. Because of that, `POI` is a higher level wrapper around `MOI`, responsible for receiving variables, constants and parameters, and forwarding to the lower level model only variables and constants.
 
 As `POI` receives parameters, it must analyze and decide how they should be handled on the lower level optimization model (the `MOI` model).
 

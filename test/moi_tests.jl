@@ -224,20 +224,7 @@ function test_modification_multiple()
     return
 end
 
-function test_moi_glpk()
-    # TODO see why tests error or fail
-    MOI.Test.runtests(
-        MOI.Bridges.full_bridge_optimizer(
-            POI.Optimizer(GLPK.Optimizer()),
-            Float64,
-        ),
-        MOI.Test.Config();
-        exclude = [
-            # GLPK returns INVALID_MODEL instead of INFEASIBLE
-            "test_constraint_ZeroOne_bounds_3",
-        ],
-    )
-
+function test_moi_highs()
     model = MOI.Bridges.full_bridge_optimizer(
             POI.Optimizer(HiGHS.Optimizer()),
             Float64,
