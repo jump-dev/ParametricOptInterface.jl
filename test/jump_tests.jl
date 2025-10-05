@@ -1675,3 +1675,8 @@ function test_jump_errors()
     )
     return
 end
+
+function test_print()
+
+    return
+end
