@@ -13,7 +13,7 @@ function test_basic_tests()
             x* = {2-y,0}
             obj = 2
     """
-    optimizer = POI.Optimizer(GLPK.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer())
     MOI.set(optimizer, MOI.Silent(), true)
     x = MOI.add_variables(optimizer, 2)
     y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
@@ -125,7 +125,7 @@ end
 
 function test_basic_special_cases_of_getters()
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
+    MOI.set(ipopt, MOI.Silent(), true)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
@@ -261,6 +261,7 @@ function test_moi_ipopt()
         MOI.Test.Config(
             atol = 1e-4,
             rtol = 1e-4,
+            infeasible_status = MOI.LOCALLY_INFEASIBLE,
             optimal_status = MOI.LOCALLY_SOLVED,
             exclude = Any[
                 MOI.ConstraintBasisStatus,
@@ -270,20 +271,18 @@ function test_moi_ipopt()
         );
         exclude = String[
             # Tests purposefully excluded:
+            #  - NORM_LIMIT when run on macOS-M1. See #315
+            "test_linear_transform",
             #  - Upstream: ZeroBridge does not support ConstraintDual
             "test_conic_linear_VectorOfVariables_2",
             #  - Excluded because this test is optional
             "test_model_ScalarFunctionConstantNotZero",
-            #  - Excluded because Ipopt returns NORM_LIMIT instead of
-            #    DUAL_INFEASIBLE
-            "test_solve_TerminationStatus_DUAL_INFEASIBLE",
             #  - Excluded because Ipopt returns INVALID_MODEL instead of
             #    LOCALLY_SOLVED
             "test_linear_VectorAffineFunction_empty_row",
-            #  - Excluded because Ipopt returns LOCALLY_INFEASIBLE instead of
-            #    INFEASIBLE
-            "INFEASIBLE",
-            "test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_",
+            #  - CachingOptimizer does not throw if optimizer not attached
+            "test_model_copy_to_UnsupportedAttribute",
+            "test_model_copy_to_UnsupportedConstraint",
         ],
     )
     return
@@ -319,7 +318,7 @@ function test_moi_ListOfConstraintTypesPresent()
 end
 
 function test_production_problem_example()
-    optimizer = POI.Optimizer(GLPK.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer())
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 1.0]
     A2 = [1.0, 2.0, 1.0]
@@ -397,7 +396,7 @@ function test_production_problem_example()
 end
 
 function test_production_problem_example_duals()
-    optimizer = POI.Optimizer(GLPK.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer())
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 3.0]
     A2 = [1.0, 2.0, 0.5]
@@ -458,14 +457,16 @@ function test_production_problem_example_duals()
     MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(1.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 7.0, atol = ATOL)
-    @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]
+    @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 0.0, atol = ATOL)
+    @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 1.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cy), 9.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cz), 0.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cw), -2.0, atol = ATOL)
     MOI.set(optimizer, MOI.ConstraintSet(), cw, MOI.Parameter(0.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 3.0, atol = ATOL)
-    @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]
+    @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 0.0, atol = ATOL)
+    @test ≈(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 1.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cy), 9.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cz), 0.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cw), -2.0, atol = ATOL)
@@ -486,7 +487,7 @@ function test_production_problem_example_parameters_for_duals_and_intervals()
     cached = MOI.Bridges.full_bridge_optimizer(
         MOI.Utilities.CachingOptimizer(
             MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            GLPK.Optimizer(),
+            HiGHS.Optimizer(),
         ),
         Float64,
     )
@@ -835,7 +836,7 @@ end
 
 function test_qp_no_parameters_1()
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
+    MOI.set(ipopt, MOI.Silent(), true)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
@@ -877,7 +878,7 @@ end
 
 function test_qp_no_parameters_2()
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
+    MOI.set(ipopt, MOI.Silent(), true)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
@@ -914,7 +915,7 @@ end
 
 function test_qp_parameter_in_affine_constraint()
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
+    MOI.set(ipopt, MOI.Silent(), true)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
@@ -965,7 +966,7 @@ end
 
 function test_qp_parameter_in_quadratic_constraint()
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
+    MOI.set(ipopt, MOI.Silent(), true)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
@@ -1028,7 +1029,7 @@ end
 
 function test_qp_variable_times_variable_plus_parameter()
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
+    MOI.set(ipopt, MOI.Silent(), true)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
@@ -1076,7 +1077,7 @@ end
 
 function test_qp_variable_times_variable_plus_parameter_duals()
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
+    MOI.set(ipopt, MOI.Silent(), true)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
@@ -1126,7 +1127,7 @@ end
 
 function test_qp_parameter_times_variable()
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
+    MOI.set(ipopt, MOI.Silent(), true)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
@@ -1174,7 +1175,7 @@ end
 
 function test_qp_variable_times_parameter()
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
+    MOI.set(ipopt, MOI.Silent(), true)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
@@ -1223,7 +1224,7 @@ end
 
 function test_qp_parameter_times_parameter()
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
+    MOI.set(ipopt, MOI.Silent(), true)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
@@ -1300,7 +1301,7 @@ end
 
 function test_qp_quadratic_constant()
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
+    MOI.set(ipopt, MOI.Silent(), true)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
@@ -1362,7 +1363,7 @@ end
 
 function test_qp_objective_parameter_times_parameter()
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
+    MOI.set(ipopt, MOI.Silent(), true)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
@@ -1415,7 +1416,7 @@ end
 
 function test_qp_objective_affine_parameter()
     ipopt = Ipopt.Optimizer()
-    MOI.set(ipopt, MOI.RawOptimizerAttribute("print_level"), 0)
+    MOI.set(ipopt, MOI.Silent(), true)
     opt_in =
         MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{Float64}(), ipopt)
     optimizer = POI.Optimizer(opt_in)
@@ -1714,7 +1715,7 @@ function test_compute_conflict!()
 end
 
 function test_duals_not_available()
-    optimizer = POI.Optimizer(GLPK.Optimizer(); evaluate_duals = false)
+    optimizer = POI.Optimizer(HiGHS.Optimizer(); evaluate_duals = false)
     MOI.set(optimizer, MOI.Silent(), true)
     x = MOI.add_variables(optimizer, 2)
     y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
@@ -1748,7 +1749,7 @@ function test_duals_not_available()
 end
 
 function test_duals_without_parameters()
-    optimizer = POI.Optimizer(GLPK.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer())
     MOI.set(optimizer, MOI.Silent(), true)
     x = MOI.add_variables(optimizer, 3)
     y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
@@ -2008,7 +2009,7 @@ function test_getters()
 end
 
 function test_no_quadratic_terms()
-    optimizer = POI.Optimizer(GLPK.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer())
     MOI.set(optimizer, MOI.Silent(), true)
     x = MOI.add_variable(optimizer)
     func = MOI.Utilities.canonical(1.0 * x * x + 1.0 * x - 1.0 * x * x)
@@ -2131,14 +2132,14 @@ function test_copy_model()
     x = MOI.add_variable(model)
     c = MOI.add_constraint(model, 1.0 * x, MOI.EqualTo(1.0))
     MOI.set(model, MOI.ConstraintName(), c, "c")
-    poi = POI.Optimizer(GLPK.Optimizer())
+    poi = POI.Optimizer(HiGHS.Optimizer())
     MOI.copy_to(poi, model)
     MOI.optimize!(poi)
     @test MOI.get(poi, MOI.VariablePrimal(), x) ≈ 1.0
 end
 
-function test_constrained_variable_glpk()
-    optimizer = POI.Optimizer(GLPK.Optimizer())
+function test_constrained_variable_HiGHS()
+    optimizer = POI.Optimizer(HiGHS.Optimizer())
     MOI.set(optimizer, MOI.Silent(), true)
     set = MOI.LessThan(1.0)
     @test MOI.supports_add_constrained_variable(optimizer, typeof(set))
