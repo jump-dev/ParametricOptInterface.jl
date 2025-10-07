@@ -1677,13 +1677,13 @@ function test_jump_errors()
 end
 
 function test_print()
-    model = Model(() -> POI.Optimizer(GLPK.Optimizer()))
+    model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
     @variable(model, p in MOI.Parameter(1.0))
     @variable(model, x)
-    @constraint(model, con, x >= p)
-    @objective(model, Min, x)
+    @constraint(model, con, x >= p + p * p + p * x)
+    @objective(model, Min, 1 + 2x)
     filename = tempdir() * "/test.lp"
     write_to_file(model, filename)
-    readlines(filename) |> println
+    @test readlines(filename) == ["minimize", "obj: 1 + 2 x", "subject to", "c1: 1 x - 1 p + [ -1 p * x - 1 p ^ 2 ] >= 0", "Bounds", "x free", "p = 1", "End"]
     return
 end

@@ -805,6 +805,7 @@ function MOI.modify(
     c::MOI.ConstraintIndex{F,S},
     chg::MOI.ScalarCoefficientChange{T},
 ) where {F,S,T}
+    # TODO - outer or inner?
     if haskey(model.quadratic_constraint_cache, c) ||
        haskey(model.affine_constraint_cache, c)
         error(
@@ -1365,15 +1366,15 @@ function MOI.get(
     model::Optimizer,
     ::MOI.ListOfConstraintAttributesSet{F,S},
 ) where {F,S}
-    if F <: MOI.ScalarQuadraticFunction
-        error(
-            "MOI.ListOfConstraintAttributesSet is not implemented for ScalarQuadraticFunction in ParametricOptInterface.",
-        )
-    elseif F <: MOI.VectorQuadraticFunction
-        error(
-            "MOI.ListOfConstraintAttributesSet is not implemented for VectorQuadraticFunction in ParametricOptInterface.",
-        )
-    end
+    # if F <: MOI.ScalarQuadraticFunction
+    #     error(
+    #         "MOI.ListOfConstraintAttributesSet is not implemented for ScalarQuadraticFunction in ParametricOptInterface.",
+    #     )
+    # elseif F <: MOI.VectorQuadraticFunction
+    #     error(
+    #         "MOI.ListOfConstraintAttributesSet is not implemented for VectorQuadraticFunction in ParametricOptInterface.",
+    #     )
+    # end
     return MOI.get(model.optimizer, MOI.ListOfConstraintAttributesSet{F,S}())
 end
 
@@ -1404,7 +1405,7 @@ function MOI.get(
     model::Optimizer,
     ::MOI.ListOfConstraintIndices{F,S},
 ) where {S,F}
-    list = collect(values(model.constraint_outer_to_inner[F, S]))
+    list = collect(keys(model.constraint_outer_to_inner[F, S]))
     sort!(list, lt = (x, y) -> (x.value < y.value))
     return list
 end
