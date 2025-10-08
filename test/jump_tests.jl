@@ -1713,7 +1713,7 @@ function test_print()
         "minimize",
         "obj: 1 + 2 x",
         "subject to",
-        "c1: 1 x - 1 p + [ -1 p * x - 1 p ^ 2 ] >= 0",
+        "con: 1 x - 1 p + [ -1 p * x - 1 p ^ 2 ] >= 0",
         "Bounds",
         "x free",
         "p = 1",
