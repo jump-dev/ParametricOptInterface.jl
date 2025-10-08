@@ -1659,20 +1659,45 @@ function test_jump_errors()
         backend(model1),
         MOI.NLPBlock(),
     )
-    @test_throws ErrorException MOI.get(
+
+    MOI.get(
         backend(model1),
         MOI.ListOfConstraintAttributesSet{
             MOI.VectorQuadraticFunction{Float64},
-            MOI.Nonpositives,
+            MOI.Nonnegatives,
         }(),
     )
-    @test_throws ErrorException MOI.get(
+
+    MOI.get(
         backend(model1),
         MOI.ListOfConstraintAttributesSet{
             MOI.ScalarQuadraticFunction{Float64},
-            MOI.EqualTo{Float64},
+            MOI.LessThan{Float64},
         }(),
     )
+
+    MOI.set(
+        backend(model1),
+        POI._WarnIfQuadraticOfAffineFunctionAmbiguous(),
+        false,
+    )
+
+    MOI.get(
+        backend(model1),
+        MOI.ListOfConstraintAttributesSet{
+            MOI.VectorQuadraticFunction{Float64},
+            MOI.Nonnegatives,
+        }(),
+    )
+
+    MOI.get(
+        backend(model1),
+        MOI.ListOfConstraintAttributesSet{
+            MOI.ScalarQuadraticFunction{Float64},
+            MOI.LessThan{Float64},
+        }(),
+    )
+
     return
 end
 
@@ -1684,6 +1709,15 @@ function test_print()
     @objective(model, Min, 1 + 2x)
     filename = tempdir() * "/test.lp"
     write_to_file(model, filename)
-    @test readlines(filename) == ["minimize", "obj: 1 + 2 x", "subject to", "c1: 1 x - 1 p + [ -1 p * x - 1 p ^ 2 ] >= 0", "Bounds", "x free", "p = 1", "End"]
+    @test readlines(filename) == [
+        "minimize",
+        "obj: 1 + 2 x",
+        "subject to",
+        "c1: 1 x - 1 p + [ -1 p * x - 1 p ^ 2 ] >= 0",
+        "Bounds",
+        "x free",
+        "p = 1",
+        "End",
+    ]
     return
 end

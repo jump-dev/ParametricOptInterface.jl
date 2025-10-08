@@ -179,6 +179,8 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
 
     parameters_in_conflict::Set{MOI.VariableIndex}
 
+    warn_quad_affine_ambiguous::Bool
+
     # extension data
     ext::Dict{Symbol,Any}
     function Optimizer{T}(
@@ -243,6 +245,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             ONLY_CONSTRAINTS,
             save_original_objective_and_constraints,
             Set{MOI.VariableIndex}(),
+            true,
             Dict{Symbol,Any}(),
         )
     end

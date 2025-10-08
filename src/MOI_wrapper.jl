@@ -566,8 +566,11 @@ function MOI.supports(
     # We can't tell at type-time whether the constraints will be quadratic or
     # lowered to affine, so we return the conservative choice for supports of
     # needing to support names for both quadratic and affine constraints.
-    return MOI.supports(model.optimizer, attr, MOI.ConstraintIndex{F,S}) &&
-           MOI.supports(model.optimizer, attr, MOI.ConstraintIndex{G,S})
+    if MOI.supports_constraint(model.optimizer, F, S)
+        return MOI.supports(model.optimizer, attr, MOI.ConstraintIndex{F,S}) &&
+               MOI.supports(model.optimizer, attr, MOI.ConstraintIndex{G,S})
+    end
+    return MOI.supports(model.optimizer, attr, MOI.ConstraintIndex{G,S})
 end
 
 function MOI.supports(
@@ -579,8 +582,14 @@ function MOI.supports(
     # We can't tell at type-time whether the constraints will be quadratic or
     # lowered to affine, so we return the conservative choice for supports of
     # needing to support names for both quadratic and affine constraints.
-    return MOI.supports(model.optimizer, attr, MOI.ConstraintIndex{F,S}) &&
-           MOI.supports(model.optimizer, attr, MOI.ConstraintIndex{G,S})
+    # TODO:
+    # switch to only check support name for the case of linear
+    # is a solver does not support quadratic constraints it will fain in add_
+    if MOI.supports_constraint(model.optimizer, F, S)
+        return MOI.supports(model.optimizer, attr, MOI.ConstraintIndex{F,S}) &&
+               MOI.supports(model.optimizer, attr, MOI.ConstraintIndex{G,S})
+    end
+    return MOI.supports(model.optimizer, attr, MOI.ConstraintIndex{G,S})
 end
 
 function MOI.set(
@@ -805,9 +814,9 @@ function MOI.modify(
     c::MOI.ConstraintIndex{F,S},
     chg::MOI.ScalarCoefficientChange{T},
 ) where {F,S,T}
-    # TODO - outer or inner?
-    if haskey(model.quadratic_constraint_cache, c) ||
-       haskey(model.affine_constraint_cache, c)
+    if haskey(model.quadratic_outer_to_inner, c) ||
+       haskey(model.vector_quadratic_outer_to_inner, c) ||
+       haskey(model.affine_outer_to_inner, c)
         error(
             "Parametric constraint cannot be modified in ParametricOptInterface, because it would conflict with parameter updates. You can update the parameters instead.",
         )
@@ -1365,16 +1374,47 @@ end
 function MOI.get(
     model::Optimizer,
     ::MOI.ListOfConstraintAttributesSet{F,S},
+) where {T,F<:MOI.ScalarQuadraticFunction{T},S}
+    if MOI.supports_constraint(model.optimizer, F, S)
+        # in this case we cant tell if the constraint will be quadratic or
+        # lowered to affine
+        if model.warn_quad_affine_ambiguous
+            println(
+                "MOI.ListOfConstraintAttributesSet is not supported for ScalarQuadraticFunction in ParametricOptInterface, an empty list will be returned. This message can be suppressed by setting `POI._WarnIfQuadraticOfAffineFunctionAmbiguous` to false.",
+            )
+        end
+        return []
+    end
+    return MOI.get(
+        model.optimizer,
+        MOI.ListOfConstraintAttributesSet{MOI.ScalarAffineFunction{T},S}(),
+    )
+end
+
+function MOI.get(
+    model::Optimizer,
+    ::MOI.ListOfConstraintAttributesSet{F,S},
+) where {T,F<:MOI.VectorQuadraticFunction{T},S}
+    if MOI.supports_constraint(model.optimizer, F, S)
+        # in this case we cant tell if the constraint will be quadratic or
+        # lowered to affine
+        if model.warn_quad_affine_ambiguous
+            println(
+                "MOI.ListOfConstraintAttributesSet is not supported for VectorQuadraticFunction in ParametricOptInterface, an empty list will be returned. This message can be suppressed by setting `POI._WarnIfQuadraticOfAffineFunctionAmbiguous` to false.",
+            )
+        end
+        return []
+    end
+    return MOI.get(
+        model.optimizer,
+        MOI.ListOfConstraintAttributesSet{MOI.VectorAffineFunction{T},S}(),
+    )
+end
+
+function MOI.get(
+    model::Optimizer,
+    ::MOI.ListOfConstraintAttributesSet{F,S},
 ) where {F,S}
-    # if F <: MOI.ScalarQuadraticFunction
-    #     error(
-    #         "MOI.ListOfConstraintAttributesSet is not implemented for ScalarQuadraticFunction in ParametricOptInterface.",
-    #     )
-    # elseif F <: MOI.VectorQuadraticFunction
-    #     error(
-    #         "MOI.ListOfConstraintAttributesSet is not implemented for VectorQuadraticFunction in ParametricOptInterface.",
-    #     )
-    # end
     return MOI.get(model.optimizer, MOI.ListOfConstraintAttributesSet{F,S}())
 end
 
@@ -2114,4 +2154,28 @@ end
 
 function MOI.Utilities.final_touch(model::Optimizer, index_map)
     return MOI.Utilities.final_touch(model.optimizer, index_map)
+end
+
+"""
+    _WarnIfQuadraticOfAffineFunctionAmbiguous
+
+Some attributes such as `MOI.ListOfConstraintAttributesSet` are ambiguous
+when the model contains parametric quadratic functions that can be lowered
+to affine functions. This attribute can be set to `false` to skip the warning
+when such ambiguity arises. The default value is `true`.
+"""
+struct _WarnIfQuadraticOfAffineFunctionAmbiguous <:
+       MOI.AbstractOptimizerAttribute end
+
+function MOI.set(
+    model::Optimizer,
+    ::_WarnIfQuadraticOfAffineFunctionAmbiguous,
+    value::Bool,
+)
+    model.warn_quad_affine_ambiguous = value
+    return
+end
+
+function MOI.get(model::Optimizer, ::_WarnIfQuadraticOfAffineFunctionAmbiguous)
+    return model.warn_quad_affine_ambiguous
 end
