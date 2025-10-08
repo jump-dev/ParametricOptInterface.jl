@@ -1705,7 +1705,6 @@ function test_jump_errors()
 
     model = Model(() -> ParametricOptInterface.Optimizer(Ipopt.Optimizer()))
 
-
     MOI.get(
         backend(model),
         MOI.ListOfConstraintAttributesSet{
