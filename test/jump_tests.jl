@@ -1654,24 +1654,120 @@ function test_jump_errors()
         SCS.Optimizer(),
     )
     optimizer1 = POI.Optimizer(cached1)
-    model1 = direct_model(optimizer1)
+    model = direct_model(optimizer1)
     @test_throws MOI.UnsupportedAttribute MOI.get(
-        backend(model1),
+        backend(model),
         MOI.NLPBlock(),
     )
-    @test_throws ErrorException MOI.get(
-        backend(model1),
+
+    MOI.get(
+        backend(model),
         MOI.ListOfConstraintAttributesSet{
             MOI.VectorQuadraticFunction{Float64},
-            MOI.Nonpositives,
+            MOI.Nonnegatives,
         }(),
     )
-    @test_throws ErrorException MOI.get(
-        backend(model1),
+
+    MOI.get(
+        backend(model),
         MOI.ListOfConstraintAttributesSet{
             MOI.ScalarQuadraticFunction{Float64},
-            MOI.EqualTo{Float64},
+            MOI.LessThan{Float64},
         }(),
     )
+
+    MOI.set(
+        backend(model),
+        POI._WarnIfQuadraticOfAffineFunctionAmbiguous(),
+        false,
+    )
+
+    @test MOI.get(
+        backend(model),
+        POI._WarnIfQuadraticOfAffineFunctionAmbiguous(),
+    ) == false
+
+    MOI.get(
+        backend(model),
+        MOI.ListOfConstraintAttributesSet{
+            MOI.VectorQuadraticFunction{Float64},
+            MOI.Nonnegatives,
+        }(),
+    )
+
+    MOI.get(
+        backend(model),
+        MOI.ListOfConstraintAttributesSet{
+            MOI.ScalarQuadraticFunction{Float64},
+            MOI.LessThan{Float64},
+        }(),
+    )
+
+    model = direct_model(POI.Optimizer(Ipopt.Optimizer()))
+
+    @test_throws MOI.GetAttributeNotAllowed MOI.get(
+        backend(model),
+        MOI.ListOfConstraintAttributesSet{
+            MOI.VectorQuadraticFunction{Float64},
+            MOI.Nonnegatives,
+        }(),
+    )
+
+    MOI.get(
+        backend(model),
+        MOI.ListOfConstraintAttributesSet{
+            MOI.ScalarQuadraticFunction{Float64},
+            MOI.LessThan{Float64},
+        }(),
+    )
+
+    MOI.set(
+        backend(model),
+        POI._WarnIfQuadraticOfAffineFunctionAmbiguous(),
+        false,
+    )
+
+    @test MOI.get(
+        backend(model),
+        POI._WarnIfQuadraticOfAffineFunctionAmbiguous(),
+    ) == false
+
+    @test_throws MOI.GetAttributeNotAllowed MOI.get(
+        backend(model),
+        MOI.ListOfConstraintAttributesSet{
+            MOI.VectorQuadraticFunction{Float64},
+            MOI.Nonnegatives,
+        }(),
+    )
+
+    MOI.get(
+        backend(model),
+        MOI.ListOfConstraintAttributesSet{
+            MOI.ScalarQuadraticFunction{Float64},
+            MOI.LessThan{Float64},
+        }(),
+    )
+
+    return
+end
+
+function test_print()
+    model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
+    @variable(model, p in MOI.Parameter(1.0))
+    @variable(model, x)
+    @constraint(model, con, x >= p + p * p + p * x)
+    @objective(model, Min, 1 + 2x)
+    filename = tempdir() * "/test.lp"
+    write_to_file(model, filename)
+    @test readlines(filename) == [
+        "minimize",
+        "obj: 1 + 2 x",
+        "subject to",
+        "con: 1 x - 1 p + [ -1 p * x - 1 p ^ 2 ] >= 0",
+        "Bounds",
+        "x free",
+        "p = 1",
+        "End",
+    ]
     return
 end
