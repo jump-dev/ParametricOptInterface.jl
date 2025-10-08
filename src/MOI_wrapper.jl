@@ -263,6 +263,7 @@ function MOI.supports_add_constrained_variable(
     return true
 end
 
+# this method is necessary due ambiguities created by an MOI function
 function MOI.supports_add_constrained_variables(
     model::Optimizer,
     ::Type{MOI.Reals},
