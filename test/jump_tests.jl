@@ -1703,9 +1703,9 @@ function test_jump_errors()
         }(),
     )
 
-    model = Model(() -> ParametricOptInterface.Optimizer(Ipopt.Optimizer()))
+    model = direct_model(POI.Optimizer(Ipopt.Optimizer()))
 
-    MOI.get(
+    @test_throws MOI.GetAttributeNotAllowed MOI.get(
         backend(model),
         MOI.ListOfConstraintAttributesSet{
             MOI.VectorQuadraticFunction{Float64},
@@ -1732,7 +1732,7 @@ function test_jump_errors()
         POI._WarnIfQuadraticOfAffineFunctionAmbiguous(),
     ) == false
 
-    MOI.get(
+    @test_throws MOI.GetAttributeNotAllowed MOI.get(
         backend(model),
         MOI.ListOfConstraintAttributesSet{
             MOI.VectorQuadraticFunction{Float64},
