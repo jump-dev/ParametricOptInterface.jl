@@ -813,7 +813,7 @@ end
 function MOI.modify(
     model::Optimizer,
     c::MOI.ConstraintIndex{F,S},
-    chg::MOI.ScalarCoefficientChange{T},
+    chg::Union{MOI.ScalarConstantChange{T},MOI.ScalarCoefficientChange{T}},
 ) where {F,S,T}
     if haskey(model.quadratic_outer_to_inner, c) ||
        haskey(model.vector_quadratic_outer_to_inner, c) ||

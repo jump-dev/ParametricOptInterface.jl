@@ -1771,3 +1771,46 @@ function test_print()
     ]
     return
 end
+
+function test_set_normalized_coefficient()
+    model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
+    @variable(model, p in MOI.Parameter(1.0))
+    @variable(model, x)
+    @constraint(model, con, x >= p)
+    @constraint(model, con1, x >= 1)
+    @constraint(model, con2, x >= x * p)
+    @test_throws ErrorException set_normalized_coefficient(con, x, 2.0)
+    set_normalized_coefficient(con1, x, 2.0)
+    @test_throws ErrorException set_normalized_coefficient(con2, x, 2.0)
+    return
+end
+
+function test_ListOfConstraintAttributesSet()
+    cached = MOI.Utilities.CachingOptimizer(
+        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+        MOI.Utilities.AUTOMATIC,
+    )
+    optimizer = POI.Optimizer(cached)
+    model = direct_model(optimizer)
+    @variable(model, p in MOI.Parameter(1.0))
+    @variable(model, x)
+    @constraint(model, con, [x * p] in MOI.Nonnegatives(1))
+    ret = get_attribute(
+        model,
+        MOI.ListOfConstraintAttributesSet{
+            MOI.VectorQuadraticFunction{Float64},
+            MOI.Nonnegatives,
+        }(),
+    )
+    @test ret == []
+    set_attribute(model, POI._WarnIfQuadraticOfAffineFunctionAmbiguous(), false)
+    ret = get_attribute(
+        model,
+        MOI.ListOfConstraintAttributesSet{
+            MOI.VectorQuadraticFunction{Float64},
+            MOI.Nonnegatives,
+        }(),
+    )
+    @test ret == []
+    return
+end
