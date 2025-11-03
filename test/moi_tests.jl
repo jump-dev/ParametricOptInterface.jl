@@ -2197,3 +2197,193 @@ function test_constrained_variables()
     MOI.set(optimizer, MOI.ObjectiveFunction{typeof(obj_func)}(), obj_func)
     return
 end
+
+function test_parameter_index_error()
+    model = POI.Optimizer(MOI.Utilities.Model{Float64}())
+    POI._add_variable(model, MOI.VariableIndex(1))
+    POI._add_variable(model, MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD))
+    @test_throws ErrorException POI._add_variable(
+        model,
+        MOI.VariableIndex(POI.PARAMETER_INDEX_THRESHOLD + 1),
+    )
+    @test_throws ErrorException POI._add_variable(
+        model,
+        MOI.VariableIndex(typemax(Int64)),
+    )
+    return
+end
+
+struct VariableAttributeForTest <: MOI.AbstractVariableAttribute end
+struct ConstraintAttributeForTest <: MOI.AbstractConstraintAttribute end
+
+function test_variable_attribute_error()
+    solver = HiGHS.Optimizer()
+    MOI.set(solver, MOI.Silent(), true)
+    model = POI.Optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            MOI.Bridges.full_bridge_optimizer(solver, Float64),
+        ),
+    )
+    x = MOI.add_variable(model)
+    MOI.set(model, VariableAttributeForTest(), x, 1.0)
+    p, pc = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
+    @test_throws ErrorException MOI.set(
+        model,
+        VariableAttributeForTest(),
+        p,
+        1.0,
+    )
+    @test_throws ErrorException MOI.get(model, VariableAttributeForTest(), p)
+    return
+end
+
+function test_constraint_attribute_error()
+    solver = MOI.Utilities.Model{Float64}()
+    model = POI.Optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            MOI.Bridges.full_bridge_optimizer(solver, Float64),
+        ),
+    )
+    MOI.supports(
+        model,
+        ConstraintAttributeForTest(),
+        MOI.ConstraintIndex{MOI.VariableIndex,MOI.LessThan{Float64}},
+    )
+    @test_throws MOI.InvalidIndex MOI.set(
+        model,
+        ConstraintAttributeForTest(),
+        MOI.ConstraintIndex{MOI.VariableIndex,MOI.LessThan{Float64}}(1),
+        1.0,
+    )
+    return
+end
+
+function test_name_from_bound()
+    solver = MOI.Utilities.Model{Float64}()
+    model = POI.Optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            MOI.Bridges.full_bridge_optimizer(solver, Float64),
+        ),
+    )
+    x = MOI.add_variable(model)
+    p, pc = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
+    ci = MOI.add_constraint(model, x + 1.4 * p, MOI.LessThan(10.0))
+    name = MOI.get(model, MOI.ConstraintName(), ci)
+    @test name == "ParametricBound_MathOptInterface.LessThan{Float64}_"
+    MOI.set(model, MOI.VariableName(), x, "x_var")
+    name = MOI.get(model, MOI.ConstraintName(), ci)
+    @test name == "ParametricBound_MathOptInterface.LessThan{Float64}_x_var"
+    return
+end
+
+function test_get_constraint_set()
+    model = POI.Optimizer(MOI.Utilities.Model{Float64}())
+    x = MOI.add_variable(model)
+    p, pc = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
+    ci = MOI.add_constraint(model, x + 1.4 * p, MOI.LessThan(10.0))
+    set = MOI.get(model, MOI.ConstraintSet(), ci)
+    @test set isa MOI.LessThan{Float64}
+    return
+end
+
+function test_quadratic_variable_parameter()
+    # model = POI.Optimizer(MOI.Utilities.Model{Float64}())
+    solver = Ipopt.Optimizer()
+    MOI.set(solver, MOI.Silent(), true)
+    model = POI.Optimizer(
+        MOI.Utilities.CachingOptimizer(
+            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+            MOI.Bridges.full_bridge_optimizer(solver, Float64),
+        ),
+    )
+    x = MOI.add_variable(model)
+    p, pc = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
+    f = 1.0 * x * x - 2.0 * p * p
+    ci = MOI.add_constraint(model, MOI.Utilities.vectorize([f]), MOI.Zeros(1))
+    MOI.set(model, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+    obj_func = 1.0 * x + 2.0 * p
+    MOI.set(model, MOI.ObjectiveFunction{typeof(obj_func)}(), obj_func)
+    MOI.optimize!(model)
+    @test MOI.get(model, MOI.TerminationStatus()) == MOI.LOCALLY_SOLVED
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ sqrt(2) atol = 1e-4
+    MOI.set(model, MOI.ConstraintSet(), pc, MOI.Parameter(2.0))
+    MOI.optimize!(model)
+    @test MOI.get(model, MOI.TerminationStatus()) == MOI.LOCALLY_SOLVED
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ sqrt(8) atol = 1e-4
+    MOI.set(model, MOI.ConstraintSet(), pc, MOI.Parameter(3.0))
+    MOI.optimize!(model)
+    @test MOI.get(model, MOI.TerminationStatus()) == MOI.LOCALLY_SOLVED
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ sqrt(18) atol = 1e-4
+    return
+end
+
+function test_error_modify_quadratic_objective()
+    model = POI.Optimizer(MOI.Utilities.Model{Float64}())
+    x = MOI.add_variable(model)
+    y = MOI.add_variable(model)
+    p, pc = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
+    quad_func = MOI.ScalarQuadraticFunction(
+        MOI.ScalarQuadraticTerm.([1.0, 1.0], [x, p], [x, x]),
+        MOI.ScalarAffineTerm.([2.0, 2.0], [x, y]),
+        0.0,
+    )
+    MOI.set(
+        model,
+        MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
+        quad_func,
+    )
+    @test_throws ErrorException MOI.modify(
+        model,
+        MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
+        MOI.ScalarConstantChange{Float64}(1.1),
+    )
+    @test_throws ErrorException MOI.modify(
+        model,
+        MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
+        MOI.ScalarCoefficientChange{Float64}(x, 2.2),
+    )
+    return
+end
+
+function test_list_of_parametric_constraint_types_present_conflict()
+    inner = MOI.Utilities.Model{Float64}()
+    mock = MOI.Utilities.MockOptimizer(inner; supports_names = false)
+    model = POI.Optimizer(MOI.Bridges.full_bridge_optimizer(mock, Float64))
+    x = MOI.add_variable(model)
+    x_ci = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    p, p_ci = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    f = MOI.Utilities.vectorize([1.0 * x + 2.0 * p])
+    ci = MOI.add_constraint(model, f, MOI.Nonpositives(1))
+    @test MOI.get(model, POI.ListOfParametricConstraintTypesPresent()) ==
+          Tuple{DataType,DataType,DataType}[(
+        MOI.VectorAffineFunction{Float64},
+        MOI.Nonpositives,
+        POI.ParametricVectorAffineFunction{Float64},
+    )]
+    return
+end
+
+function test_get_constraint_function_vector()
+    model = POI.Optimizer(MOI.Utilities.Model{Float64}())
+    x = MOI.add_variable(model)
+    p, pc = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
+    f = 1.0 * x * x - 2.0 * p * p
+    ci = MOI.add_constraint(model, MOI.Utilities.vectorize([f]), MOI.Zeros(1))
+    f2 = MOI.get(model, MOI.ConstraintFunction(), ci)
+    @test canonical_compare(MOI.Utilities.vectorize([f]), f2)
+    return
+end
+
+function test_multiplicative_dual_error()
+    model = POI.Optimizer(MOI.Utilities.Model{Float64}())
+    x = MOI.add_variable(model)
+    p, pc = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
+    f = 1.0 * x * p
+    ci = MOI.add_constraint(model, f, MOI.EqualTo{Float64}(0.0))
+    @test_throws ErrorException MOI.get(model, MOI.ConstraintDual(), pc)
+    return
+end
