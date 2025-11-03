@@ -7,7 +7,7 @@ function _is_variable(v::MOI.VariableIndex)
 end
 
 function _is_parameter(v::MOI.VariableIndex)
-    return PARAMETER_INDEX_THRESHOLD < v.value < PARAMETER_INDEX_THRESHOLD_MAX
+    return PARAMETER_INDEX_THRESHOLD < v.value <= PARAMETER_INDEX_THRESHOLD_MAX
 end
 
 function _has_parameters(f::MOI.ScalarAffineFunction{T}) where {T}
@@ -1042,8 +1042,6 @@ function MOI.add_constraint(
             model.constraint_outer_to_inner[outer_ci] = inner_ci
             model.quadratic_constraint_cache_set[inner_ci] = set
             return outer_ci
-        else
-            return _add_constraint_direct_and_cache_map!(model, f, set)
         end
         return _add_constraint_direct_and_cache_map!(model, f, set)
     else
@@ -1536,8 +1534,12 @@ function MOI.get(
     return MOI.get(model.optimizer, attr)
 end
 
-function MOI.supports(model::Optimizer, attr::MOI.AbstractConstraintAttribute)
-    return MOI.supports(model.optimizer, attr)
+function MOI.supports(
+    model::Optimizer,
+    attr::MOI.AbstractConstraintAttribute,
+    ::Type{T},
+) where {T}
+    return MOI.supports(model.optimizer, attr, T)
 end
 
 function MOI.get(
