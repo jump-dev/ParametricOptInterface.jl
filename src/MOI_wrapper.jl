@@ -1363,7 +1363,16 @@ function MOI.set(model::Optimizer, ::MOI.Name, name::String)
 end
 
 function MOI.get(model::Optimizer, ::MOI.ListOfModelAttributesSet)
-    return MOI.get(model.optimizer, MOI.ListOfModelAttributesSet())
+    list = MOI.get(model.optimizer, MOI.ListOfModelAttributesSet())
+    # find subtypes of ObjectiveFunction and replace them with the correct one
+    for (i, attr) in enumerate(list)
+        if typeof(attr) <: MOI.ObjectiveFunction
+            tp = MOI.get(model, MOI.ObjectiveFunctionType())
+            list[i] = MOI.ObjectiveFunction{tp}()
+            break
+        end
+    end
+    return list
 end
 
 function MOI.get(model::Optimizer, ::MOI.ListOfVariableAttributesSet)
