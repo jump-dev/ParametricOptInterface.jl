@@ -1756,12 +1756,12 @@ function test_print()
     @variable(model, p in MOI.Parameter(1.0))
     @variable(model, x)
     @constraint(model, con, x >= p + p * p + p * x)
-    @objective(model, Min, 1 + 2x)
+    @objective(model, Min, 1 + 2x + 0.1p + 1.0p^2)
     filename = tempdir() * "/test.lp"
     write_to_file(model, filename)
     @test readlines(filename) == [
         "minimize",
-        "obj: 1 + 2 x",
+        "obj: 1 + 2 x + 0.1 p + [ 2 p ^ 2 ]/2",
         "subject to",
         "con: 1 x - 1 p + [ -1 p * x - 1 p ^ 2 ] >= 0",
         "Bounds",
