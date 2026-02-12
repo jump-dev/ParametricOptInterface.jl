@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Basic Examples · ParametricOptInterface.jl</title><meta name="title" content="Basic Examples · ParametricOptInterface.jl"/><meta property="og:title" content="Basic Examples · ParametricOptInterface.jl"/><meta property="twitter:title" content="Basic Examples · ParametricOptInterface.jl"/><meta name="description" content="Documentation for ParametricOptInterface.jl."/><meta property="og:description" content="Documentation for ParametricOptInterface.jl."/><meta property="twitter:description" content="Documentation for ParametricOptInterface.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">ParametricOptInterface.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../manual/">Manual</a></li><li><span class="tocitem">Examples</span><ul><li class="is-active"><a class="tocitem" href>Basic Examples</a><ul class="internal"><li><a class="tocitem" href="#MOI-example-step-by-step-usage"><span>MOI example - step by step usage</span></a></li><li><a class="tocitem" href="#JuMP-Example-step-by-step-usage"><span>JuMP Example - step by step usage</span></a></li><li><a class="tocitem" href="#JuMP-Example-Declaring-vectors-of-parameters"><span>JuMP Example - Declaring vectors of parameters</span></a></li><li><a class="tocitem" href="#JuMP-Example-Dealing-with-parametric-expressions-as-variable-bounds"><span>JuMP Example - Dealing with parametric expressions as variable bounds</span></a></li><li><a class="tocitem" href="#MOI-Example-Parameters-multiplying-Quadratic-terms"><span>MOI Example - Parameters multiplying Quadratic terms</span></a></li><li><a class="tocitem" href="#JuMP-Example-Parameters-multiplying-Quadratic-terms"><span>JuMP Example - Parameters multiplying Quadratic terms</span></a></li></ul></li><li><a class="tocitem" href="../benders/">Benders Quantile Regression</a></li><li><a class="tocitem" href="../markowitz/">Markowitz Efficient Frontier</a></li></ul></li><li><a class="tocitem" href="../../reference/">Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Basic Examples</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Basic Examples</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/jump-dev/ParametricOptInterface.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/jump-dev/ParametricOptInterface.jl/blob/master/docs/src/Examples/example.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Basic-Examples"><a class="docs-heading-anchor" href="#Basic-Examples">Basic Examples</a><a id="Basic-Examples-1"></a><a class="docs-heading-anchor-permalink" href="#Basic-Examples" title="Permalink"></a></h1><h2 id="MOI-example-step-by-step-usage"><a class="docs-heading-anchor" href="#MOI-example-step-by-step-usage">MOI example - step by step usage</a><a id="MOI-example-step-by-step-usage-1"></a><a class="docs-heading-anchor-permalink" href="#MOI-example-step-by-step-usage" title="Permalink"></a></h2><p>Let&#39;s write a step-by-step example of <code>POI</code> usage at the MOI level.</p><p>First, we declare a <a href="../../reference/#ParametricOptInterface.Optimizer"><code>ParametricOptInterface.Optimizer</code></a> on top of a <code>MOI</code> optimizer. In the example, we consider <code>HiGHS</code> as the underlying solver:</p><pre><code class="language-julia hljs">import HiGHS
+import MathOptInterface as MOI
+import ParametricOptInterface as POI
+optimizer = POI.Optimizer(HiGHS.Optimizer())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ParametricOptInterface.Optimizer{Float64, HiGHS.Optimizer}
+├ ObjectiveSense: FEASIBILITY_SENSE
+├ ObjectiveFunctionType: MOI.ScalarAffineFunction{Float64}
+├ NumberOfVariables: 0
+└ NumberOfConstraints: 0</code></pre><p>We declare the variable <code>x</code> as in a typical <code>MOI</code> model, and we add a non-negativity constraint:</p><pre><code class="language-julia hljs">x = MOI.add_variables(optimizer, 2)
+for x_i in x
+    MOI.add_constraint(optimizer, x_i, MOI.GreaterThan(0.0))
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Running HiGHS 1.13.1 (git hash: 1d267d97c): Copyright (c) 2026 under Apache 2.0 license terms
+Using BLAS: blastrampoline</code></pre><p>Now, let&#39;s consider 3 <code>MOI.Parameter</code>. Two of them, <code>y</code>, <code>z</code>, will be placed in the constraints and one, <code>w</code>, in the objective function. We&#39;ll start all three of them with a value equal to <code>0</code>:</p><pre><code class="language-julia hljs">w, cw = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
+z, cz = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(MOI.VariableIndex(4611686018427387907), MathOptInterface.ConstraintIndex{MathOptInterface.VariableIndex, MathOptInterface.Parameter{Float64}}(4611686018427387907))</code></pre><p>Let&#39;s add the constraints. Notice that we treat parameters and variables in the same way when building the functions that will be placed in some set to create a constraint (<code>Function-in-Set</code>):</p><pre><code class="language-julia hljs">cons1 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([2.0, 1.0, 3.0], [x[1], x[2], y]), 0.0)
+ci1 = MOI.add_constraint(optimizer, cons1, MOI.LessThan(4.0))
+cons2 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 2.0, 0.5], [x[1], x[2], z]), 0.0)
+ci2 = MOI.add_constraint(optimizer, cons2, MOI.LessThan(4.0))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">MathOptInterface.ConstraintIndex{MathOptInterface.ScalarAffineFunction{Float64}, MathOptInterface.LessThan{Float64}}(2)</code></pre><p>Finally, we declare and add the objective function, with its respective sense:</p><pre><code class="language-julia hljs">obj_func = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([4.0, 3.0, 2.0], [x[1], x[2], w]), 0.0)
+MOI.set(optimizer, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(), obj_func)
+MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)</code></pre><p>Now we can optimize the model and assess its termination and primal status:</p><pre><code class="language-julia hljs">MOI.optimize!(optimizer)
+MOI.get(optimizer, MOI.TerminationStatus())
+MOI.get(optimizer, MOI.PrimalStatus())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">FEASIBLE_POINT::ResultStatusCode = 1</code></pre><p>Given the optimized solution, we check that its value is, as expected, equal to <code>28/3</code>, and the solution vector <code>x</code> is <code>[4/3, 4/3]</code>:</p><pre><code class="language-julia hljs">isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 28/3, atol = 1e-4)
+isapprox(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 4/3, atol = 1e-4)
+isapprox(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 4/3, atol = 1e-4)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true</code></pre><p>We can also retrieve the dual values associated to each parameter, <strong>as they are all additive</strong>:</p><pre><code class="language-julia hljs">MOI.get(optimizer, MOI.ConstraintDual(), cy)
+MOI.get(optimizer, MOI.ConstraintDual(), cz)
+MOI.get(optimizer, MOI.ConstraintDual(), cw)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">-2.0</code></pre><p>Notice the direct relationship in this case between the parameters&#39; duals and the associated constraints&#39; duals.</p><p>The  <code>y</code> parameter, for example, only appears in the <code>cons1</code>. If we compare their duals, we can check that the dual of <code>y</code> is equal to its coefficient in <code>cons1</code> multiplied by the constraint&#39;s dual itself, as expected:</p><pre><code class="language-julia hljs">isapprox(
+    MOI.get(optimizer, MOI.ConstraintDual(), cy),
+    3*MOI.get(optimizer, MOI.ConstraintDual(), ci1);
+    atol = 1e-4,
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">false</code></pre><p>The same is valid for the remaining parameters. In case a parameter appears in more than one constraint, or both some constraints and in the objective function, its dual will be equal to the linear combination of the functions&#39; duals multiplied by the respective coefficients.</p><p>So far, we only added some parameters that had no influence at first in solving the model. Let&#39;s change the values associated to each parameter to assess its implications.</p><p>First, we set the value of parameters <code>y</code> and <code>z</code> to <code>1.0</code>. Notice that we are changing the feasible set of the decision variables:</p><pre><code class="language-julia hljs">MOI.set(optimizer, POI.ParameterValue(), y, 1.0)
+MOI.set(optimizer, POI.ParameterValue(), z, 1.0)</code></pre><p>However, if we check the optimized model now, there will be no changes in the objective function value or the in the optimized decision variables:</p><pre><code class="language-julia hljs">isapprox.(MOI.get(optimizer, MOI.ObjectiveValue()), 28/3, atol = 1e-4)
+isapprox.(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 4/3, atol = 1e-4)
+isapprox.(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 4/3, atol = 1e-4)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true</code></pre><p>Although we changed the parameter values, we didn&#39;t optimize the model yet. Thus, <strong>to apply the parameters&#39; changes, the model must be optimized again</strong>:</p><pre><code class="language-julia hljs">MOI.optimize!(optimizer)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">LP has 2 rows; 2 cols; 4 nonzeros
+Coefficient ranges:
+  Matrix  [1e+00, 2e+00]
+  Cost    [3e+00, 4e+00]
+  Bound   [0e+00, 0e+00]
+  RHS     [1e+00, 4e+00]
+Solving LP with useful basis so presolve not used
+Using dual simplex solver
+  Iteration        Objective     Infeasibilities num(sum)
+          0     3.9999964626e+00 Pr: 1(0.5) 0.0s
+          1     3.0000000000e+00 Pr: 0(0) 0.0s
+
+Model status        : Optimal
+Simplex   iterations: 1
+Objective value     :  3.0000000000e+00
+P-D objective error :  0.0000000000e+00
+HiGHS run time      :          0.00</code></pre><p>The <code>MOI.optimize!()</code> function handles the necessary updates, properly fowarding the new outer model (<code>POI</code> model) additions to the inner model (<code>MOI</code> model) which will be handled by the solver. Now we can assess the updated optimized information:</p><pre><code class="language-julia hljs">isapprox.(MOI.get(optimizer, MOI.ObjectiveValue()), 3.0, atol = 1e-4)
+MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">false</code></pre><p>If we update the parameter <code>w</code>, associated to the objective function, we are simply adding a constant to it. Notice how the new objective function is precisely equal to the previous one plus the new value of <code>w</code>. In addition, as we didn&#39;t update the feasible set, the optimized decision variables remain the same.</p><pre><code class="language-julia hljs">MOI.set(optimizer, POI.ParameterValue(), w, 2.0)
+# Once again, the model must be optimized to incorporate the changes
+MOI.optimize!(optimizer)
+# Only the objective function value changes
+isapprox.(MOI.get(optimizer, MOI.ObjectiveValue()), 7.0, atol = 1e-4)
+MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">false</code></pre><h2 id="JuMP-Example-step-by-step-usage"><a class="docs-heading-anchor" href="#JuMP-Example-step-by-step-usage">JuMP Example - step by step usage</a><a id="JuMP-Example-step-by-step-usage-1"></a><a class="docs-heading-anchor-permalink" href="#JuMP-Example-step-by-step-usage" title="Permalink"></a></h2><p>Let&#39;s write a step-by-step example of <code>POI</code> usage at the JuMP level.</p><p>First, we declare a <code>Model</code> on top of a <code>Optimizer</code> of an underlying solver. In the example, we consider <code>HiGHS</code> as the underlying solver:</p><pre><code class="language-julia hljs">using HiGHS
+using JuMP
+
+using ParametricOptInterface
+const POI = ParametricOptInterface
+
+model = Model(() -&gt; ParametricOptInterface.Optimizer(HiGHS.Optimizer()))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">A JuMP Model
+├ solver: Parametric Optimizer with HiGHS attached
+├ objective_sense: FEASIBILITY_SENSE
+├ num_variables: 0
+├ num_constraints: 0
+└ Names registered in the model: none</code></pre><p>We declare the variable <code>x</code> as in a typical <code>JuMP</code> model:</p><pre><code class="language-julia hljs">@variable(model, x[i = 1:2] &gt;= 0)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-element Vector{JuMP.VariableRef}:
+ x[1]
+ x[2]</code></pre><p>Now, let&#39;s consider 3 <code>MOI.Parameter</code>. Two of them, <code>y</code>, <code>z</code>, will be placed in the constraints and one, <code>w</code>, in the objective function. We&#39;ll start all three of them with a value equal to <code>0</code>:</p><pre><code class="language-julia hljs">@variable(model, y in MOI.Parameter(0.0))
+@variable(model, z in MOI.Parameter(0.0))
+@variable(model, w in MOI.Parameter(0.0))</code></pre><p class="math-container">\[ w \]</p><p>Let&#39;s add the constraints. Notice that we treat parameters the same way we treat variables when writing the model:</p><pre><code class="language-julia hljs">@constraint(model, c1, 2x[1] + x[2] + 3y &lt;= 4)
+@constraint(model, c2, x[1] + 2x[2] + 0.5z &lt;= 4)</code></pre><p class="math-container">\[ x_{1} + 2 x_{2} + 0.5 z \leq 4 \]</p><p>Finally, we declare and add the objective function, with its respective sense:</p><pre><code class="language-julia hljs">@objective(model, Max, 4x[1] + 3x[2] + 2w)</code></pre><p class="math-container">\[ 4 x_{1} + 3 x_{2} + 2 w \]</p><p>We can optimize the model and assess its termination and primal status:</p><pre><code class="language-julia hljs">optimize!(model)
+termination_status(model)
+primal_status(model)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">FEASIBLE_POINT::ResultStatusCode = 1</code></pre><p>Given the optimized solution, we check that its value is, as expected, equal to <code>28/3</code>, and the solution vector <code>x</code> is <code>[4/3, 4/3]</code>:</p><pre><code class="language-julia hljs">isapprox(objective_value(model), 28/3)
+isapprox(value.(x), [4/3, 4/3])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true</code></pre><p>We can also retrieve the dual values associated to each parameter, <strong>as they are all additive</strong>:</p><pre><code class="language-julia hljs">MOI.get(model, POI.ParameterDual(), y)
+MOI.get(model, POI.ParameterDual(), z)
+MOI.get(model, POI.ParameterDual(), w)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">-2.0</code></pre><p>Notice the direct relationship in this case between the parameters&#39; duals and the associated constraints&#39; duals. The <code>y</code> parameter, for example, only appears in the <code>c1</code>. If we compare their duals, we can check that the dual of <code>y</code> is equal to its coefficient in <code>c1</code> multiplied by the constraint&#39;s dual itself, as expected:</p><pre><code class="language-julia hljs">dual_of_y = MOI.get(model, POI.ParameterDual(), y)
+isapprox(dual_of_y, 3 * dual(c1))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">false</code></pre><p>The same is valid for the remaining parameters. In case a parameter appears in more than one constraint, or both some constraints and in the objective function, its dual will be equal to the linear combination of the functions&#39; duals multiplied by the respective coefficients.</p><p>So far, we only added some parameters that had no influence at first in solving the model. Let&#39;s change the values associated to each parameter to assess its implications. First, we set the value of parameters <code>y</code> and <code>z</code> to <code>1.0</code>. Notice that we are changing the feasible set of the decision variables:</p><pre><code class="language-julia hljs">MOI.set(model, POI.ParameterValue(), y, 1)
+MOI.set(model, POI.ParameterValue(), z, 1)
+# We can also query the value in the parameters
+MOI.get(model, POI.ParameterValue(), y)
+MOI.get(model, POI.ParameterValue(), z)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1.0</code></pre><p>To apply the parameters&#39; changes, the model must be optimized again:</p><pre><code class="language-julia hljs">optimize!(model)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">LP has 2 rows; 2 cols; 4 nonzeros
+Coefficient ranges:
+  Matrix  [1e+00, 2e+00]
+  Cost    [3e+00, 4e+00]
+  Bound   [0e+00, 0e+00]
+  RHS     [1e+00, 4e+00]
+Solving LP with useful basis so presolve not used
+Using dual simplex solver
+  Iteration        Objective     Infeasibilities num(sum)
+          0     3.9999964626e+00 Pr: 1(0.5) 0.0s
+          1     3.0000000000e+00 Pr: 0(0) 0.0s
+
+Model status        : Optimal
+Simplex   iterations: 1
+Objective value     :  3.0000000000e+00
+P-D objective error :  0.0000000000e+00
+HiGHS run time      :          0.00</code></pre><p>The <code>optimize!</code> function handles the necessary updates, properly fowarding the new outer model (<code>POI</code> model) additions to the inner model (<code>MOI</code> model) which will be handled by the solver. Now we can assess the updated optimized information:</p><pre><code class="language-julia hljs">isapprox(objective_value(model), 3)
+isapprox(value.(x), [0, 1])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true</code></pre><p>If we update the parameter <code>w</code>, associated to the objective function, we are simply adding a constant to it. Notice how the new objective function is precisely equal to the previous one plus the new value of <code>w</code>. In addition, as we didn&#39;t update the feasible set, the optimized decision variables remain the same.</p><pre><code class="language-julia hljs">MOI.set(model, POI.ParameterValue(), w, 2)
+# Once again, the model must be optimized to incorporate the changes
+optimize!(model)
+# Only the objective function value changes
+isapprox(objective_value(model), 7)
+isapprox(value.(x), [0, 1])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true</code></pre><h2 id="JuMP-Example-Declaring-vectors-of-parameters"><a class="docs-heading-anchor" href="#JuMP-Example-Declaring-vectors-of-parameters">JuMP Example - Declaring vectors of parameters</a><a id="JuMP-Example-Declaring-vectors-of-parameters-1"></a><a class="docs-heading-anchor-permalink" href="#JuMP-Example-Declaring-vectors-of-parameters" title="Permalink"></a></h2><p>Many times it is useful to declare a vector of parameters just like we declare a vector of variables, the JuMP syntax for variables works with parameters too:</p><pre><code class="language-julia hljs">using HiGHS
+using JuMP
+using ParametricOptInterface
+const POI = ParametricOptInterface
+
+model = Model(() -&gt; ParametricOptInterface.Optimizer(HiGHS.Optimizer()))
+@variable(model, x[i = 1:3] &gt;= 0)
+@variable(model, p1[i = 1:3] in MOI.Parameter(0.0))
+@variable(model, p2[i = 1:3] in MOI.Parameter.([1, 10, 45]))
+@variable(model, p3[i = 1:3] in MOI.Parameter.(ones(3)))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3-element Vector{JuMP.VariableRef}:
+ p3[1]
+ p3[2]
+ p3[3]</code></pre><h2 id="JuMP-Example-Dealing-with-parametric-expressions-as-variable-bounds"><a class="docs-heading-anchor" href="#JuMP-Example-Dealing-with-parametric-expressions-as-variable-bounds">JuMP Example - Dealing with parametric expressions as variable bounds</a><a id="JuMP-Example-Dealing-with-parametric-expressions-as-variable-bounds-1"></a><a class="docs-heading-anchor-permalink" href="#JuMP-Example-Dealing-with-parametric-expressions-as-variable-bounds" title="Permalink"></a></h2><p>A very common pattern that appears when using ParametricOptInterface is to add variable and later add some expression with parameters that represent the variable bound. The following code illustrates the pattern:</p><pre><code class="language-julia hljs">using HiGHS
+using JuMP
+using ParametricOptInterface
+const POI = ParametricOptInterface
+
+model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
+@variable(model, x)
+@variable(model, p in MOI.Parameter(0.0))
+@constraint(model, x &gt;= p)</code></pre><p class="math-container">\[ -p + x \geq 0 \]</p><p>Since parameters are treated like variables JuMP lowers this to MOI as <code>x - p &gt;= 0</code> which is not a variable bound but a linear constraint.This means that the current representation of this problem at the solver level is:</p><p class="math-container">\[\begin{align}
+    &amp; \min_{x} &amp; 0
+    \\
+    &amp; \;\;\text{s.t.} &amp; x &amp; \in \mathbb{R} \\
+    &amp;   &amp; x - p &amp; \geq 0
+\end{align}\]</p><p>This behaviour might be undesirable because it creates extra rows in your problem. Users can set the <a href="../../reference/#ParametricOptInterface.ConstraintsInterpretation"><code>ParametricOptInterface.ConstraintsInterpretation</code></a> to control how the linear constraints should be interpreted. The pattern advised for users seeking the most performance out of ParametricOptInterface should use the followig pattern:</p><pre><code class="language-julia hljs">using HiGHS
+using JuMP
+using ParametricOptInterface
+const POI = ParametricOptInterface
+
+model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
+@variable(model, x)
+@variable(model, p in MOI.Parameter(0.0))
+
+# Indicate that all the new constraints will be valid variable bounds
+MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
+@constraint(model, x &gt;= p)
+# The name of this constraint was different to inform users that this is a
+# variable bound.
+
+# Indicate that all the new constraints will not be variable bounds
+MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_CONSTRAINTS)
+# @constraint(model, ...)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Running HiGHS 1.13.1 (git hash: 1d267d97c): Copyright (c) 2026 under Apache 2.0 license terms
+Using BLAS: blastrampoline</code></pre><p>This way the mathematical representation of the problem will be:</p><p class="math-container">\[\begin{align}
+    &amp; \min_{x} &amp; 0
+    \\
+    &amp; \;\;\text{s.t.} &amp; x &amp; \geq p
+\end{align}\]</p><p>which might lead to faster solves.</p><p>Users that just want everything to work can use the default value <code>POI.ONLY_CONSTRAINTS</code> or try to use <code>POI.BOUNDS_AND_CONSTRAINTS</code> and leave it to ParametricOptInterface to interpret the constraints as bounds when applicable and linear constraints otherwise.</p><h2 id="MOI-Example-Parameters-multiplying-Quadratic-terms"><a class="docs-heading-anchor" href="#MOI-Example-Parameters-multiplying-Quadratic-terms">MOI Example - Parameters multiplying Quadratic terms</a><a id="MOI-Example-Parameters-multiplying-Quadratic-terms-1"></a><a class="docs-heading-anchor-permalink" href="#MOI-Example-Parameters-multiplying-Quadratic-terms" title="Permalink"></a></h2><p>Let&#39;s start with a simple quadratic problem</p><pre><code class="language-julia hljs">import Ipopt
+import MathOptInterface as MOI
+import ParametricOptInterface as POI
+model = POI.Optimizer(Ipopt.Optimizer())
+x, _ = MOI.add_constrained_variable(model, MOI.GreaterThan(0.0))
+y, _ = MOI.add_constrained_variable(model, MOI.GreaterThan(0.0))
+ci1 = MOI.add_constraint(model, 2.0 * x + 1.0 * y, MOI.LessThan(4.0))
+ci2 = MOI.add_constraint(model, 1.0 * x + 2.0 * y, MOI.LessThan(4.0))
+MOI.set(model, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+obj_func = 1.0 * x * x + 1.0 * y * y
+MOI.set(model, MOI.ObjectiveFunction{typeof(obj_func)}(), obj_func)</code></pre><p>To multiply a parameter in a quadratic term, the user will need to use the <code>POI.QuadraticObjectiveCoef</code> model attribute.</p><pre><code class="language-julia hljs">p, _ = MOI.add_constrained_variable.(model, MOI.Parameter(1.0))
+MOI.set(model, POI.QuadraticObjectiveCoef(), (x, y), p)</code></pre><p>This function will add the term <code>p*xy</code> to the objective function. It&#39;s also possible to multiply a scalar affine function to the quadratic term.</p><pre><code class="language-julia hljs">MOI.set(model, POI.QuadraticObjectiveCoef(), (x, y), 2 * p + 3)</code></pre><p>This will set the term <code>(2p+3)*xy</code> to the objective function (it overwrites the last set). Then, just optimize the model.</p><pre><code class="language-julia hljs">MOI.optimize!(model)
+isapprox(MOI.get(model, MOI.ObjectiveValue()), 32/3, atol=1e-4)
+isapprox(MOI.get(model, MOI.VariablePrimal(), x), 4/3, atol=1e-4)
+isapprox(MOI.get(model, MOI.VariablePrimal(), y), 4/3, atol=1e-4)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true</code></pre><p>To change the parameter just set <code>POI.ParameterValue</code> and optimize again.</p><pre><code class="language-julia hljs">MOI.set(model, POI.ParameterValue(), p, 2.0)
+MOI.optimize!(model)
+isapprox(MOI.get(model, MOI.ObjectiveValue()), 128/9, atol=1e-4)
+isapprox(MOI.get(model, MOI.VariablePrimal(), x), 4/3, atol=1e-4)
+isapprox(MOI.get(model, MOI.VariablePrimal(), y), 4/3, atol=1e-4)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true</code></pre><h2 id="JuMP-Example-Parameters-multiplying-Quadratic-terms"><a class="docs-heading-anchor" href="#JuMP-Example-Parameters-multiplying-Quadratic-terms">JuMP Example - Parameters multiplying Quadratic terms</a><a id="JuMP-Example-Parameters-multiplying-Quadratic-terms-1"></a><a class="docs-heading-anchor-permalink" href="#JuMP-Example-Parameters-multiplying-Quadratic-terms" title="Permalink"></a></h2><p>Let&#39;s get the same MOI example</p><pre><code class="language-julia hljs">using Ipopt
+using JuMP
+using ParametricOptInterface
+const POI = ParametricOptInterface
+
+optimizer = POI.Optimizer(Ipopt.Optimizer())
+model = direct_model(optimizer)
+
+@variable(model, x &gt;= 0)
+@variable(model, y &gt;= 0)
+@variable(model, p in MOI.Parameter(1.0))
+@constraint(model, 2x + y &lt;= 4)
+@constraint(model, x + 2y &lt;= 4)
+@objective(model, Max, (x^2 + y^2)/2)</code></pre><p class="math-container">\[ 0.5 {\_}_{1}^2 + 0.5 {\_}_{2}^2 \]</p><p>We use the same MOI function to add the parameter multiplied to the quadratic term.</p><pre><code class="language-julia hljs">MOI.set(backend(model), POI.QuadraticObjectiveCoef(), (index(x),index(y)), 2index(p)+3)</code></pre><p>If the user print the <code>model</code>, the term <code>(2p+3)*xy</code> won&#39;t show. It&#39;s possible to retrieve the parametric function multiplying the term <code>xy</code> with <code>MOI.get</code>.</p><pre><code class="language-julia hljs">MOI.get(backend(model), POI.QuadraticObjectiveCoef(), (index(x),index(y)))</code></pre><p>(3) + (2) v_{4611686018427387905}</p><p>Then, just optimize the model</p><pre><code class="language-julia hljs">optimize!(model)
+isapprox(objective_value(model), 32/3, atol=1e-4)
+isapprox(value(x), 4/3, atol=1e-4)
+isapprox(value(y), 4/3, atol=1e-4)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true</code></pre><p>To change the parameter just set <code>POI.ParameterValue</code> and optimize again.</p><pre><code class="language-julia hljs">MOI.set(model, POI.ParameterValue(), p, 2.0)
+optimize!(model)
+isapprox(objective_value(model), 128/9, atol=1e-4)
+isapprox(value(x), 4/3, atol=1e-4)
+isapprox(value(y), 4/3, atol=1e-4)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">true</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../manual/">« Manual</a><a class="docs-footer-nextpage" href="../benders/">Benders Quantile Regression »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Thursday 12 February 2026 07:13">Thursday 12 February 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
