@@ -3,6 +3,34 @@
 # Use of this source code is governed by an MIT-style license that can be found
 # in the LICENSE.md file or at https://opensource.org/licenses/MIT.
 
+module TestJuMPTests
+
+using Test
+using JuMP
+
+import HiGHS
+import Ipopt
+import LinearAlgebra
+import ParametricOptInterface as POI
+import SCS
+
+const ATOL = 1e-4
+
+function runtests()
+    for name in names(@__MODULE__; all = true)
+        if startswith("$name", "test_")
+            @testset "$(name)" begin
+                getfield(@__MODULE__, name)()
+            end
+        end
+    end
+    return
+end
+
+function canonical_compare(f1, f2)
+    return MOI.Utilities.canonical(f1) ≈ MOI.Utilities.canonical(f2)
+end
+
 function test_jump_direct_affine_parameters()
     optimizer = POI.Optimizer(HiGHS.Optimizer())
     model = direct_model(optimizer)
@@ -446,7 +474,7 @@ function test_jump_direct_get_parameter_value()
 end
 
 function test_jump_get_parameter_value()
-    model = Model(() -> ParametricOptInterface.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
     @variable(model, x, lower_bound = 0.0, upper_bound = 10.0)
     @variable(model, y, binary = true)
     @variable(model, z, set = MOI.Parameter(10))
@@ -852,7 +880,7 @@ function test_jump_dual_delete_constraint_3()
 end
 
 function test_jump_nlp()
-    model = Model(() -> ParametricOptInterface.Optimizer(Ipopt.Optimizer()))
+    model = Model(() -> POI.Optimizer(Ipopt.Optimizer()))
     @variable(model, x)
     @variable(model, z in MOI.Parameter(10.0))
     @constraint(model, x >= z)
@@ -1814,3 +1842,7 @@ function test_ListOfConstraintAttributesSet()
     @test ret == []
     return
 end
+
+end # module
+
+TestJuMPTests.runtests()

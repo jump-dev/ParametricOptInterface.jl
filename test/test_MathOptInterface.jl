@@ -3,6 +3,74 @@
 # Use of this source code is governed by an MIT-style license that can be found
 # in the LICENSE.md file or at https://opensource.org/licenses/MIT.
 
+module TestMathOptInterfaceTests
+
+using Test
+
+import HiGHS
+import Ipopt
+import MathOptInterface as MOI
+import ParametricOptInterface as POI
+import SCS
+
+const ATOL = 1e-4
+
+function runtests()
+    for name in names(@__MODULE__; all = true)
+        if startswith("$name", "test_")
+            @testset "$(name)" begin
+                getfield(@__MODULE__, name)()
+            end
+        end
+    end
+    return
+end
+
+function canonical_compare(f1, f2)
+    return MOI.Utilities.canonical(f1) ≈ MOI.Utilities.canonical(f2)
+end
+
+MOI.Utilities.@model(
+    NoFreeVariablesModel,
+    (),
+    (),
+    (MOI.Nonnegatives,),
+    (),
+    (),
+    (),
+    (MOI.VectorOfVariables,),
+    (),
+)
+
+function MOI.supports_constraint(
+    ::NoFreeVariablesModel,
+    ::Type{MOI.VectorOfVariables},
+    ::Type{MOI.Reals},
+)
+    return false
+end
+
+function MOI.supports_add_constrained_variable(
+    ::NoFreeVariablesModel{T},
+    ::Type{MOI.LessThan{T}},
+) where {T}
+    return true
+end
+
+function MOI.supports_add_constrained_variables(
+    ::NoFreeVariablesModel,
+    ::Type{MOI.Nonnegatives},
+)
+    return true
+end
+
+function MOI.supports_add_constrained_variables(
+    ::NoFreeVariablesModel,
+    ::Type{MOI.Reals},
+)
+    return false
+end
+
 function test_basic_tests()
     """
         min x₁ + y
@@ -2160,8 +2228,6 @@ function test_constrained_variable_HiGHS()
     return
 end
 
-include("no_free_model.jl")
-
 function test_constrained_variable_no_free()
     optimizer = POI.Optimizer(NoFreeVariablesModel{Float64}())
     set = MOI.LessThan(1.0)
@@ -2387,3 +2453,7 @@ function test_multiplicative_dual_error()
     @test_throws ErrorException MOI.get(model, MOI.ConstraintDual(), pc)
     return
 end
+
+end # module
+
+TestMathOptInterfaceTests.runtests()
