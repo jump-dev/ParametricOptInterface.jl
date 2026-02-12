@@ -1,6 +1,7 @@
+# Copyright (c) 2020: Tomás Gutierrez and contributors
 #
-# Helpers
-#
+# Use of this source code is governed by an MIT-style license that can be found
+# in the LICENSE.md file or at https://opensource.org/licenses/MIT.
 
 function _is_variable(v::MOI.VariableIndex)
     return !_is_parameter(v)
