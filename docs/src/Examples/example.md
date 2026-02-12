@@ -4,20 +4,18 @@
 
 Let's write a step-by-step example of `POI` usage at the MOI level.
 
-First, we declare a [`ParametricOptInterface.Optimizer`](@ref) on top of a `MOI` optimizer. In the example, we consider `HiGHS` as the underlying solver:
+First, we declare a [`ParametricOptInterface.Optimizer`](@ref) on top of a `MOI`
+optimizer. In the example, we consider `HiGHS` as the underlying solver:
 
 ```@example moi1
-using HiGHS
-using MathOptInterface
-using ParametricOptInterface
-
-const MOI = MathOptInterface
-const POI = ParametricOptInterface
-
+import HiGHS
+import MathOptInterface as MOI
+import ParametricOptInterface as POI
 optimizer = POI.Optimizer(HiGHS.Optimizer())
 ```
 
-We declare the variable `x` as in a typical `MOI` model, and we add a non-negativity constraint:
+We declare the variable `x` as in a typical `MOI` model, and we add a
+non-negativity constraint:
 
 ```@example moi1
 x = MOI.add_variables(optimizer, 2)
@@ -26,7 +24,9 @@ for x_i in x
 end
 ```
 
-Now, let's consider 3 `MOI.Parameter`. Two of them, `y`, `z`, will be placed in the constraints and one, `w`, in the objective function. We'll start all three of them with a value equal to `0`:
+Now, let's consider 3 `MOI.Parameter`. Two of them, `y`, `z`, will be placed in
+the constraints and one, `w`, in the objective function. We'll start all three
+of them with a value equal to `0`:
 
 ```@example moi1
 w, cw = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
@@ -34,7 +34,9 @@ y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
 z, cz = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
 ```
 
-Let's add the constraints. Notice that we treat parameters and variables in the same way when building the functions that will be placed in some set to create a constraint (`Function-in-Set`):
+Let's add the constraints. Notice that we treat parameters and variables in the
+same way when building the functions that will be placed in some set to create a
+constraint (`Function-in-Set`):
 
 ```@example moi1
 cons1 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([2.0, 1.0, 3.0], [x[1], x[2], y]), 0.0)
@@ -59,7 +61,8 @@ MOI.get(optimizer, MOI.TerminationStatus())
 MOI.get(optimizer, MOI.PrimalStatus())
 ```
 
-Given the optimized solution, we check that its value is, as expected, equal to `28/3`, and the solution vector `x` is `[4/3, 4/3]`:
+Given the optimized solution, we check that its value is, as expected, equal to
+`28/3`, and the solution vector `x` is `[4/3, 4/3]`:
 
 ```@example moi1
 isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 28/3, atol = 1e-4)
@@ -67,7 +70,8 @@ isapprox(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 4/3, atol = 1e-4)
 isapprox(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 4/3, atol = 1e-4)
 ```
 
-We can also retrieve the dual values associated to each parameter, **as they are all additive**:
+We can also retrieve the dual values associated to each parameter,
+**as they are all additive**:
 
 ```@example moi1
 MOI.get(optimizer, MOI.ConstraintDual(), cy)
@@ -75,24 +79,40 @@ MOI.get(optimizer, MOI.ConstraintDual(), cz)
 MOI.get(optimizer, MOI.ConstraintDual(), cw)
 ```
 
-Notice the direct relationship in this case between the parameters' duals and the associated constraints' duals.
-The  `y` parameter, for example, only appears in the `cons1`. If we compare their duals, we can check that the dual of `y` is equal to its coefficient in `cons1` multiplied by the constraint's dual itself, as expected:
+Notice the direct relationship in this case between the parameters' duals and
+the associated constraints' duals.
+
+The  `y` parameter, for example, only appears in the `cons1`. If we compare
+their duals, we can check that the dual of `y` is equal to its coefficient in
+`cons1` multiplied by the constraint's dual itself, as expected:
 
 ```@example moi1
-isapprox(MOI.get(optimizer, MOI.ConstraintDual(), cy), 3*MOI.get(optimizer, MOI.ConstraintDual(), ci1), atol = 1e-4)
+isapprox(
+    MOI.get(optimizer, MOI.ConstraintDual(), cy),
+    3*MOI.get(optimizer, MOI.ConstraintDual(), ci1);
+    atol = 1e-4,
+)
 ```
 
-The same is valid for the remaining parameters. In case a parameter appears in more than one constraint, or both some constraints and in the objective function, its dual will be equal to the linear combination of the functions' duals multiplied by the respective coefficients.
+The same is valid for the remaining parameters. In case a parameter appears in
+more than one constraint, or both some constraints and in the objective
+function, its dual will be equal to the linear combination of the functions'
+duals multiplied by the respective coefficients.
 
-So far, we only added some parameters that had no influence at first in solving the model. Let's change the values associated to each parameter to assess its implications.
-First, we set the value of parameters `y` and `z` to `1.0`. Notice that we are changing the feasible set of the decision variables:
+So far, we only added some parameters that had no influence at first in solving
+the model. Let's change the values associated to each parameter to assess its
+implications.
+
+First, we set the value of parameters `y` and `z` to `1.0`. Notice that we are
+changing the feasible set of the decision variables:
 
 ```@example moi1
 MOI.set(optimizer, POI.ParameterValue(), y, 1.0)
 MOI.set(optimizer, POI.ParameterValue(), z, 1.0)
 ```
 
-However, if we check the optimized model now, there will be no changes in the objective function value or the in the optimized decision variables:
+However, if we check the optimized model now, there will be no changes in the
+objective function value or the in the optimized decision variables:
 
 ```@example moi1
 isapprox.(MOI.get(optimizer, MOI.ObjectiveValue()), 28/3, atol = 1e-4)
@@ -100,20 +120,28 @@ isapprox.(MOI.get(optimizer, MOI.VariablePrimal(), x[1]), 4/3, atol = 1e-4)
 isapprox.(MOI.get(optimizer, MOI.VariablePrimal(), x[2]), 4/3, atol = 1e-4)
 ```
 
-Although we changed the parameter values, we didn't optimize the model yet. Thus, **to apply the parameters' changes, the model must be optimized again**:
+Although we changed the parameter values, we didn't optimize the model yet.
+Thus, **to apply the parameters' changes, the model must be optimized again**:
 
 ```@example moi1
 MOI.optimize!(optimizer)
 ```
 
-The `MOI.optimize!()` function handles the necessary updates, properly fowarding the new outer model (`POI` model) additions to the inner model (`MOI` model) which will be handled by the solver. Now we can assess the updated optimized information:
+The `MOI.optimize!()` function handles the necessary updates, properly fowarding
+the new outer model (`POI` model) additions to the inner model (`MOI` model)
+which will be handled by the solver. Now we can assess the updated optimized
+information:
 
 ```@example moi1
 isapprox.(MOI.get(optimizer, MOI.ObjectiveValue()), 3.0, atol = 1e-4)
 MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]
 ```
 
-If we update the parameter `w`, associated to the objective function, we are simply adding a constant to it. Notice how the new objective function is precisely equal to the previous one plus the new value of `w`. In addition, as we didn't update the feasible set, the optimized decision variables remain the same.
+If we update the parameter `w`, associated to the objective function, we are
+simply adding a constant to it. Notice how the new objective function is
+precisely equal to the previous one plus the new value of `w`. In addition, as
+we didn't update the feasible set, the optimized decision variables remain the
+same.
 
 ```@example moi1
 MOI.set(optimizer, POI.ParameterValue(), w, 2.0)
@@ -128,7 +156,8 @@ MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]
 
 Let's write a step-by-step example of `POI` usage at the JuMP level.
 
-First, we declare a `Model` on top of a `Optimizer` of an underlying solver. In the example, we consider `HiGHS` as the underlying solver:
+First, we declare a `Model` on top of a `Optimizer` of an underlying solver. In
+the example, we consider `HiGHS` as the underlying solver:
 
 ```@example jump1
 using HiGHS
@@ -146,7 +175,9 @@ We declare the variable `x` as in a typical `JuMP` model:
 @variable(model, x[i = 1:2] >= 0)
 ```
 
-Now, let's consider 3 `MOI.Parameter`. Two of them, `y`, `z`, will be placed in the constraints and one, `w`, in the objective function. We'll start all three of them with a value equal to `0`:
+Now, let's consider 3 `MOI.Parameter`. Two of them, `y`, `z`, will be placed in
+the constraints and one, `w`, in the objective function. We'll start all three
+of them with a value equal to `0`:
 
 ```@example jump1
 @variable(model, y in MOI.Parameter(0.0))
@@ -154,7 +185,8 @@ Now, let's consider 3 `MOI.Parameter`. Two of them, `y`, `z`, will be placed in 
 @variable(model, w in MOI.Parameter(0.0))
 ```
 
-Let's add the constraints. Notice that we treat parameters the same way we treat variables when writing the model:
+Let's add the constraints. Notice that we treat parameters the same way we treat
+variables when writing the model:
 
 ```@example jump1
 @constraint(model, c1, 2x[1] + x[2] + 3y <= 4)
@@ -175,7 +207,8 @@ termination_status(model)
 primal_status(model)
 ```
 
-Given the optimized solution, we check that its value is, as expected, equal to `28/3`, and the solution vector `x` is `[4/3, 4/3]`:
+Given the optimized solution, we check that its value is, as expected, equal to
+`28/3`, and the solution vector `x` is `[4/3, 4/3]`:
 
 ```@example jump1
 isapprox(objective_value(model), 28/3)
@@ -320,56 +353,36 @@ Users that just want everything to work can use the default value `POI.ONLY_CONS
 Let's start with a simple quadratic problem
 
 ```@example moi2
-using Ipopt
-using MathOptInterface
-using ParametricOptInterface
-
-const MOI = MathOptInterface
-const POI = ParametricOptInterface
-
-optimizer = POI.Optimizer(Ipopt.Optimizer())
-
-x = MOI.add_variable(optimizer)
-y = MOI.add_variable(optimizer)
-MOI.add_constraint(optimizer, x, MOI.GreaterThan(0.0))
-MOI.add_constraint(optimizer, y, MOI.GreaterThan(0.0))
-
-cons1 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([2.0, 1.0], [x, y]), 0.0)
-ci1 = MOI.add_constraint(optimizer, cons1, MOI.LessThan(4.0))
-cons2 = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.([1.0, 2.0], [x, y]), 0.0)
-ci2 = MOI.add_constraint(optimizer, cons2, MOI.LessThan(4.0))
-
-MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
-obj_func = MOI.ScalarQuadraticFunction(
-    [MOI.ScalarQuadraticTerm(1.0, x, x)
-    MOI.ScalarQuadraticTerm(1.0, y, y)],
-    MOI.ScalarAffineTerm{Float64}[],
-    0.0,
-)
-MOI.set(
-    optimizer,
-    MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
-    obj_func,
-)
+import Ipopt
+import MathOptInterface as MOI
+import ParametricOptInterface as POI
+model = POI.Optimizer(Ipopt.Optimizer())
+x, _ = MOI.add_constrained_variable(model, MOI.GreaterThan(0.0))
+y, _ = MOI.add_constrained_variable(model, MOI.GreaterThan(0.0))
+ci1 = MOI.add_constraint(model, 2.0 * x + 1.0 * y, MOI.LessThan(4.0))
+ci2 = MOI.add_constraint(model, 1.0 * x + 2.0 * y, MOI.LessThan(4.0))
+MOI.set(model, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+obj_func = 1.0 * x * x + 1.0 * y * y
+MOI.set(model, MOI.ObjectiveFunction{typeof(obj_func)}(), obj_func)
 ```
 
 To multiply a parameter in a quadratic term, the user will
 need to use the `POI.QuadraticObjectiveCoef` model attribute.
 
 ```@example moi2
-p = first(MOI.add_constrained_variable.(optimizer, MOI.Parameter(1.0)))
-MOI.set(optimizer, POI.QuadraticObjectiveCoef(), (x,y), p)
+p, _ = MOI.add_constrained_variable.(model, MOI.Parameter(1.0))
+MOI.set(model, POI.QuadraticObjectiveCoef(), (x, y), p)
 ```
 
 This function will add the term `p*xy` to the objective function.
 It's also possible to multiply a scalar affine function to the quadratic term.
 
 ```@example moi2
-MOI.set(optimizer, POI.QuadraticObjectiveCoef(), (x,y), 2p+3)
+MOI.set(model, POI.QuadraticObjectiveCoef(), (x, y), 2 * p + 3)
 ```
 
-This will set the term `(2p+3)*xy` to the objective function (it overwrites the last set).
-Then, just optimize the model.
+This will set the term `(2p+3)*xy` to the objective function (it overwrites the
+last set). Then, just optimize the model.
 
 ```@example moi2
 MOI.optimize!(model)

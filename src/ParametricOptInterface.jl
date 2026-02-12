@@ -92,7 +92,7 @@ optimization model.
   to increase performance when the duals of parameters are not necessary. Defaults to `true`.
 
 - `save_original_objective_and_constraints`: If `true` saves the orginal function and set of the constraints
-  as well as the original objective function inside [`POI.Optimizer`](@ref). This is useful for printing the model
+  as well as the original objective function inside [`Optimizer`](@ref). This is useful for printing the model
   but greatly increases the memory footprint. Users might want to set it to `false` to increase performance
   in applications where you don't need to query the original expressions provided to the model in constraints
   or in the objective. Note that this might break printing or queries such as `MOI.get(model, MOI.ConstraintFunction(), c)`.

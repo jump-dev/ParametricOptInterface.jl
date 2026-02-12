@@ -1906,11 +1906,11 @@ end
 """
     ConstraintsInterpretation <: MOI.AbstractOptimizerAttribute
 
-Attribute to define how [`POI.Optimizer`](@ref) should interpret constraints.
+Attribute to define how [`Optimizer`](@ref) should interpret constraints.
 
 - `POI.ONLY_CONSTRAINTS`: Only interpret `ScalarAffineFunction` constraints as linear constraints
   If an expression such as `x >= p1 + p2` appears it will be trated like a new constraint.
-  **This is the default behaviour of [`POI.Optimizer`](@ref)**
+  **This is the default behaviour of [`Optimizer`](@ref)**
 
 - `POI.ONLY_BOUNDS`: Only interpret `ScalarAffineFunction` constraints as a variable bound.
   This is valid for constraints such as `x >= p` or `x >= p1 + p2`. If a constraint `x1 + x2 >= p` appears,
