@@ -6,9 +6,8 @@
 using Documenter
 using ParametricOptInterface
 
-makedocs(
+Documenter.makedocs(;
     modules = [ParametricOptInterface],
-    doctest = false,
     clean = true,
     # See https://github.com/JuliaDocs/Documenter.jl/issues/868
     format = Documenter.HTML(
@@ -28,9 +27,10 @@ makedocs(
         ],
         "reference.md",
     ],
+    checkdocs = :none,
 )
 
-deploydocs(
+Documenter.deploydocs(;
     repo = "github.com/jump-dev/ParametricOptInterface.jl.git",
     push_preview = true,
 )
