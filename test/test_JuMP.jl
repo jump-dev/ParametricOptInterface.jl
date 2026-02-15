@@ -32,7 +32,7 @@ function canonical_compare(f1, f2)
 end
 
 function test_jump_direct_affine_parameters()
-    optimizer = POI.Optimizer(HiGHS.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer)
     model = direct_model(optimizer)
     @variable(model, x[i=1:2] >= 0)
     @variable(model, y in MOI.Parameter(0.0))
@@ -55,7 +55,7 @@ function test_jump_direct_affine_parameters()
 end
 
 function test_jump_direct_parameter_times_variable()
-    optimizer = POI.Optimizer(HiGHS.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer)
     model = direct_model(optimizer)
     @variable(model, x[i=1:2] >= 0)
     @variable(model, y in MOI.Parameter(0.0))
@@ -78,7 +78,7 @@ function test_jump_direct_parameter_times_variable()
 end
 
 function test_jump_affine_parameters()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, x[i=1:2] >= 0)
     @variable(model, y in MOI.Parameter(0.0))
     @variable(model, w in MOI.Parameter(0.0))
@@ -100,7 +100,7 @@ function test_jump_affine_parameters()
 end
 
 function test_jump_parameter_times_variable()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, x[i=1:2] >= 0)
     @variable(model, y in MOI.Parameter(0.0))
     @variable(model, w in MOI.Parameter(0.0))
@@ -280,7 +280,7 @@ function test_jump_constraintfunction_getter()
 end
 
 function test_jump_interpret_parameteric_bounds()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i=1:2])
     @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
@@ -309,7 +309,7 @@ function test_jump_interpret_parameteric_bounds()
 end
 
 function test_jump_interpret_parameteric_bounds_expression()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i=1:2])
     @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
@@ -338,7 +338,7 @@ function test_jump_interpret_parameteric_bounds_expression()
 end
 
 function test_jump_direct_interpret_parameteric_bounds()
-    model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
+    model = direct_model(POI.Optimizer(HiGHS.Optimizer))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i=1:2])
     @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
@@ -365,7 +365,7 @@ function test_jump_direct_interpret_parameteric_bounds()
 end
 
 function test_jump_direct_interpret_parameteric_bounds_no_interpretation()
-    model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
+    model = direct_model(POI.Optimizer(HiGHS.Optimizer))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_CONSTRAINTS)
     @variable(model, x[i=1:2])
     @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
@@ -395,7 +395,7 @@ function test_jump_direct_interpret_parameteric_bounds_no_interpretation()
 end
 
 function test_jump_direct_interpret_parameteric_bounds_change()
-    model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
+    model = direct_model(POI.Optimizer(HiGHS.Optimizer))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i=1:2])
     @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
@@ -413,7 +413,7 @@ function test_jump_direct_interpret_parameteric_bounds_change()
 end
 
 function test_jump_direct_interpret_parameteric_bounds_both()
-    model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
+    model = direct_model(POI.Optimizer(HiGHS.Optimizer))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.BOUNDS_AND_CONSTRAINTS)
     @variable(model, x[i=1:2])
     @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
@@ -429,7 +429,7 @@ function test_jump_direct_interpret_parameteric_bounds_both()
 end
 
 function test_jump_direct_interpret_parameteric_bounds_invalid()
-    model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
+    model = direct_model(POI.Optimizer(HiGHS.Optimizer))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i=1:2])
     @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
@@ -442,17 +442,9 @@ function test_jump_direct_interpret_parameteric_bounds_invalid()
 end
 
 function test_jump_set_variable_start_value()
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            HiGHS.Optimizer(),
-        ),
-        Float64,
-    )
-    optimizer = POI.Optimizer(cached)
-    model = direct_model(optimizer)
+    model = direct_model(POI.Optimizer(HiGHS.Optimizer))
     @variable(model, x >= 0)
-    @variable(model, p in MOI.Parameter(0.0))
+    @variable(model, p in Parameter(0.0))
     set_start_value(x, 1.0)
     @test start_value(x) == 1
     @test_throws ErrorException(
@@ -463,7 +455,7 @@ function test_jump_set_variable_start_value()
 end
 
 function test_jump_direct_get_parameter_value()
-    model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
+    model = direct_model(POI.Optimizer(HiGHS.Optimizer))
     @variable(model, x, lower_bound = 0.0, upper_bound = 10.0)
     @variable(model, y, binary = true)
     @variable(model, z, set = MOI.Parameter(10.0))
@@ -474,7 +466,7 @@ function test_jump_direct_get_parameter_value()
 end
 
 function test_jump_get_parameter_value()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, x, lower_bound = 0.0, upper_bound = 10.0)
     @variable(model, y, binary = true)
     @variable(model, z, set = MOI.Parameter(10))
@@ -485,15 +477,7 @@ function test_jump_get_parameter_value()
 end
 
 function test_jump_sdp_scalar_parameter()
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            SCS.Optimizer(),
-        ),
-        Float64,
-    )
-    optimizer = POI.Optimizer(cached)
-    m = direct_model(optimizer)
+    m = Model(() -> POI.Optimizer(SCS.Optimizer))
     set_silent(m)
     @variable(m, p in MOI.Parameter(0.0))
     @variable(m, x[1:2, 1:2], Symmetric)
@@ -508,15 +492,7 @@ function test_jump_sdp_scalar_parameter()
 end
 
 function test_jump_sdp_matrix_parameter()
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            SCS.Optimizer(),
-        ),
-        Float64,
-    )
-    optimizer = POI.Optimizer(cached)
-    m = direct_model(optimizer)
+    m = Model(() -> POI.Optimizer(SCS.Optimizer))
     set_silent(m)
     P1 = [1 2; 2 3]
     @variable(m, p[1:2, 1:2] in MOI.Parameter.(P1))
@@ -533,7 +509,7 @@ function test_jump_sdp_matrix_parameter()
 end
 
 function test_jump_dual_basic()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, x[1:2] in MOI.Parameter.(ones(2) .* 4.0))
     @variable(model, y[1:6])
     @constraint(model, ctr1, 3 * y[1] >= 2 - 7 * x[1])
@@ -547,7 +523,7 @@ function test_jump_dual_basic()
 end
 
 function test_jump_dual_multiplicative_fail()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))
     @constraint(model, cons, x * p >= 3)
@@ -562,7 +538,7 @@ function test_jump_dual_multiplicative_fail()
 end
 
 function test_jump_dual_objective_min()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))
     @constraint(model, cons, x >= 3 * p)
@@ -573,7 +549,7 @@ function test_jump_dual_objective_min()
 end
 
 function test_jump_dual_objective_max()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))
     @constraint(model, cons, x >= 3 * p)
@@ -584,7 +560,7 @@ function test_jump_dual_objective_max()
 end
 
 function test_jump_dual_multiple_parameters_1()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, x[1:6] in MOI.Parameter.(ones(6) .* 4.0))
     @variable(model, y[1:6] <= 0.0)
     @constraint(model, ctr1, 3 * y[1] >= 2 - 7 * x[3])
@@ -618,7 +594,7 @@ function test_jump_dual_multiple_parameters_1()
 end
 
 function test_jump_duals_LessThan()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, α in MOI.Parameter(-1.0))
     @variable(model, x)
     cref = @constraint(model, x ≤ α)
@@ -637,7 +613,7 @@ function test_jump_duals_LessThan()
 end
 
 function test_jump_duals_EqualTo()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, α in MOI.Parameter(-1.0))
     @variable(model, x)
     cref = @constraint(model, x == α)
@@ -655,7 +631,7 @@ function test_jump_duals_EqualTo()
 end
 
 function test_jump_duals_GreaterThan()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, α in MOI.Parameter(1.0))
     MOI.set(model, POI.ParameterValue(), α, -1.0)
     @variable(model, x)
@@ -674,7 +650,7 @@ function test_jump_duals_GreaterThan()
 end
 
 function test_jump_dual_multiple_parameters_2()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, α[1:10] in MOI.Parameter.(ones(10)))
     @variable(model, x)
     cref = @constraint(model, x == sum(2 * α[i] for i in 1:10))
@@ -687,7 +663,7 @@ function test_jump_dual_multiple_parameters_2()
 end
 
 function test_jump_dual_mixing_params_and_vars_1()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, α[1:5] in MOI.Parameter.(ones(5)))
     @variable(model, x)
     cref = @constraint(model, sum(x for i in 1:5) == sum(2 * α[i] for i in 1:5))
@@ -700,7 +676,7 @@ function test_jump_dual_mixing_params_and_vars_1()
 end
 
 function test_jump_dual_mixing_params_and_vars_2()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, α[1:5] in MOI.Parameter.(ones(5)))
     @variable(model, x)
     cref = @constraint(model, 0.0 == sum(-x + 2 * α[i] for i in 1:5))
@@ -713,7 +689,7 @@ function test_jump_dual_mixing_params_and_vars_2()
 end
 
 function test_jump_dual_mixing_params_and_vars_3()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, α[1:5] in MOI.Parameter.(ones(5)))
     @variable(model, x)
     cref = @constraint(model, 0.0 == sum(-x + 2.0 + 2 * α[i] for i in 1:5))
@@ -726,7 +702,7 @@ function test_jump_dual_mixing_params_and_vars_3()
 end
 
 function test_jump_dual_add_after_solve()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, α in MOI.Parameter(1.0))
     MOI.set(model, POI.ParameterValue(), α, -1.0)
     @variable(model, x)
@@ -747,7 +723,7 @@ function test_jump_dual_add_after_solve()
 end
 
 function test_jump_dual_add_ctr_alaternative()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, α in MOI.Parameter(-1.0))
     @variable(model, x)
     exp = x - α
@@ -761,7 +737,7 @@ function test_jump_dual_add_ctr_alaternative()
 end
 
 function test_jump_dual_delete_constraint()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, α in MOI.Parameter(-1.0))
     @variable(model, x)
     cref1 = @constraint(model, x ≤ α / 2)
@@ -783,7 +759,7 @@ function test_jump_dual_delete_constraint()
 end
 
 function test_jump_dual_delete_constraint_2()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, α in MOI.Parameter(1.0))
     @variable(model, β in MOI.Parameter(0.0))
     @variable(model, x)
@@ -882,7 +858,7 @@ function test_jump_dual_delete_constraint_3()
 end
 
 function test_jump_nlp()
-    model = Model(() -> POI.Optimizer(Ipopt.Optimizer()))
+    model = Model(() -> POI.Optimizer(Ipopt.Optimizer))
     @variable(model, x)
     @variable(model, z in MOI.Parameter(10.0))
     @constraint(model, x >= z)
@@ -902,12 +878,7 @@ function test_jump_direct_vector_parameter_affine_nonnegatives()
             y* = t-2
             obj = 2*t-3
     """
-    cached = MOI.Utilities.CachingOptimizer(
-        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-        SCS.Optimizer(),
-    )
-    optimizer = POI.Optimizer(cached)
-    model = direct_model(optimizer)
+    model = Model(() -> POI.Optimizer(SCS.Optimizer))
     set_silent(model)
     @variable(model, x)
     @variable(model, y)
@@ -935,15 +906,7 @@ function test_jump_direct_vector_parameter_affine_nonpositives()
             y* = t-2
             obj = 2*t-3
     """
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            SCS.Optimizer(),
-        ),
-        Float64,
-    )
-    optimizer = POI.Optimizer(cached)
-    model = direct_model(optimizer)
+    model = Model(() -> POI.Optimizer(SCS.Optimizer))
     set_silent(model)
     @variable(model, x)
     @variable(model, y)
@@ -979,12 +942,7 @@ function test_jump_direct_soc_parameters()
             x* = p - 1/√2
             y* = 1/√2
     """
-    cached = MOI.Utilities.CachingOptimizer(
-        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-        SCS.Optimizer(),
-    )
-    optimizer = POI.Optimizer(cached)
-    model = direct_model(optimizer)
+    model = Model(() -> POI.Optimizer(SCS.Optimizer))
     set_silent(model)
     @variable(model, x)
     @variable(model, y)
@@ -1007,7 +965,7 @@ function test_jump_direct_soc_parameters()
 end
 
 function test_jump_direct_qp_objective()
-    optimizer = POI.Optimizer(Ipopt.Optimizer())
+    optimizer = POI.Optimizer(Ipopt.Optimizer)
     model = direct_model(optimizer)
     MOI.set(model, MOI.Silent(), true)
     @variable(model, x >= 0)
@@ -1098,16 +1056,7 @@ function test_jump_direct_rsoc_constraints()
             x* = 1/2*(max{1/√2,p}-p)^2
             y* = max{1/√2,p}
     """
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            SCS.Optimizer(),
-        ),
-        Float64,
-    )
-    optimizer = POI.Optimizer(cached)
-    model = direct_model(optimizer)
-    MOI.set(model, MOI.Silent(), true)
+    model = Model(() -> POI.Optimizer(SCS.Optimizer))
     @variable(model, x)
     @variable(model, y)
     @variable(model, t)
@@ -1130,7 +1079,7 @@ function test_jump_direct_rsoc_constraints()
 end
 
 function test_jump_quadratic_interval()
-    optimizer = POI.Optimizer(HiGHS.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer)
     # model = direct_model(optimizer)
     model = Model(() -> optimizer)
     MOI.set(model, MOI.Silent(), true)
@@ -1155,16 +1104,8 @@ function test_jump_quadratic_interval()
 end
 
 function test_jump_quadratic_interval_cached()
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            HiGHS.Optimizer(),
-        ),
-        Float64,
-    )
-    optimizer = POI.Optimizer(cached)
-    model = direct_model(optimizer)
-    # optimizer = POI.Optimizer(HiGHS.Optimizer())
+    model = direct_model(POI.Optimizer(HiGHS.Optimizer))
+    # optimizer = POI.Optimizer(HiGHS.Optimizer)
     # model = direct_model(optimizer)
     # model = Model(() -> optimizer)
     # MOI.set(model, MOI.Silent(), true)
@@ -1189,7 +1130,7 @@ function test_jump_quadratic_interval_cached()
 end
 
 function test_affine_parametric_objective()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, p in MOI.Parameter(1.0))
     @variable(model, 0 <= x <= 1)
     @objective(model, Max, (p + 0.5) * x)
@@ -1200,7 +1141,7 @@ function test_affine_parametric_objective()
 end
 
 function test_abstract_optimizer_attributes()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     set_attribute(model, "time_limit", 60 * 1000.0)
     attr = MOI.RawOptimizerAttribute("time_limit")
     @test MOI.supports(unsafe_backend(model), attr)
@@ -1209,7 +1150,7 @@ function test_abstract_optimizer_attributes()
 end
 
 function test_get_quadratic_constraint()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, x)
     @variable(model, p in Parameter(2.0))
     @constraint(model, c, p * x <= 10)
@@ -1219,7 +1160,7 @@ function test_get_quadratic_constraint()
 end
 
 function test_get_duals_from_multiplicative_parameters_1()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, x)
     @variable(model, p1 in Parameter(2.0))
     @variable(model, p2 in Parameter(2.0))
@@ -1233,7 +1174,7 @@ function test_get_duals_from_multiplicative_parameters_1()
 end
 
 function test_get_duals_from_multiplicative_parameters_2()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, x)
     @variable(model, p1 in Parameter(40.0))
     @variable(model, p2 in Parameter(2.0))
@@ -1247,7 +1188,7 @@ function test_get_duals_from_multiplicative_parameters_2()
 end
 
 function test_get_duals_from_multiplicative_parameters_3()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, x)
     @variable(model, p in Parameter(4.0))
     @constraint(model, c, 3 * x >= p * p)
@@ -1259,7 +1200,7 @@ function test_get_duals_from_multiplicative_parameters_3()
 end
 
 function test_parameters_cannot_be_nan_1()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, x)
     @variable(model, p in Parameter(NaN))
     @constraint(model, c, 3 * x >= p * p)
@@ -1270,7 +1211,7 @@ function test_parameters_cannot_be_nan_1()
 end
 
 function test_parameters_cannot_be_nan_2()
-    optimizer = POI.Optimizer(HiGHS.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer)
     model = direct_model(optimizer)
     @variable(model, x[1:2])
     @test_throws AssertionError @variable(model, p in Parameter(NaN))
@@ -1282,7 +1223,7 @@ function test_parameters_cannot_be_nan_2()
 end
 
 function test_parameter_Cannot_be_inf_1()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     @variable(model, x)
     @variable(model, p in Parameter(Inf))
     @constraint(model, c, 3 * x >= p * p)
@@ -1293,7 +1234,7 @@ function test_parameter_Cannot_be_inf_1()
 end
 
 function test_parameter_Cannot_be_inf_2()
-    optimizer = POI.Optimizer(HiGHS.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer)
     model = direct_model(optimizer)
     @variable(model, x[1:2])
     @test_throws AssertionError @variable(model, p in Parameter(Inf))
@@ -1343,15 +1284,7 @@ function test_jump_psd_cone_with_parameter_pv()
 end
 
 function test_jump_psd_cone_with_parameter_pp()
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            SCS.Optimizer(),
-        ),
-        Float64,
-    )
-    optimizer = POI.Optimizer(cached)
-    model = direct_model(optimizer)
+    model = Model(() -> POI.Optimizer(SCS.Optimizer))
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))
     # @constraint(
@@ -1374,15 +1307,7 @@ function test_jump_psd_cone_with_parameter_pp()
 end
 
 function test_jump_psd_cone_with_parameter_p()
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            SCS.Optimizer(),
-        ),
-        Float64,
-    )
-    optimizer = POI.Optimizer(cached)
-    model = direct_model(optimizer)
+    model = Model(() -> POI.Optimizer(SCS.Optimizer))
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))
     # @constraint(model, con, [[0 (x - p)]; [(x - p) 0]] in JuMP.PSDCone())
@@ -1401,15 +1326,7 @@ function test_jump_psd_cone_with_parameter_p()
 end
 
 function test_jump_psd_cone_with_parameter_pv_v_pv()
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            SCS.Optimizer(),
-        ),
-        Float64,
-    )
-    optimizer = POI.Optimizer(cached)
-    model = direct_model(optimizer)
+    model = Model(() -> POI.Optimizer(SCS.Optimizer))
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))
     @constraint(
@@ -1436,15 +1353,7 @@ function test_jump_psd_cone_with_parameter_pv_v_pv()
 end
 
 function test_jump_psd_cone_with_parameter_pp_v_pv()
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            SCS.Optimizer(),
-        ),
-        Float64,
-    )
-    optimizer = POI.Optimizer(cached)
-    model = direct_model(optimizer)
+    model = Model(() -> POI.Optimizer(SCS.Optimizer))
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))
     @constraint(
@@ -1464,15 +1373,7 @@ function test_jump_psd_cone_with_parameter_pp_v_pv()
 end
 
 function test_jump_psd_cone_with_parameter_p_v_pv()
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            SCS.Optimizer(),
-        ),
-        Float64,
-    )
-    optimizer = POI.Optimizer(cached)
-    model = direct_model(optimizer)
+    model = Model(() -> POI.Optimizer(SCS.Optimizer))
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))
     @constraint(
@@ -1491,15 +1392,7 @@ function test_jump_psd_cone_with_parameter_p_v_pv()
 end
 
 function test_jump_psd_cone_with_parameter_p_v_pp()
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            SCS.Optimizer(),
-        ),
-        Float64,
-    )
-    optimizer = POI.Optimizer(cached)
-    model = direct_model(optimizer)
+    model = Model(() -> POI.Optimizer(SCS.Optimizer))
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))
     @constraint(
@@ -1518,15 +1411,7 @@ function test_jump_psd_cone_with_parameter_p_v_pp()
 end
 
 function test_jump_psd_cone_without_parameter_v_and_vv()
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            SCS.Optimizer(),
-        ),
-        Float64,
-    )
-    optimizer = POI.Optimizer(cached)
-    model = direct_model(optimizer)
+    model = Model(() -> POI.Optimizer(SCS.Optimizer))
     @variable(model, x)
     @variable(model, p in MOI.Parameter(1.0))
     @constraint(
@@ -1537,46 +1422,7 @@ function test_jump_psd_cone_without_parameter_v_and_vv()
     @test is_valid(model, con)
     optimize!(model)
     @test value(x) ≈ 0.50000 atol = 1e-5
-    @test MOI.get(
-        backend(model),
-        MOI.ConstraintPrimalStart(),
-        index(ParameterRef(p)),
-    ) == 1.0
-    delete(model, con)
-    unregister(model, :con)
-    @test_throws MOI.UnsupportedConstraint @constraint(
-        model,
-        con,
-        [p * p, x * (x - 1), p] in MOI.PositiveSemidefiniteConeTriangle(2)
-    )
-    @test_throws MOI.UnsupportedConstraint @constraint(
-        model,
-        con,
-        [x * x, (x - 1), 0.0] in MOI.PositiveSemidefiniteConeTriangle(2)
-    )
-    @test_throws MOI.UnsupportedConstraint @constraint(
-        model,
-        con,
-        [p, (x - 1), x * x] in MOI.PositiveSemidefiniteConeTriangle(2)
-    )
-    @test_throws MOI.UnsupportedConstraint @constraint(
-        model,
-        con,
-        [x, p * (x - 1), x * x] in MOI.PositiveSemidefiniteConeTriangle(2)
-    )
-    @test_throws ErrorException(
-        "Constraint attribute MathOptInterface.ConstraintName() cannot be set for $(index(ParameterRef(p))) in ParametricOptInterface.",
-    ) MOI.set(
-        backend(model),
-        MOI.ConstraintName(),
-        index(ParameterRef(p)),
-        "name",
-    )
-    @test_throws MOI.UnsupportedAttribute MOI.supports(
-        backend(model),
-        MOI.ConstraintName(),
-        MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter},
-    )
+    return
 end
 
 function test_variable_and_constraint_not_registered()
@@ -1733,7 +1579,7 @@ function test_jump_errors()
         }(),
     )
 
-    model = direct_model(POI.Optimizer(Ipopt.Optimizer()))
+    model = direct_model(POI.Optimizer(Ipopt.Optimizer))
 
     @test_throws MOI.GetAttributeNotAllowed MOI.get(
         backend(model),
@@ -1782,7 +1628,7 @@ function test_jump_errors()
 end
 
 function test_print()
-    model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
+    model = direct_model(POI.Optimizer(HiGHS.Optimizer))
     @variable(model, p in MOI.Parameter(1.0))
     @variable(model, x)
     @constraint(model, con, x >= p + p * p + p * x)
@@ -1803,7 +1649,7 @@ function test_print()
 end
 
 function test_set_normalized_coefficient()
-    model = direct_model(POI.Optimizer(HiGHS.Optimizer()))
+    model = direct_model(POI.Optimizer(HiGHS.Optimizer))
     @variable(model, p in MOI.Parameter(1.0))
     @variable(model, x)
     @constraint(model, con, x >= p)

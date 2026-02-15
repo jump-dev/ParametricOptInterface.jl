@@ -1590,17 +1590,6 @@ function MOI.set(
     return MOI.set(model.optimizer, attr, optimizer_ci, val)
 end
 
-function MOI.set(
-    model::Optimizer,
-    attr::MOI.AbstractConstraintAttribute,
-    c::MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}},
-    val,
-) where {T}
-    return error(
-        "Constraint attribute $attr cannot be set for $c in ParametricOptInterface.",
-    )
-end
-
 function MOI.get(
     model::Optimizer,
     ::MOI.ConstraintPrimal,
