@@ -1,3 +1,8 @@
+# Copyright (c) 2020: Tomás Gutierrez and contributors
+#
+# Use of this source code is governed by an MIT-style license that can be found
+# in the LICENSE.md file or at https://opensource.org/licenses/MIT.
+
 abstract type ParametricFunction{T} end
 
 function _cache_set_constant!(
@@ -16,7 +21,7 @@ function _cache_set_constant!(
 end
 
 mutable struct ParametricQuadraticFunction{T} <: ParametricFunction{T}
-    # helper to efficiently update affine terms 
+    # helper to efficiently update affine terms
     affine_data::Dict{MOI.VariableIndex,T}
     affine_data_np::Dict{MOI.VariableIndex,T}
     # constant * parameter * variable (in this order)
@@ -531,7 +536,7 @@ function _update_cache!(f::ParametricVectorAffineFunction{T}, model) where {T}
 end
 
 mutable struct ParametricVectorQuadraticFunction{T}
-    # helper to efficiently update affine terms 
+    # helper to efficiently update affine terms
     affine_data::Dict{Tuple{MOI.VariableIndex,Int},T}
     affine_data_np::Dict{Tuple{MOI.VariableIndex,Int},T}
     # constant * parameter * variable (in this order)
