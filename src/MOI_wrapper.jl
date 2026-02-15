@@ -1908,24 +1908,42 @@ end
 
 Attribute to define how [`Optimizer`](@ref) should interpret constraints.
 
-- `POI.ONLY_CONSTRAINTS`: Only interpret `ScalarAffineFunction` constraints as linear constraints
-  If an expression such as `x >= p1 + p2` appears it will be trated like a new constraint.
+- `POI.ONLY_CONSTRAINTS`: always interpret `ScalarAffineFunction` constraints as
+  linear constraints. If an expression such as `x >= p1 + p2` appears, it will
+  be treated like an affine constraint.
   **This is the default behaviour of [`Optimizer`](@ref)**
 
-- `POI.ONLY_BOUNDS`: Only interpret `ScalarAffineFunction` constraints as a variable bound.
-  This is valid for constraints such as `x >= p` or `x >= p1 + p2`. If a constraint `x1 + x2 >= p` appears,
-  which is not a valid variable bound it will throw an error.
+- `POI.ONLY_BOUNDS`: always interpret `ScalarAffineFunction` constraints as a
+  variable bound. This is valid for constraints such as `x >= p` or
+  `x >= p1 + p2`. If a constraint `x1 + x2 >= p` appears which is not a valid
+  variable bound, an error will be thrown.
 
-- `POI.BOUNDS_AND_CONSTRAINTS`: Interpret `ScalarAffineFunction` constraints as a variable bound if they
-  are a valid variable bound, i.e., `x >= p` or `x >= p1 + p2` and interpret them as linear constraints
-  otherwise.
+- `POI.BOUNDS_AND_CONSTRAINTS`: interpret `ScalarAffineFunction` constraints as
+  a variable bound if they are a valid variable bound, for example, `x >= p` or
+  `x >= p1 + p2`, and interpret them as linear constraints otherwise.
 
 # Example
 
-```julia
-MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
-MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_CONSTRAINTS)
-MOI.set(model, POI.ConstraintsInterpretation(), POI.BOUNDS_AND_CONSTRAINTS)
+```jldoctest
+julia> import MathOptInterface as MOI
+
+julia> import ParametricOptInterface as POI
+
+julia> model = POI.Optimizer(MOI.Utilities.Model{Float64}())
+ParametricOptInterface.Optimizer{Float64, MOIU.Model{Float64}}
+├ ObjectiveSense: FEASIBILITY_SENSE
+├ ObjectiveFunctionType: MOI.ScalarAffineFunction{Float64}
+├ NumberOfVariables: 0
+└ NumberOfConstraints: 0
+
+julia> MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
+ONLY_BOUNDS::ConstraintsInterpretationCode = 1
+
+julia> MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_CONSTRAINTS)
+ONLY_CONSTRAINTS::ConstraintsInterpretationCode = 0
+
+julia> MOI.set(model, POI.ConstraintsInterpretation(), POI.BOUNDS_AND_CONSTRAINTS)
+BOUNDS_AND_CONSTRAINTS::ConstraintsInterpretationCode = 2
 ```
 """
 struct ConstraintsInterpretation <: MOI.AbstractOptimizerAttribute end

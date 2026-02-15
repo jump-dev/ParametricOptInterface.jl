@@ -3,8 +3,8 @@
 # Use of this source code is governed by an MIT-style license that can be found
 # in the LICENSE.md file or at https://opensource.org/licenses/MIT.
 
-using Documenter
-using ParametricOptInterface
+import Documenter
+import ParametricOptInterface
 
 Documenter.makedocs(;
     modules = [ParametricOptInterface],
@@ -19,12 +19,6 @@ Documenter.makedocs(;
     authors = "Tomás Gutierrez, and contributors",
     pages = [
         "Home" => "index.md",
-        "manual.md",
-        "Examples" => [
-            "Examples/example.md",
-            "Examples/benders.md",
-            "Examples/markowitz.md",
-        ],
         "reference.md",
     ],
     checkdocs = :none,
