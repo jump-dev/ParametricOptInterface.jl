@@ -215,7 +215,7 @@ choose the approach which works best for your model.
 
 In some applications you may need the dual of a parameter. The dual can be
 computed only if the parameter appears additively in the problem. Query the dual
-assocaited with the parameter using [`ParameterDual`](@ref):
+associated with the parameter as follows:
 ```@repl
 using JuMP, HiGHS
 import ParametricOptInterface as POI
@@ -226,10 +226,11 @@ set_silent(model)
 @constraint(model, x + p >= 3);
 @objective(model, Min, 2x);
 optimize!(model)
-get_attribute(p, POI.ParameterDual())
+dual(VariableInSetRef(p))
 ```
 
-Note how the dual is the same as the `reduced_cost` of an equivalent fixed variable:
+Note how the dual is the same as the `reduced_cost` of an equivalent fixed
+variable:
 ```@repl
 using JuMP, HiGHS
 model = Model(HiGHS.Optimizer);

@@ -21,13 +21,3 @@ Optimizer
 ```@docs
 ConstraintsInterpretation
 ```
-
-## `ParameterDual`
-```@docs
-ParameterDual
-```
-
-## `ParameterValue`
-```@docs
-ParameterValue
-```

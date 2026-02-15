@@ -2450,7 +2450,10 @@ function test_multiplicative_dual_error()
     p, pc = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
     f = 1.0 * x * p
     ci = MOI.add_constraint(model, f, MOI.EqualTo{Float64}(0.0))
-    @test_throws ErrorException MOI.get(model, MOI.ConstraintDual(), pc)
+    @test_throws(
+        MOI.GetAttributeNotAllowed,
+        MOI.get(model, MOI.ConstraintDual(), pc),
+    )
     return
 end
 
