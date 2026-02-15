@@ -510,3 +510,5 @@ function test_jump_cubic_parameter_division_by_constant()
 end
 
 end  # module
+
+TestCubic.runtests()
