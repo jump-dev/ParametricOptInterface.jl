@@ -125,7 +125,7 @@ model = Model(HiGHS.Optimizer)
 @objective(model, Min, 2x)
 optimize!(model)
 ```
-This works becaus, behind the scenes, the bridges in MathOptInterface rewrote
+This works because, behind the scenes, the bridges in MathOptInterface rewrote
 `p in Parameter(1)` to `p in MOI.EqualTo(1.0)`:
 ```@repl index_highs
 print_active_bridges(model)
@@ -167,11 +167,12 @@ Stacktrace:
 
 ### ParametricOptInterface
 
-ParametricOptInterface provides [`Optimizer`](@ref), which is a meta-solver that
-wraps another optimizer. Instead of adding fixed variables to the model, POI
-substitutes out the parameters with their value before passing the constraint or
-objective to the inner optimizer. When the parameter value is changed, POI
-efficiently modifies the inner optimizer to reflect the new parameter values.
+ParametricOptInterface provides [`Optimizer`](@ref), which is a meta-optimizer
+that wraps another optimizer. Instead of adding fixed variables to the model,
+POI substitutes out the parameters with their value before passing the
+constraint or objective to the inner optimizer. When the parameter value is
+changed, POI efficiently modifies the inner optimizer to reflect the new
+parameter values.
 
 ```@repl
 using JuMP, HiGHS
