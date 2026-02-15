@@ -296,6 +296,7 @@ function update_parameters!(model::Optimizer)
     _update_vector_quadratic_constraints!(model)
     _update_affine_objective!(model)
     _update_quadratic_objective!(model)
+    _update_cubic_objective!(model)
 
     # Update parameters and put NaN to indicate that the parameter has been
     # updated

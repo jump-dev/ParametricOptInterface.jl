@@ -23,6 +23,7 @@ end
 
 include("moi_tests.jl")
 include("jump_tests.jl")
+include("cubic_tests.jl")
 
 for name in names(@__MODULE__; all = true)
     if startswith("$name", "test_")

@@ -40,6 +40,7 @@ a function that is not listed here, it will return an unsupported error.
 |:-------|
 |    `ScalarAffineFunction`    |
 |    `ScalarQuadraticFunction`    |
+|    `ScalarNonlinearFunction` (cubic polynomials only)    |
 
 ### Declare a Optimizer
 
@@ -85,4 +86,57 @@ One can do so by getting the `MOI.ConstraintDual` attribute of the parameter's `
 
 ```julia
 MOI.get(optimizer, POI.ParameterDual(), y)
+```
+
+### Parameters multiplying quadratic terms
+
+POI supports parameters that multiply quadratic variable terms in objectives **only**. This creates cubic polynomial expressions of the form `c * p * x * y` where `c` is a number, `p` is a parameter and `x`, `y` are variables. After parameter substitution, these become standard quadratic terms that solvers can handle.
+
+
+#### Attention
+
+- Maximum degree is 3 (cubic)
+- At least one factor in each cubic term must be a parameter
+- Pure cubic variable terms (e.g., `x * y * z` with no parameters) are **not supported**
+
+#### Example using MOI
+
+# TODO
+
+#### Example using JuMP
+
+```julia
+using JuMP, Ipopt
+import ParametricOptInterface as POI
+
+# Create model with POI optimizer
+model = Model(() -> POI.Optimizer(Ipopt.Optimizer()))
+set_silent(model)
+
+# Define variables and parameter
+@variable(model, 0 <= x <= 10)
+@variable(model, p in MOI.Parameter(2.0))
+
+# Set cubic objective: p * x * y
+@objective(model, Min, p * x ^ 2 - 3x)
+
+# p (x - 3) * (x - 2)
+
+p x^2 - c x
+
+2px - c
+
+x = c / 2p
+
+# Solve
+optimize!(model)
+
+@show value(x) # == 3 / (2 * p)
+
+# Update parameter and re-solve
+# Parameters are automatically updated when optimize! is called
+set_parameter_value(p, 3.0)
+optimize!(model)
+
+@show value(x) # == 3 / (2 * p)
 ```

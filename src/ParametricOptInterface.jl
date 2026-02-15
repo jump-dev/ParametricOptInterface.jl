@@ -75,10 +75,18 @@ const DoubleDict{T} = MOI.Utilities.DoubleDicts.DoubleDict{T}
 const DoubleDictInner{F,S,T} = MOI.Utilities.DoubleDicts.DoubleDictInner{F,S,T}
 
 #
+# cubic functions helpers
+#
+
+include("cubic_types.jl")
+include("cubic_parser.jl")
+
+#
 # parametric functions
 #
 
 include("parametric_functions.jl")
+include("parametric_cubic_function.jl")
 
 """
     Optimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimizer
@@ -151,6 +159,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     # Clever cache of data (at most one can be !== nothing)
     affine_objective_cache::Union{Nothing,ParametricAffineFunction{T}}
     quadratic_objective_cache::Union{Nothing,ParametricQuadraticFunction{T}}
+    cubic_objective_cache::Union{Nothing,ParametricCubicFunction{T}}
     original_objective_cache::MOI.Utilities.ObjectiveContainer{T}
     # Store parametric expressions for product of variables
     quadratic_objective_cache_product::Dict{
@@ -226,7 +235,7 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             # objective
             nothing,
             nothing,
-            # nothing,
+            nothing,  # cubic_objective_cache
             MOI.Utilities.ObjectiveContainer{T}(),
             Dict{
                 Tuple{MOI.VariableIndex,MOI.VariableIndex},
@@ -275,5 +284,6 @@ end
 include("duals.jl")
 include("update_parameters.jl")
 include("MOI_wrapper.jl")
+include("cubic_objective.jl")
 
 end # module

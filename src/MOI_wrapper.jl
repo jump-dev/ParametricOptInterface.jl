@@ -435,7 +435,7 @@ function MOI.delete(model::Optimizer, v::MOI.VariableIndex)
     MOI.delete(model.optimizer, v)
     MOI.delete(model.original_objective_cache, v)
     # TODO - what happens if the variable was in a SAF that was converted to bounds?
-    # solution: do not allow if that is the case (requires going trhought the scalar affine cache)
+    # solution: do not allow if that is the case (requires going through the scalar affine cache)
     # TODO - deleting a variable also deletes constraints
     for (F, S) in MOI.Utilities.DoubleDicts.nonempty_outer_keys(
         model.constraint_outer_to_inner,
@@ -1257,6 +1257,7 @@ end
 function _empty_objective_function_caches!(model::Optimizer{T}) where {T}
     model.affine_objective_cache = nothing
     model.quadratic_objective_cache = nothing
+    model.cubic_objective_cache = nothing
     model.original_objective_cache = MOI.Utilities.ObjectiveContainer{T}()
     return
 end

@@ -229,14 +229,27 @@ function test_moi_highs()
     )
     MOI.set(model, MOI.Silent(), true)
     MOI.set(model, MOI.RawOptimizerAttribute("presolve"), "off")
-    MOI.Test.runtests(model, MOI.Test.Config(; atol = 1e-7); exclude = [])
+    # Exclude nonlinear tests that use functions outside POI's cubic polynomial support
+    # (general nonlinear functions like sin/cos/exp, or degree > 3 polynomials)
+    # POI only supports ScalarNonlinearFunction when it's a cubic polynomial with
+    # parameters multiplying at most quadratic variable terms
+    nonlinear_excludes = ["test_nonlinear_duals", "test_nonlinear_expression_"]
+    MOI.Test.runtests(
+        model,
+        MOI.Test.Config(; atol = 1e-7);
+        exclude = nonlinear_excludes,
+    )
 
     model = POI.Optimizer(
         MOI.instantiate(HiGHS.Optimizer; with_bridge_type = Float64),
     )
     MOI.set(model, MOI.Silent(), true)
     MOI.set(model, MOI.RawOptimizerAttribute("presolve"), "off")
-    MOI.Test.runtests(model, MOI.Test.Config(; atol = 1e-7); exclude = [])
+    MOI.Test.runtests(
+        model,
+        MOI.Test.Config(; atol = 1e-7);
+        exclude = nonlinear_excludes,
+    )
     return
 end
 
@@ -283,6 +296,9 @@ function test_moi_ipopt()
             #  - CachingOptimizer does not throw if optimizer not attached
             "test_model_copy_to_UnsupportedAttribute",
             "test_model_copy_to_UnsupportedConstraint",
+            #  - POI only supports cubic polynomial ScalarNonlinearFunction
+            "test_nonlinear_duals",
+            "test_nonlinear_expression_",
         ],
     )
     return
@@ -294,9 +310,13 @@ function test_moi_ListOfConstraintTypesPresent()
     model = POI.Optimizer(ipopt)
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variables(model, N / 2)
-    y = first.(
-        MOI.add_constrained_variable.(model, MOI.Parameter.(ones(Int(N / 2)))),
-    )
+    y =
+        first.(
+            MOI.add_constrained_variable.(
+                model,
+                MOI.Parameter.(ones(Int(N / 2))),
+            ),
+        )
 
     MOI.add_constraint(
         model,
@@ -598,10 +618,11 @@ function test_vector_parameter_affine_nonnegatives()
     t, ct = MOI.add_constrained_variable(model, MOI.Parameter(5.0))
     A = [1.0 0 -1; 0 1 -1]
     b = [1.0; 2]
-    terms = MOI.VectorAffineTerm.(
-        1:2,
-        MOI.ScalarAffineTerm.(A, reshape([x, y, t], 1, 3)),
-    )
+    terms =
+        MOI.VectorAffineTerm.(
+            1:2,
+            MOI.ScalarAffineTerm.(A, reshape([x, y, t], 1, 3)),
+        )
     f = MOI.VectorAffineFunction(vec(terms), b)
     set = MOI.Nonnegatives(2)
     cnn = MOI.add_constraint(model, f, MOI.Nonnegatives(2))
@@ -657,10 +678,11 @@ function test_vector_parameter_affine_nonpositives()
     t, ct = MOI.add_constrained_variable(model, MOI.Parameter(5.0))
     A = [-1.0 0 1; 0 -1 1]
     b = [-1.0; -2]
-    terms = MOI.VectorAffineTerm.(
-        1:2,
-        MOI.ScalarAffineTerm.(A, reshape([x, y, t], 1, 3)),
-    )
+    terms =
+        MOI.VectorAffineTerm.(
+            1:2,
+            MOI.ScalarAffineTerm.(A, reshape([x, y, t], 1, 3)),
+        )
     f = MOI.VectorAffineFunction(vec(terms), b)
     set = MOI.Nonnegatives(2)
     cnn = MOI.add_constraint(model, f, MOI.Nonpositives(2))

@@ -25,6 +25,7 @@ makedocs(
             "Examples/example.md",
             "Examples/benders.md",
             "Examples/markowitz.md",
+            "Examples/progressive_hedging.md",
         ],
         "reference.md",
     ],
