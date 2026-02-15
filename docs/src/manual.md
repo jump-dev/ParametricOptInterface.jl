@@ -130,10 +130,6 @@ handle.
 - Pure cubic variable terms (e.g., `x * y * z` with no parameters) are
   **not supported**
 
-#### Example using MOI
-
-# TODO
-
 #### Example using JuMP
 
 ```julia
