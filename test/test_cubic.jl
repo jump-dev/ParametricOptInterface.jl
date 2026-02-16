@@ -10,6 +10,7 @@ using JuMP
 
 import HiGHS
 import ParametricOptInterface as POI
+import MathOptInterface as MOI
 
 const ATOL = 1e-4
 
@@ -22,6 +23,39 @@ function runtests()
         end
     end
     return
+end
+
+# ============================================================================
+# Helper mock optimizer
+# ============================================================================
+
+"""
+Mock optimizer that rejects ScalarQuadraticFunction objectives.
+Defined in its own module to avoid method-table invalidation.
+"""
+struct NoQuadObjModel <: MOI.ModelLike
+    inner::MOI.Utilities.Model{Float64}
+end
+
+NoQuadObjModel() = NoQuadObjModel(MOI.Utilities.Model{Float64}())
+
+MOI.add_variable(m::NoQuadObjModel) = MOI.add_variable(m.inner)
+MOI.is_empty(m::NoQuadObjModel) = MOI.is_empty(m.inner)
+MOI.empty!(m::NoQuadObjModel) = MOI.empty!(m.inner)
+function MOI.is_valid(m::NoQuadObjModel, vi::MOI.VariableIndex)
+    return MOI.is_valid(m.inner, vi)
+end
+
+function MOI.set(
+    ::NoQuadObjModel,
+    ::MOI.ObjectiveFunction{<:MOI.ScalarQuadraticFunction},
+    ::MOI.ScalarQuadraticFunction,
+)
+    return error("Quadratic objectives not supported")
+end
+
+function MOI.set(m::NoQuadObjModel, attr::MOI.ObjectiveSense, v)
+    return MOI.set(m.inner, attr, v)
 end
 
 # ============================================================================
@@ -809,29 +843,16 @@ end
 # Cubic Types - Direct Unit Tests
 # ============================================================================
 
-function test_normalize_cubic_indices_all_params()
-    p1 = POI.v_idx(POI.ParameterIndex(3))
-    p2 = POI.v_idx(POI.ParameterIndex(1))
-    p3 = POI.v_idx(POI.ParameterIndex(2))
-
-    n1, n2, n3 = POI._normalize_cubic_indices(p1, p2, p3)
-    # Should be sorted by index value (all params)
-    @test n1.value <= n2.value
-    @test n2.value <= n3.value
-    return
-end
-
 function test_normalize_cubic_indices_mixed()
     x = MOI.VariableIndex(2)
     y = MOI.VariableIndex(1)
     p = POI.v_idx(POI.ParameterIndex(1))
 
     n1, n2, n3 = POI._normalize_cubic_indices(x, p, y)
-    # Parameter should come first, then variables sorted
+    # Parameter should come first
     @test POI._is_parameter(n1)
     @test !POI._is_parameter(n2)
     @test !POI._is_parameter(n3)
-    @test n2.value <= n3.value
     return
 end
 
@@ -844,8 +865,6 @@ function test_make_cubic_term_normalization()
     @test term.coefficient == 3.0
     # index_1 should be parameter
     @test POI._is_parameter(term.index_1)
-    # index_2 and index_3 should be variables sorted
-    @test term.index_2.value <= term.index_3.value
     return
 end
 
@@ -1503,36 +1522,6 @@ end
 # Parser - Sorting branches for reverse-ordered indices
 # ============================================================================
 
-function test_cubic_parse_pp_reverse_order()
-    # Create two parameters where p2 has a lower ParameterIndex than p1
-    # to exercise the p1.value > p2.value sort branch
-    p1 = POI.v_idx(POI.ParameterIndex(2))
-    p2 = POI.v_idx(POI.ParameterIndex(1))
-
-    # p1 * p2 where p1.value > p2.value
-    f = MOI.ScalarNonlinearFunction(:*, Any[3.0, p1, p2])
-    result = POI._parse_cubic_expression(f, Float64)
-    @test result !== nothing
-    @test length(result.pp) == 1
-    # After sorting, variable_1 should have smaller value
-    @test result.pp[1].variable_1.value <= result.pp[1].variable_2.value
-    return
-end
-
-function test_cubic_parse_vv_reverse_order()
-    # Create two variables where v1.value > v2.value
-    x = MOI.VariableIndex(2)
-    y = MOI.VariableIndex(1)
-
-    # x * y where x.value > y.value (needs sorting)
-    f = MOI.ScalarNonlinearFunction(:*, Any[2.0, x, y])
-    result = POI._parse_cubic_expression(f, Float64)
-    @test result !== nothing
-    @test length(result.vv) == 1
-    @test result.vv[1].variable_1.value <= result.vv[1].variable_2.value
-    return
-end
-
 function test_cubic_parse_pv_param_first()
     # Test the branch where m.variables[1] is already the parameter
     p = POI.v_idx(POI.ParameterIndex(1))
@@ -1679,6 +1668,28 @@ function test_jump_cubic_p_affine_in_cubic_expr()
     optimize!(model)
     @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
     @test objective_value(model) ≈ 0.0 atol = ATOL
+    return
+end
+
+function test_cubic_objective_set_error_on_inner_optimizer()
+    mock = NoQuadObjModel()
+    model = POI.Optimizer(mock)
+
+    x = MOI.add_variable(model)
+    p, _ = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    p_v = POI.v_idx(POI.p_idx(p))
+
+    # p * x^2 — parsed successfully but inner optimizer rejects SQF
+    f = MOI.ScalarNonlinearFunction(:*, Any[1.0, p_v, x, x])
+    err = try
+        MOI.set(model, MOI.ObjectiveFunction{MOI.ScalarNonlinearFunction}(), f)
+        nothing
+    catch e
+        e
+    end
+    @test err isa ErrorException
+    @test occursin("Failed to set cubic objective function", err.msg)
+    @test occursin("Quadratic objectives not supported", err.msg)
     return
 end
 

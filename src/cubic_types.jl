@@ -20,7 +20,6 @@ VariableIndex with value > PARAMETER_INDEX_THRESHOLD).
 # Convention
 Indices are stored in canonical order:
 - Parameters come before variables
-- Within each group, sorted by index value
 This ensures `2*p*x*y` and `2*x*p*y` produce the same term.
 """
 struct _ScalarCubicTerm{T}
@@ -35,7 +34,6 @@ end
 
 Normalize cubic term indices to canonical order:
 - Parameters come before variables
-- Within each group, sorted by index value
 """
 function _normalize_cubic_indices(
     idx1::MOI.VariableIndex,
@@ -51,8 +49,6 @@ function _normalize_cubic_indices(
             push!(vars, idx)
         end
     end
-    sort!(params, by = v -> v.value)
-    sort!(vars, by = v -> v.value)
     all_indices = vcat(params, vars)
     return all_indices[1], all_indices[2], all_indices[3]
 end

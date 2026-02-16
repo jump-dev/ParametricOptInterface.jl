@@ -52,15 +52,6 @@ function _scale_monomial(m::_Monomial{T}, scalar::T) where {T}
 end
 
 """
-    _is_polynomial_operator(head::Symbol) -> Bool
-
-Check if the operator is valid for polynomial expressions.
-"""
-function _is_polynomial_operator(head::Symbol)
-    return head in (:+, :-, :*, :^, :/)
-end
-
-"""
     _ParsedCubicExpression{T}
 
 Result of parsing a ScalarNonlinearFunction into cubic polynomial form.
@@ -142,10 +133,6 @@ function _expand_to_monomials(
 ) where {T}
     head = f.head
     args = f.args
-
-    if !_is_polynomial_operator(head)
-        return nothing  # Non-polynomial operator
-    end
 
     if head == :+
         return _expand_addition(args, T)
@@ -429,10 +416,6 @@ function _parse_cubic_expression(
         elseif classification == :pp
             p1 = m.variables[1]
             p2 = m.variables[2]
-            # Sort for canonical order
-            if p1.value > p2.value
-                p1, p2 = p2, p1
-            end
             divisor = p1 == p2 ? T(2) : T(1)  # Diagonal vs off-diagonal
             push!(
                 quadratic_pp,
@@ -442,26 +425,16 @@ function _parse_cubic_expression(
             # Convention: variable_1 = parameter, variable_2 = variable
             # This matches the expectation in _parametric_affine_terms and
             # _delta_parametric_affine_terms
-            if _is_parameter(m.variables[1])
-                p_idx_v, v_idx_v = m.variables[1], m.variables[2]
-            else
-                p_idx_v, v_idx_v = m.variables[2], m.variables[1]
-            end
+            is_param = _is_parameter(m.variables[1])
+            p_idx_v = ifelse(is_param, m.variables[1], m.variables[2])
+            v_idx_v = ifelse(is_param, m.variables[2], m.variables[1])
             push!(
                 quadratic_pv,
-                MOI.ScalarQuadraticTerm{T}(
-                    m.coefficient,
-                    p_idx_v,
-                    v_idx_v,
-                ),
+                MOI.ScalarQuadraticTerm{T}(m.coefficient, p_idx_v, v_idx_v),
             )
         elseif classification == :vv
             v1 = m.variables[1]
             v2 = m.variables[2]
-            # Sort for canonical order
-            if v1.value > v2.value
-                v1, v2 = v2, v1
-            end
             divisor = v1 == v2 ? T(2) : T(1)  # Diagonal vs off-diagonal
             push!(
                 quadratic_vv,

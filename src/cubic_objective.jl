@@ -107,21 +107,13 @@ function _update_cubic_objective!(model::Optimizer{T}) where {T}
         return  # No changes needed
     end
 
-    # Try incremental modifications first (more efficient for solvers that support it)
-    if _try_incremental_cubic_update!(
+    _try_incremental_cubic_update!(
         model,
         pf,
         delta_constant,
         delta_affine,
         delta_quadratic,
     )
-        return nothing
-    end
-
-    # Fallback: Rebuild and reset the complete objective function
-    # This is needed for solvers that don't support incremental modifications
-    current = _current_function(pf, model)
-    MOI.set(model.optimizer, MOI.ObjectiveFunction{typeof(current)}(), current)
 
     return nothing
 end
@@ -129,7 +121,7 @@ end
 """
     _try_incremental_cubic_update!(model, pf, delta_constant, delta_affine, delta_quadratic)
 
-Try to apply incremental coefficient updates. Returns true if successful, false otherwise.
+Apply incremental coefficient updates to the inner optimizer's objective.
 """
 function _try_incremental_cubic_update!(
     model::Optimizer{T},
@@ -155,18 +147,11 @@ function _try_incremental_cubic_update!(
         new_coef = new_quad_terms[(var1, var2)]
         # Apply MOI coefficient convention
         moi_coef = var1 == var2 ? new_coef * 2 : new_coef
-        try
-            MOI.modify(
-                model.optimizer,
-                MOI.ObjectiveFunction{F}(),
-                MOI.ScalarQuadraticCoefficientChange(var1, var2, moi_coef),
-            )
-        catch e
-            if e isa MOI.ModifyObjectiveNotAllowed
-                return false
-            end
-            rethrow(e)
-        end
+        MOI.modify(
+            model.optimizer,
+            MOI.ObjectiveFunction{F}(),
+            MOI.ScalarQuadraticCoefficientChange(var1, var2, moi_coef),
+        )
     end
 
     # Apply affine coefficient changes (use full new coefficient)
@@ -189,5 +174,5 @@ function _try_incremental_cubic_update!(
         )
     end
 
-    return true
+    return nothing
 end
