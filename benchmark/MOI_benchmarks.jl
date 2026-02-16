@@ -165,11 +165,7 @@ function solve_moi(
 end
 
 function POI_OPTIMIZER()
-    return POI.Optimizer(SOLVER.Optimizer())
-end
-
-function MOI_OPTIMIZER()
-    return SOLVER.Optimizer()
+    return POI.Optimizer(SOLVER.Optimizer)
 end
 
 function solve_moi_loop(
@@ -194,7 +190,7 @@ function solve_moi_loop(
         for _ in 1:loops
             solve_moi(
                 data,
-                MOI_OPTIMIZER;
+                SOLVER.Optimizer();
                 vector_version = vector_version,
                 params = params,
             )

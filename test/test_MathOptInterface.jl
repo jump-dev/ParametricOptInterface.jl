@@ -81,7 +81,7 @@ function test_basic_tests()
             x* = {2-y,0}
             obj = 2
     """
-    optimizer = POI.Optimizer(HiGHS.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer)
     MOI.set(optimizer, MOI.Silent(), true)
     x = MOI.add_variables(optimizer, 2)
     y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
@@ -292,7 +292,7 @@ end
 
 function test_moi_highs()
     model = MOI.Bridges.full_bridge_optimizer(
-        POI.Optimizer(HiGHS.Optimizer()),
+        POI.Optimizer(HiGHS.Optimizer),
         Float64,
     )
     MOI.set(model, MOI.Silent(), true)
@@ -312,7 +312,7 @@ function test_moi_ipopt()
     model = MOI.Utilities.CachingOptimizer(
         MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
         MOI.Bridges.full_bridge_optimizer(
-            POI.Optimizer(Ipopt.Optimizer()),
+            POI.Optimizer(Ipopt.Optimizer),
             Float64,
         ),
     )
@@ -386,7 +386,7 @@ function test_moi_ListOfConstraintTypesPresent()
 end
 
 function test_production_problem_example()
-    optimizer = POI.Optimizer(HiGHS.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer)
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 1.0]
     A2 = [1.0, 2.0, 1.0]
@@ -464,7 +464,7 @@ function test_production_problem_example()
 end
 
 function test_production_problem_example_duals()
-    optimizer = POI.Optimizer(HiGHS.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer)
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 3.0]
     A2 = [1.0, 2.0, 0.5]
@@ -655,11 +655,7 @@ function test_vector_parameter_affine_nonnegatives()
             y* = t-2
             obj = 2*t-3
     """
-    cached = MOI.Utilities.CachingOptimizer(
-        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-        SCS.Optimizer(),
-    )
-    model = POI.Optimizer(cached)
+    model = POI.Optimizer(SCS.Optimizer)
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
@@ -711,14 +707,7 @@ function test_vector_parameter_affine_nonpositives()
             y* = t-2
             obj = 2*t-3
     """
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            SCS.Optimizer(),
-        ),
-        Float64,
-    )
-    model = POI.Optimizer(cached)
+    model = POI.Optimizer(SCS.Optimizer; with_bridge_type = Float64)
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
@@ -777,11 +766,7 @@ function test_vector_soc_parameters()
             x* = p - 1/√2
             y* = 1/√2
     """
-    cached = MOI.Utilities.CachingOptimizer(
-        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-        SCS.Optimizer(),
-    )
-    model = POI.Optimizer(cached)
+    model = POI.Optimizer(SCS.Optimizer)
     MOI.set(model, MOI.Silent(), true)
     x, y, t = MOI.add_variables(model, 3)
     p, cp = MOI.add_constrained_variable(model, MOI.Parameter(0.0))
@@ -860,14 +845,7 @@ function test_vector_soc_no_parameters()
             x* = 1/√2
             y* = 1/√2
     """
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            SCS.Optimizer(),
-        ),
-        Float64,
-    )
-    model = POI.Optimizer(cached)
+    model = POI.Optimizer(SCS.Optimizer; with_bridge_type = Float64)
     MOI.set(model, MOI.Silent(), true)
     x, y, t = MOI.add_variables(model, 3)
     MOI.set(
@@ -1532,7 +1510,7 @@ function test_qp_objective_affine_parameter()
 end
 
 function test_qp_objective_parameter_in_quadratic_part()
-    model = POI.Optimizer(Ipopt.Optimizer())
+    model = POI.Optimizer(Ipopt.Optimizer)
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
@@ -1583,7 +1561,7 @@ function test_qp_objective_parameter_in_quadratic_part()
     @test MOI.get(model, MOI.ObjectiveValue()) ≈ 128 / 9 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 4 / 3 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 4 / 3 atol = ATOL
-    model = POI.Optimizer(Ipopt.Optimizer())
+    model = POI.Optimizer(Ipopt.Optimizer)
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
@@ -1621,7 +1599,7 @@ function test_qp_objective_parameter_in_quadratic_part()
     @test MOI.get(model, MOI.ObjectiveValue()) ≈ 77 / 9 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 4 / 3 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 4 / 3 atol = ATOL
-    model = POI.Optimizer(Ipopt.Optimizer())
+    model = POI.Optimizer(Ipopt.Optimizer)
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
@@ -1647,7 +1625,7 @@ function test_qp_objective_parameter_in_quadratic_part()
     @test MOI.get(model, MOI.ObjectiveValue()) ≈ 44 / 9 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 4 / 3 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 4 / 3 atol = ATOL
-    model = POI.Optimizer(Ipopt.Optimizer())
+    model = POI.Optimizer(Ipopt.Optimizer)
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     y = MOI.add_variable(model)
@@ -1817,7 +1795,7 @@ function test_duals_not_available()
 end
 
 function test_duals_without_parameters()
-    optimizer = POI.Optimizer(HiGHS.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer)
     MOI.set(optimizer, MOI.Silent(), true)
     x = MOI.add_variables(optimizer, 3)
     y, cy = MOI.add_constrained_variable(optimizer, MOI.Parameter(0.0))
@@ -1854,11 +1832,7 @@ function test_duals_without_parameters()
 end
 
 function test_getters()
-    cached = MOI.Utilities.CachingOptimizer(
-        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-        SCS.Optimizer(),
-    )
-    optimizer = POI.Optimizer(cached)
+    optimizer = POI.Optimizer(SCS.Optimizer)
     MOI.set(optimizer, MOI.Silent(), true)
     x = MOI.add_variable(optimizer)
     @test isempty(
@@ -2077,7 +2051,7 @@ function test_getters()
 end
 
 function test_no_quadratic_terms()
-    optimizer = POI.Optimizer(HiGHS.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer)
     MOI.set(optimizer, MOI.Silent(), true)
     x = MOI.add_variable(optimizer)
     func = MOI.Utilities.canonical(1.0 * x * x + 1.0 * x - 1.0 * x * x)
@@ -2149,15 +2123,7 @@ function test_psd_cone_with_parameter()
         minobjective: 1x
         c1: [0, px + -1, 0] in PositiveSemidefiniteConeTriangle(2)
     =#
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            SCS.Optimizer(),
-        ),
-        Float64,
-    )
-
-    model = POI.Optimizer(cached)
+    model = POI.Optimizer(SCS.Optimizer; with_bridge_type = Float64)
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     p = first.(MOI.add_constrained_variable.(model, MOI.Parameter(1.0)))
@@ -2200,14 +2166,14 @@ function test_copy_model()
     x = MOI.add_variable(model)
     c = MOI.add_constraint(model, 1.0 * x, MOI.EqualTo(1.0))
     MOI.set(model, MOI.ConstraintName(), c, "c")
-    poi = POI.Optimizer(HiGHS.Optimizer())
+    poi = POI.Optimizer(HiGHS.Optimizer)
     MOI.copy_to(poi, model)
     MOI.optimize!(poi)
     @test MOI.get(poi, MOI.VariablePrimal(), x) ≈ 1.0
 end
 
 function test_constrained_variable_HiGHS()
-    optimizer = POI.Optimizer(HiGHS.Optimizer())
+    optimizer = POI.Optimizer(HiGHS.Optimizer)
     MOI.set(optimizer, MOI.Silent(), true)
     set = MOI.LessThan(1.0)
     @test MOI.supports_add_constrained_variable(optimizer, typeof(set))

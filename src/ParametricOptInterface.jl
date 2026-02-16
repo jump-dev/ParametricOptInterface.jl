@@ -81,28 +81,63 @@ const DoubleDictInner{F,S,T} = MOI.Utilities.DoubleDicts.DoubleDictInner{F,S,T}
 include("parametric_functions.jl")
 
 """
-    Optimizer{T, OT <: MOI.ModelLike} <: MOI.AbstractOptimizer
+    Optimizer{T}(
+        optimizer::Union{MOI.ModelLike,Any};
+        evaluate_duals::Bool = true,
+        save_original_objective_and_constraints::Bool = true,
+        with_bridge_type = nothing,
+    )
 
-Declares a `Optimizer`, which allows the handling of parameters in a
+Create an `Optimizer`, which allows the handling of parameters in an
 optimization model.
+
+If `optimizer` is not a `MOI.ModelLike,` the inner optimizer is constructed
+using `MOI.instantiate(optimizer; with_bridge_type)`.
+
+The `{T}` type parameter is optional; it defaults to `Float64`.
 
 ## Keyword arguments
 
-- `evaluate_duals::Bool`: If `true`, evaluates the dual of parameters. Users might want to set it to `false`
-  to increase performance when the duals of parameters are not necessary. Defaults to `true`.
+- `evaluate_duals::Bool`: If `true`, evaluates the dual of parameters. Set it to
+  `false` to increase performance when the duals of parameters are not
+  necessary. Defaults to `true`.
 
-- `save_original_objective_and_constraints`: If `true` saves the orginal function and set of the constraints
-  as well as the original objective function inside [`Optimizer`](@ref). This is useful for printing the model
-  but greatly increases the memory footprint. Users might want to set it to `false` to increase performance
-  in applications where you don't need to query the original expressions provided to the model in constraints
-  or in the objective. Note that this might break printing or queries such as `MOI.get(model, MOI.ConstraintFunction(), c)`.
-  Defaults to `true`.
+- `save_original_objective_and_constraints`: If `true` saves the orginal
+  function and set of the constraints as well as the original objective function
+  inside [`Optimizer`](@ref). This is useful for printing the model but greatly
+  increases the memory footprint. Users might want to set it to `false` to
+  increase performance in applications where you don't need to query the
+  original expressions provided to the model in constraints or in the objective.
+  Note that this might break printing or queries such as
+  `MOI.get(model, MOI.ConstraintFunction(), c)`. Defaults to `true`.
+
+- `with_bridge_type`: this is ignroed if `optimizer::MOI.ModelLike`, otherwise
+  it is passed to `MOI.instantiate`.
 
 ## Example
 
 ```julia-repl
-julia> ParametricOptInterface.Optimizer(HiGHS.Optimizer())
-ParametricOptInterface.Optimizer{Float64,HiGHS.Optimizer}
+julia> import ParametricOptInterface as POI
+
+julia> import HiGHS
+
+julia> POI.Optimizer(HiGHS.Optimizer(); evaluate_duals = true)
+ParametricOptInterface.Optimizer{Float64, HiGHS.Optimizer}
+├ ObjectiveSense: FEASIBILITY_SENSE
+├ ObjectiveFunctionType: MOI.ScalarAffineFunction{Float64}
+├ NumberOfVariables: 0
+└ NumberOfConstraints: 0
+
+julia> POI.Optimizer(
+           HiGHS.Optimizer;
+           with_bridge_type = Float64,
+           evaluate_duals = false,
+       )
+ParametricOptInterface.Optimizer{Float64, MOIB.LazyBridgeOptimizer{HiGHS.Optimizer}}
+├ ObjectiveSense: FEASIBILITY_SENSE
+├ ObjectiveFunctionType: MOI.ScalarAffineFunction{Float64}
+├ NumberOfVariables: 0
+└ NumberOfConstraints: 0
 ```
 """
 mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
@@ -183,11 +218,12 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
 
     # extension data
     ext::Dict{Symbol,Any}
+
     function Optimizer{T}(
         optimizer::OT;
         evaluate_duals::Bool = true,
         save_original_objective_and_constraints::Bool = true,
-    ) where {T,OT}
+    ) where {T,OT<:MOI.ModelLike}
         return new{T,OT}(
             optimizer,
             MOI.Utilities.CleverDicts.CleverDict{ParameterIndex,T}(
@@ -251,7 +287,20 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     end
 end
 
-Optimizer(args...; kws...) = Optimizer{Float64}(args...; kws...)
+Optimizer(arg; kwargs...) = Optimizer{Float64}(arg; kwargs...)
+
+function Optimizer{T}(
+    optimizer_fn;
+    with_bridge_type = nothing,
+    kwargs...,
+) where {T}
+    inner = MOI.instantiate(optimizer_fn; with_bridge_type)
+    if !MOI.supports_incremental_interface(inner)
+        cache = MOI.default_cache(inner, T)
+        inner = MOI.Utilities.CachingOptimizer(cache, inner)
+    end
+    return Optimizer{T}(inner; kwargs...)
+end
 
 function _next_parameter_index!(model::Optimizer)
     return model.last_parameter_index_added += 1
