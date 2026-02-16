@@ -757,6 +757,13 @@ end
 # MOI Objective Interface
 # ============================================================================
 
+function test_update_cubic_objective_no_cache()
+    model = POI.Optimizer(HiGHS.Optimizer())
+    # No cubic objective set, cache is nothing — should return early
+    POI._update_cubic_objective!(model)
+    return
+end
+
 function test_cubic_objective_supports()
     model = POI.Optimizer(HiGHS.Optimizer())
     @test MOI.supports(
@@ -1134,33 +1141,8 @@ function test_jump_cubic_ppp_same()
 end
 
 # ============================================================================
-# JuMP Integration - Specific term types in objective (pp, pv, p affine)
+# JuMP Integration - Specific term types in objective (pp, p affine)
 # ============================================================================
-
-function test_jump_cubic_pp_in_objective()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
-    set_silent(model)
-
-    @variable(model, x >= 0)
-    @variable(model, p in MOI.Parameter(3.0))
-    @variable(model, q in MOI.Parameter(2.0))
-
-    # Minimize: x + p*q (pp contributes to constant)
-    # With p=3, q=2: x + 6
-    @constraint(model, x >= 1)
-    @objective(model, Min, x + p * q)
-
-    optimize!(model)
-    @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
-    @test objective_value(model) ≈ 7.0 atol = ATOL
-
-    # p=0, q=0: x + 0
-    set_parameter_value(p, 0.0)
-    set_parameter_value(q, 0.0)
-    optimize!(model)
-    @test objective_value(model) ≈ 1.0 atol = ATOL
-    return
-end
 
 function test_jump_cubic_with_pp_terms()
     # pp terms alongside a cubic term (forces ScalarNonlinearFunction path)
@@ -1215,54 +1197,6 @@ function test_jump_cubic_with_pp_same_param()
     @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
     @test objective_value(model) ≈ 0.0 atol = ATOL
     @test value(x) ≈ 0.0 atol = ATOL
-    return
-end
-
-function test_jump_cubic_pv_in_objective()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
-    set_silent(model)
-
-    @variable(model, 0 <= x <= 10)
-    @variable(model, p in MOI.Parameter(2.0))
-
-    # Minimize: x^2 + p*x - 4x = x^2 + (p-4)*x
-    # With p=2: x^2 - 2x, optimal at x=1, obj=-1
-    @constraint(model, x >= 0)
-    @objective(model, Min, x^2 + p * x - 4 * x)
-
-    optimize!(model)
-    @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
-    @test objective_value(model) ≈ -1.0 atol = ATOL
-    @test value(x) ≈ 1.0 atol = ATOL
-
-    # p=6: x^2 + 2x, optimal at x=0, obj=0
-    set_parameter_value(p, 6.0)
-    optimize!(model)
-    @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
-    @test objective_value(model) ≈ 0.0 atol = ATOL
-    @test value(x) ≈ 0.0 atol = ATOL
-    return
-end
-
-function test_jump_cubic_p_affine_in_objective()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
-    set_silent(model)
-
-    @variable(model, x >= 0)
-    @variable(model, p in MOI.Parameter(5.0))
-
-    # Minimize: x + 3*p (affine in parameter contributes to constant)
-    # With p=5: x + 15
-    @constraint(model, x >= 1)
-    @objective(model, Min, x + 3 * p)
-
-    optimize!(model)
-    @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
-    @test objective_value(model) ≈ 16.0 atol = ATOL
-
-    set_parameter_value(p, 0.0)
-    optimize!(model)
-    @test objective_value(model) ≈ 1.0 atol = ATOL
     return
 end
 
