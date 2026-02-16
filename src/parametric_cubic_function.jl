@@ -80,8 +80,9 @@ function ParametricCubicFunction(parsed::_ParsedCubicExpression{T}) where {T}
     # Find variable pairs related to parameters (from pvv terms)
     var_pairs_in_param_terms = Set{Tuple{MOI.VariableIndex,MOI.VariableIndex}}()
     for term in parsed.pvv
-        v1 = term.index_2
-        v2 = term.index_3
+        first_is_greater = term.index_2.value > term.index_3.value
+        v1 = ifelse(first_is_greater, term.index_3, term.index_2)
+        v2 = ifelse(first_is_greater, term.index_2, term.index_3)
         push!(var_pairs_in_param_terms, (v1, v2))
     end
 
@@ -93,7 +94,9 @@ function ParametricCubicFunction(parsed::_ParsedCubicExpression{T}) where {T}
     #   - Diagonal (v1 == v2): coefficient C means (C/2)*v1^2 (divide by 2)
     quadratic_data = Dict{Tuple{MOI.VariableIndex,MOI.VariableIndex},T}()
     for term in parsed.vv
-        v1, v2 = term.variable_1, term.variable_2
+        first_is_greater = term.variable_1.value > term.variable_2.value
+        v1 = ifelse(first_is_greater, term.variable_2, term.variable_1)
+        v2 = ifelse(first_is_greater, term.variable_1, term.variable_2)
         coef = term.coefficient
         if term.variable_1 == term.variable_2
             coef = coef / 2  # Diagonal: undo MOI's factor
@@ -234,8 +237,9 @@ function _parametric_quadratic_terms(
     # Add contributions from pvv cubic terms
     for term in _cubic_pvv_terms(f)
         p = term.index_1
-        v1 = term.index_2
-        v2 = term.index_3
+        first_is_greater = term.index_2.value > term.index_3.value
+        v1 = ifelse(first_is_greater, term.index_3, term.index_2)
+        v2 = ifelse(first_is_greater, term.index_2, term.index_3)
         var_pair = (v1, v2)
         p_val = _effective_param_value(model, p_idx(p))
         terms_dict[var_pair] =
@@ -311,11 +315,11 @@ function _delta_parametric_constant(
 
     # From p terms
     for term in f.p
-        pi = p_idx(term.variable)
-        if haskey(model.updated_parameters, pi) &&
-           !isnan(model.updated_parameters[pi])
-            old_val = model.parameters[pi]
-            new_val = model.updated_parameters[pi]
+        p_i = p_idx(term.variable)
+        if haskey(model.updated_parameters, p_i) &&
+           !isnan(model.updated_parameters[p_i])
+            old_val = model.parameters[p_i]
+            new_val = model.updated_parameters[p_i]
             delta += term.coefficient * (new_val - old_val)
         end
     end
@@ -394,13 +398,13 @@ function _delta_parametric_affine_terms(
 
     # From pv terms (parameter * variable, always off-diagonal)
     for term in f.pv
-        pi = p_idx(term.variable_1)
-        if haskey(model.updated_parameters, pi) &&
-           !isnan(model.updated_parameters[pi])
+        p_i = p_idx(term.variable_1)
+        if haskey(model.updated_parameters, p_i) &&
+           !isnan(model.updated_parameters[p_i])
             var = term.variable_2
             coef = term.coefficient  # Off-diagonal: use as-is
-            old_val = model.parameters[pi]
-            new_val = model.updated_parameters[pi]
+            old_val = model.parameters[p_i]
+            new_val = model.updated_parameters[p_i]
             delta_dict[var] =
                 get(delta_dict, var, zero(T)) + coef * (new_val - old_val)
         end
@@ -446,15 +450,16 @@ function _delta_parametric_quadratic_terms(
     delta_dict = Dict{Tuple{MOI.VariableIndex,MOI.VariableIndex},T}()
 
     for term in _cubic_pvv_terms(f)
-        pi = p_idx(term.index_1)
-        v1 = term.index_2
-        v2 = term.index_3
+        p_i = p_idx(term.index_1)
+        first_is_greater = term.index_2.value > term.index_3.value
+        v1 = ifelse(first_is_greater, term.index_3, term.index_2)
+        v2 = ifelse(first_is_greater, term.index_2, term.index_3)
+        var_pair = (v1, v2)
 
-        if haskey(model.updated_parameters, pi) &&
-           !isnan(model.updated_parameters[pi])
-            var_pair = (v1, v2)
-            old_val = model.parameters[pi]
-            new_val = model.updated_parameters[pi]
+        if haskey(model.updated_parameters, p_i) &&
+           !isnan(model.updated_parameters[p_i])
+            old_val = model.parameters[p_i]
+            new_val = model.updated_parameters[p_i]
             delta = term.coefficient * (new_val - old_val)
             delta_dict[var_pair] = get(delta_dict, var_pair, zero(T)) + delta
         end
