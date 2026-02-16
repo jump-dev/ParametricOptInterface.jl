@@ -250,6 +250,26 @@ function test_cubic_parse_non_polynomial_rejected()
     result = POI._parse_cubic_expression(f, Float64)
 
     @test result === nothing
+
+    # sin(x) * p - should be rejected
+    f = MOI.ScalarNonlinearFunction(
+        :+,
+        Any[MOI.ScalarNonlinearFunction(:sin, Any[x]), p],
+    )
+    result = POI._parse_cubic_expression(f, Float64)
+
+    @test result === nothing
+    return
+end
+
+function test_parse_nonlinear_with_saf()
+    saf = MOI.ScalarAffineFunction(
+        [MOI.ScalarAffineTerm(1.0, MOI.VariableIndex(1))],
+        1.3,
+    )
+    f = MOI.ScalarNonlinearFunction(:+, Any[saf, 1.0])
+    result = POI._parse_cubic_expression(f, Float64)
+    @test result.constant == 2.3
     return
 end
 
