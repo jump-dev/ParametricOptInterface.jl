@@ -139,32 +139,21 @@ function MOI.get(
     ::ParameterDual,
     v::MOI.VariableIndex,
 ) where {T}
-    if !_is_additive(
-        model,
-        MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}}(v.value),
-    )
-        error("Cannot compute the dual of a multiplicative parameter")
-    end
-    return model.dual_value_of_parameters[p_val(v)]
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}}(v.value)
+    return MOI.get(model, MOI.ConstraintDual(), ci)
 end
 
 function MOI.get(
     model::Optimizer{T},
-    ::MOI.ConstraintDual,
+    attr::MOI.ConstraintDual,
     cp::MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}},
 ) where {T}
     if !model.evaluate_duals
-        throw(
-            MOI.GetAttributeNotAllowed(
-                MOI.ConstraintDual(),
-                "$(MOI.ConstraintDual()) not available when " *
-                "evaluate_duals is set to false. " *
-                "Create an optimizer such as POI.Optimizer(HiGHS.Optimizer(); evaluate_duals = true) to enable this feature.",
-            ),
-        )
-    end
-    if !_is_additive(model, cp)
-        error("Cannot compute the dual of a multiplicative parameter")
+        msg = "$attr not available when evaluate_duals is set to false. Create an optimizer such as `POI.Optimizer(HiGHS.Optimizer(); evaluate_duals = true)` to enable this feature."
+        throw(MOI.GetAttributeNotAllowed(attr, msg))
+    elseif !_is_additive(model, cp)
+        msg = "Cannot compute the dual of a multiplicative parameter"
+        throw(MOI.GetAttributeNotAllowed(attr, msg))
     end
     return model.dual_value_of_parameters[p_val(cp)]
 end

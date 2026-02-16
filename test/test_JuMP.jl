@@ -553,9 +553,11 @@ function test_jump_dual_multiplicative_fail()
     @constraint(model, cons, x * p >= 3)
     @objective(model, Min, 2x)
     optimize!(model)
-    @test_throws ErrorException(
+    err = MOI.GetAttributeNotAllowed(
+        MOI.ConstraintDual(),
         "Cannot compute the dual of a multiplicative parameter",
-    ) MOI.get(model, POI.ParameterDual(), p)
+    )
+    @test_throws err MOI.get(model, POI.ParameterDual(), p)
     return
 end
 
