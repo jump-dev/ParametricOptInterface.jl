@@ -290,7 +290,7 @@ function test_modification_multiple()
     return
 end
 
-function _test_moi_highs()
+function test_moi_highs()
     model = MOI.Bridges.full_bridge_optimizer(
         POI.Optimizer(HiGHS.Optimizer),
         Float64,
@@ -308,7 +308,7 @@ function _test_moi_highs()
     return
 end
 
-function _test_moi_ipopt()
+function test_moi_ipopt()
     model = MOI.Utilities.CachingOptimizer(
         MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
         MOI.Bridges.full_bridge_optimizer(
