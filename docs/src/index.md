@@ -288,44 +288,24 @@ optimize!(model)
 
 POI supports parameters that multiply quadratic variable terms in objectives
 **only**. This creates cubic polynomial expressions of the form `c * p * x * y`
-where `c` is a number, `p` is a parameter and `x`, `y` are variables. After
-parameter substitution, these become standard quadratic terms that solvers can
-handle.
+where `c` is a number, `p` is a parameter, and `x` and `y` are variables. After
+parameter substitution, the objective is quadratic instead of cubic.
 
-
-### Attention
-
-- Maximum degree is 3 (cubic)
-- At least one factor in each cubic term must be a parameter
-- Pure cubic variable terms (e.g., `x * y * z` with no parameters) are
-  **not supported**
-
-### Example using JuMP
+Note that the maximum degree is 3 (cubic), at least one factor in each cubic
+term must be a parameter, and pure cubic variable terms (for example,
+`x * y * z` with no parameters) are not supported.
 
 ```@repl
 using JuMP, HiGHS
 import ParametricOptInterface as POI
-
-# Create model with POI optimizer
 model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
 set_silent(model)
-
-# Define variables and parameter
 @variable(model, 0 <= x <= 10)
-@variable(model, p in MOI.Parameter(2.0))
-
-# Set cubic objective: p * x * y
-@objective(model, Min, p * x ^ 2 - 3x)
-
-# Solve
+@variable(model, p in Parameter(2))
+@objective(model, Min, p * x^2 - 3x)
 optimize!(model)
-
-@show value(x) # == 3 / (2 * p)
-
-# Update parameter and re-solve
-# Parameters are automatically updated when optimize! is called
-set_parameter_value(p, 3.0)
+value(x)  # x = 3 / 2p = 0.75
+set_parameter_value(p, 3)
 optimize!(model)
-
-@show value(x) # == 3 / (2 * p)
+value(x)  # x = 3 / 2p = 0.5
 ```
