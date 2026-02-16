@@ -82,9 +82,6 @@ function ParametricCubicFunction(parsed::_ParsedCubicExpression{T}) where {T}
     for term in parsed.pvv
         v1 = term.index_2
         v2 = term.index_3
-        if v1.value > v2.value
-            v1, v2 = v2, v1
-        end
         push!(var_pairs_in_param_terms, (v1, v2))
     end
 
@@ -97,9 +94,6 @@ function ParametricCubicFunction(parsed::_ParsedCubicExpression{T}) where {T}
     quadratic_data = Dict{Tuple{MOI.VariableIndex,MOI.VariableIndex},T}()
     for term in parsed.vv
         v1, v2 = term.variable_1, term.variable_2
-        if v1.value > v2.value
-            v1, v2 = v2, v1
-        end
         coef = term.coefficient
         if term.variable_1 == term.variable_2
             coef = coef / 2  # Diagonal: undo MOI's factor
@@ -166,8 +160,9 @@ function _parametric_constant(model, f::ParametricCubicFunction{T}) where {T}
     end
 
     # From quadratic parameter-parameter terms (pp)
+    # MOI convention: diagonal C means C/2*p^2, off-diagonal C means C*p1*p2
     for term in f.pp
-        divisor = term.variable_1 == term.variable_2 ? 1 : 2
+        divisor = term.variable_1 == term.variable_2 ? 2 : 1
         constant +=
             (term.coefficient / divisor) *
             _effective_param_value(model, p_idx(term.variable_1)) *
@@ -241,9 +236,6 @@ function _parametric_quadratic_terms(
         p = term.index_1
         v1 = term.index_2
         v2 = term.index_3
-        if v1.value > v2.value
-            v1, v2 = v2, v1
-        end
         var_pair = (v1, v2)
         p_val = _effective_param_value(model, p_idx(p))
         terms_dict[var_pair] =
@@ -340,7 +332,7 @@ function _delta_parametric_constant(
             !isnan(model.updated_parameters[pi2])
 
         if updated1 || updated2
-            divisor = term.variable_1 == term.variable_2 ? 1 : 2
+            divisor = term.variable_1 == term.variable_2 ? 2 : 1
             old_val =
                 (term.coefficient / divisor) *
                 model.parameters[pi1] *
@@ -460,9 +452,6 @@ function _delta_parametric_quadratic_terms(
 
         if haskey(model.updated_parameters, pi) &&
            !isnan(model.updated_parameters[pi])
-            if v1.value > v2.value
-                v1, v2 = v2, v1
-            end
             var_pair = (v1, v2)
             old_val = model.parameters[pi]
             new_val = model.updated_parameters[pi]
