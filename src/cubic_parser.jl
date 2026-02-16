@@ -439,16 +439,21 @@ function _parse_cubic_expression(
                 MOI.ScalarQuadraticTerm{T}(m.coefficient * divisor, p1, p2),
             )
         elseif classification == :pv
-            v1 = m.variables[1]
-            v2 = m.variables[2]
-            # Sort for canonical order
-            if v1.value > v2.value
-                v1, v2 = v2, v1
+            # Convention: variable_1 = parameter, variable_2 = variable
+            # This matches the expectation in _parametric_affine_terms and
+            # _delta_parametric_affine_terms
+            if _is_parameter(m.variables[1])
+                p_idx_v, v_idx_v = m.variables[1], m.variables[2]
+            else
+                p_idx_v, v_idx_v = m.variables[2], m.variables[1]
             end
-            divisor = v1 == v2 ? T(2) : T(1)  # Diagonal vs off-diagonal
             push!(
                 quadratic_pv,
-                MOI.ScalarQuadraticTerm{T}(m.coefficient * divisor, v1, v2),
+                MOI.ScalarQuadraticTerm{T}(
+                    m.coefficient,
+                    p_idx_v,
+                    v_idx_v,
+                ),
             )
         elseif classification == :vv
             v1 = m.variables[1]

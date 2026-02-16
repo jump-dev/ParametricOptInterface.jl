@@ -166,8 +166,9 @@ function _parametric_constant(model, f::ParametricCubicFunction{T}) where {T}
     end
 
     # From quadratic parameter-parameter terms (pp)
+    # MOI convention: diagonal C means C/2*p^2, off-diagonal C means C*p1*p2
     for term in f.pp
-        divisor = term.variable_1 == term.variable_2 ? 1 : 2
+        divisor = term.variable_1 == term.variable_2 ? 2 : 1
         constant +=
             (term.coefficient / divisor) *
             _effective_param_value(model, p_idx(term.variable_1)) *
@@ -340,7 +341,7 @@ function _delta_parametric_constant(
             !isnan(model.updated_parameters[pi2])
 
         if updated1 || updated2
-            divisor = term.variable_1 == term.variable_2 ? 1 : 2
+            divisor = term.variable_1 == term.variable_2 ? 2 : 1
             old_val =
                 (term.coefficient / divisor) *
                 model.parameters[pi1] *
