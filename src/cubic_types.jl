@@ -31,30 +31,6 @@ struct _ScalarCubicTerm{T}
 end
 
 """
-    _cubic_term_type(term::_ScalarCubicTerm) -> Symbol
-
-Classify a cubic term by the number of parameters vs variables.
-
-Returns:
-- `:pvv` - 1 parameter, 2 variables (becomes quadratic after substitution)
-- `:ppv` - 2 parameters, 1 variable (becomes affine after substitution)
-- `:ppp` - 3 parameters (becomes constant after substitution)
-"""
-function _cubic_term_type(term::_ScalarCubicTerm)
-    num_params =
-        _is_parameter(term.index_1) +
-        _is_parameter(term.index_2) +
-        _is_parameter(term.index_3)
-    if num_params == 1
-        return :pvv
-    elseif num_params == 2
-        return :ppv
-    else  # num_params == 3
-        return :ppp
-    end
-end
-
-"""
     _normalize_cubic_indices(idx1, idx2, idx3) -> (idx1, idx2, idx3)
 
 Normalize cubic term indices to canonical order:
