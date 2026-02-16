@@ -285,7 +285,6 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             Dict{Symbol,Any}(),
         )
     end
-
 end
 
 Optimizer(arg; kwargs...) = Optimizer{Float64}(arg; kwargs...)

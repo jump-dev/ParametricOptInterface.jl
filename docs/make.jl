@@ -17,10 +17,7 @@ Documenter.makedocs(;
     ),
     sitename = "ParametricOptInterface.jl",
     authors = "Tomás Gutierrez, and contributors",
-    pages = [
-        "Home" => "index.md",
-        "reference.md",
-    ],
+    pages = ["Home" => "index.md", "reference.md"],
     checkdocs = :none,
 )
 
