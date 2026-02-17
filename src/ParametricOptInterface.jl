@@ -278,7 +278,7 @@ function Optimizer{T}(
     with_bridge_type = nothing,
     kwargs...,
 ) where {T}
-    inner = MOI.instantiate(optimizer_fn; with_bridge_type)
+    inner = MOI.instantiate(optimizer_fn)
     if !MOI.supports_incremental_interface(inner)
         # Don't use `default_cache` for the cache because, for example, SCS's
         # default cache doesn't support modifying coefficients of the constraint
@@ -289,6 +289,9 @@ function Optimizer{T}(
         # We could revert to using the default cache if we fix this in MOI.
         cache = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{T}())
         inner = MOI.Utilities.CachingOptimizer(cache, inner)
+    end
+    if with_bridge_type !== nothing
+        inner = MOI.Bridges.full_bridge_optimizer(inner, with_bridge_type)
     end
     return Optimizer{T}(inner; kwargs...)
 end
