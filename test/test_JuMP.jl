@@ -34,10 +34,11 @@ end
 function test_jump_direct_affine_parameters()
     optimizer = POI.Optimizer(HiGHS.Optimizer)
     model = direct_model(optimizer)
+    set_silent(model)
     @variable(model, x[i=1:2] >= 0)
-    @variable(model, y in MOI.Parameter(0.0))
-    @variable(model, w in MOI.Parameter(0.0))
-    @variable(model, z in MOI.Parameter(0.0))
+    @variable(model, y in Parameter(0.0))
+    @variable(model, w in Parameter(0.0))
+    @variable(model, z in Parameter(0.0))
     @constraint(model, 2 * x[1] + x[2] + y <= 4)
     @constraint(model, 1 * x[1] + 2 * x[2] + z <= 4)
     @objective(model, Max, 4 * x[1] + 3 * x[2] + w)
@@ -57,10 +58,11 @@ end
 function test_jump_direct_parameter_times_variable()
     optimizer = POI.Optimizer(HiGHS.Optimizer)
     model = direct_model(optimizer)
+    set_silent(model)
     @variable(model, x[i=1:2] >= 0)
-    @variable(model, y in MOI.Parameter(0.0))
-    @variable(model, w in MOI.Parameter(0.0))
-    @variable(model, z in MOI.Parameter(0.0))
+    @variable(model, y in Parameter(0.0))
+    @variable(model, w in Parameter(0.0))
+    @variable(model, z in Parameter(0.0))
     @constraint(model, 2 * x[1] + x[2] + y <= 4)
     @constraint(model, (1 + y) * x[1] + 2 * x[2] + z <= 4)
     @objective(model, Max, 4 * x[1] + 3 * x[2] + w)
@@ -79,10 +81,11 @@ end
 
 function test_jump_affine_parameters()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     @variable(model, x[i=1:2] >= 0)
-    @variable(model, y in MOI.Parameter(0.0))
-    @variable(model, w in MOI.Parameter(0.0))
-    @variable(model, z in MOI.Parameter(0.0))
+    @variable(model, y in Parameter(0.0))
+    @variable(model, w in Parameter(0.0))
+    @variable(model, z in Parameter(0.0))
     @constraint(model, 2 * x[1] + x[2] + y <= 4)
     @constraint(model, 1 * x[1] + 2 * x[2] + z <= 4)
     @objective(model, Max, 4 * x[1] + 3 * x[2] + w)
@@ -101,10 +104,11 @@ end
 
 function test_jump_parameter_times_variable()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     @variable(model, x[i=1:2] >= 0)
-    @variable(model, y in MOI.Parameter(0.0))
-    @variable(model, w in MOI.Parameter(0.0))
-    @variable(model, z in MOI.Parameter(0.0))
+    @variable(model, y in Parameter(0.0))
+    @variable(model, w in Parameter(0.0))
+    @variable(model, z in Parameter(0.0))
     @test MOI.get(model, POI.ParameterValue(), y) == 0
     @constraint(model, 2 * x[1] + x[2] + y <= 4)
     @constraint(model, (1 + y) * x[1] + 2 * x[2] + z <= 4)
@@ -132,7 +136,7 @@ function test_jump_constraintfunction_getter()
         ),
     )
     vx = @variable(model, x[i=1:2])
-    vp = @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
+    vp = @variable(model, p[i=1:2] in Parameter(-1.0))
     c1 = @constraint(model, con, sum(x) + sum(p) >= 1)
     c2 = @constraint(model, conq, sum(x .* p) >= 1)
     c3 = @constraint(model, conqa, sum(x .* p) + x[1]^2 + x[1] + p[1] >= 1)
@@ -281,9 +285,10 @@ end
 
 function test_jump_interpret_parameteric_bounds()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i=1:2])
-    @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
+    @variable(model, p[i=1:2] in Parameter.(-1.0))
     @constraint(model, [i in 1:2], x[i] >= p[i])
     @objective(model, Min, sum(x))
     optimize!(model)
@@ -310,9 +315,10 @@ end
 
 function test_jump_interpret_parameteric_bounds_expression()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i=1:2])
-    @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
+    @variable(model, p[i=1:2] in Parameter.(-1.0))
     @constraint(model, [i in 1:2], x[i] >= p[i] + p[1])
     @objective(model, Min, sum(x))
     optimize!(model)
@@ -339,9 +345,10 @@ end
 
 function test_jump_direct_interpret_parameteric_bounds()
     model = direct_model(POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i=1:2])
-    @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
+    @variable(model, p[i=1:2] in Parameter(-1.0))
     @constraint(model, [i in 1:2], x[i] >= p[i])
     @objective(model, Min, sum(x))
     optimize!(model)
@@ -366,9 +373,10 @@ end
 
 function test_jump_direct_interpret_parameteric_bounds_no_interpretation()
     model = direct_model(POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_CONSTRAINTS)
     @variable(model, x[i=1:2])
-    @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
+    @variable(model, p[i=1:2] in Parameter(-1.0))
     @constraint(model, [i in 1:2], x[i] >= p[i])
     @objective(model, Min, sum(x))
     optimize!(model)
@@ -396,9 +404,10 @@ end
 
 function test_jump_direct_interpret_parameteric_bounds_change()
     model = direct_model(POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i=1:2])
-    @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
+    @variable(model, p[i=1:2] in Parameter(-1.0))
     @constraint(model, [i in 1:2], x[i] >= p[i])
     @test_throws ErrorException @constraint(model, [i in 1:2], 2x[i] >= p[i])
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_CONSTRAINTS)
@@ -414,9 +423,10 @@ end
 
 function test_jump_direct_interpret_parameteric_bounds_both()
     model = direct_model(POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     MOI.set(model, POI.ConstraintsInterpretation(), POI.BOUNDS_AND_CONSTRAINTS)
     @variable(model, x[i=1:2])
-    @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
+    @variable(model, p[i=1:2] in Parameter(-1.0))
     @constraint(model, [i in 1:2], x[i] >= p[i])
     @constraint(model, [i in 1:2], 2x[i] >= p[i])
     @objective(model, Min, sum(x))
@@ -430,9 +440,10 @@ end
 
 function test_jump_direct_interpret_parameteric_bounds_invalid()
     model = direct_model(POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
     @variable(model, x[i=1:2])
-    @variable(model, p[i=1:2] in MOI.Parameter.(-1.0))
+    @variable(model, p[i=1:2] in Parameter(-1.0))
     @test_throws ErrorException @constraint(
         model,
         [i in 1:2],
@@ -443,6 +454,7 @@ end
 
 function test_jump_set_variable_start_value()
     model = direct_model(POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     @variable(model, x >= 0)
     @variable(model, p in Parameter(0.0))
     set_start_value(x, 1.0)
@@ -456,6 +468,7 @@ end
 
 function test_jump_direct_get_parameter_value()
     model = direct_model(POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     @variable(model, x, lower_bound = 0.0, upper_bound = 10.0)
     @variable(model, y, binary = true)
     @variable(model, z, set = MOI.Parameter(10.0))
@@ -467,6 +480,7 @@ end
 
 function test_jump_get_parameter_value()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     @variable(model, x, lower_bound = 0.0, upper_bound = 10.0)
     @variable(model, y, binary = true)
     @variable(model, z, set = MOI.Parameter(10))
@@ -479,7 +493,7 @@ end
 function test_jump_sdp_scalar_parameter()
     m = Model(() -> POI.Optimizer(SCS.Optimizer))
     set_silent(m)
-    @variable(m, p in MOI.Parameter(0.0))
+    @variable(m, p in Parameter(0.0))
     @variable(m, x[1:2, 1:2], Symmetric)
     @objective(m, Min, x[1, 1] + x[2, 2])
     @constraint(m, LinearAlgebra.Symmetric(x .- [1+p 0; 0 1+p]) in PSDCone())
@@ -495,7 +509,7 @@ function test_jump_sdp_matrix_parameter()
     m = Model(() -> POI.Optimizer(SCS.Optimizer))
     set_silent(m)
     P1 = [1 2; 2 3]
-    @variable(m, p[1:2, 1:2] in MOI.Parameter.(P1))
+    @variable(m, p[1:2, 1:2] in Parameter.(P1))
     @variable(m, x[1:2, 1:2], Symmetric)
     @objective(m, Min, x[1, 1] + x[2, 2])
     @constraint(m, LinearAlgebra.Symmetric(x - p) in PSDCone())
@@ -510,22 +524,24 @@ end
 
 function test_jump_dual_basic()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
-    @variable(model, x[1:2] in MOI.Parameter.(ones(2) .* 4.0))
+    set_silent(model)
+    @variable(model, x[1:2] in Parameter.(ones(2) .* 4.0))
     @variable(model, y[1:6])
     @constraint(model, ctr1, 3 * y[1] >= 2 - 7 * x[1])
     @objective(model, Min, 5 * y[1])
-    JuMP.optimize!(model)
-    @test 5 / 3 ≈ JuMP.dual(ctr1) atol = 1e-3
+    optimize!(model)
+    @test 5 / 3 ≈ dual(ctr1) atol = 1e-3
     @test [-35 / 3, 0.0] ≈ MOI.get.(model, POI.ParameterDual(), x) atol = 1e-3
-    @test [-26 / 3, 0.0, 0.0, 0.0, 0.0, 0.0] ≈ JuMP.value.(y) atol = 1e-3
-    @test -130 / 3 ≈ JuMP.objective_value(model) atol = 1e-3
+    @test [-26 / 3, 0.0, 0.0, 0.0, 0.0, 0.0] ≈ value.(y) atol = 1e-3
+    @test -130 / 3 ≈ objective_value(model) atol = 1e-3
     return
 end
 
 function test_jump_dual_multiplicative_fail()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     @variable(model, x)
-    @variable(model, p in MOI.Parameter(1.0))
+    @variable(model, p in Parameter(1.0))
     @constraint(model, cons, x * p >= 3)
     @objective(model, Min, 2x)
     optimize!(model)
@@ -539,8 +555,9 @@ end
 
 function test_jump_dual_objective_min()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     @variable(model, x)
-    @variable(model, p in MOI.Parameter(1.0))
+    @variable(model, p in Parameter(1.0))
     @constraint(model, cons, x >= 3 * p)
     @objective(model, Min, 2x + p)
     optimize!(model)
@@ -550,8 +567,9 @@ end
 
 function test_jump_dual_objective_max()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     @variable(model, x)
-    @variable(model, p in MOI.Parameter(1.0))
+    @variable(model, p in Parameter(1.0))
     @constraint(model, cons, x >= 3 * p)
     @objective(model, Max, -2x + p)
     optimize!(model)
@@ -561,7 +579,8 @@ end
 
 function test_jump_dual_multiple_parameters_1()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
-    @variable(model, x[1:6] in MOI.Parameter.(ones(6) .* 4.0))
+    set_silent(model)
+    @variable(model, x[1:6] in Parameter.(ones(6) .* 4.0))
     @variable(model, y[1:6] <= 0.0)
     @constraint(model, ctr1, 3 * y[1] >= 2 - 7 * x[3])
     @constraint(model, ctr2, 3 * y[1] >= 2 - 7 * x[3])
@@ -576,147 +595,155 @@ function test_jump_dual_multiple_parameters_1()
         sum(3 * y[i] + 7.0 * x[i] - x[i] for i in 2:4) >= 2 - 7 * x[3]
     )
     @objective(model, Min, 5 * y[1])
-    JuMP.optimize!(model)
+    optimize!(model)
     @test 5 / 3 ≈
-          JuMP.dual(ctr1) +
-          JuMP.dual(ctr2) +
-          JuMP.dual(ctr3) +
-          JuMP.dual(ctr4) +
-          JuMP.dual(ctr5) +
-          JuMP.dual(ctr6) atol = 1e-3
-    @test 0.0 ≈ JuMP.dual(ctr7) atol = 1e-3
-    @test 0.0 ≈ JuMP.dual(ctr8) atol = 1e-3
+          dual(ctr1) +
+          dual(ctr2) +
+          dual(ctr3) +
+          dual(ctr4) +
+          dual(ctr5) +
+          dual(ctr6) atol = 1e-3
+    @test 0.0 ≈ dual(ctr7) atol = 1e-3
+    @test 0.0 ≈ dual(ctr8) atol = 1e-3
     @test [0.0, 0.0, -35 / 3, 0.0, 0.0, 0.0] ≈
           MOI.get.(model, POI.ParameterDual(), x) atol = 1e-3
-    @test [-26 / 3, 0.0, 0.0, 0.0, 0.0, 0.0] ≈ JuMP.value.(y) atol = 1e-3
-    @test -130 / 3 ≈ JuMP.objective_value(model) atol = 1e-3
+    @test [-26 / 3, 0.0, 0.0, 0.0, 0.0, 0.0] ≈ value.(y) atol = 1e-3
+    @test -130 / 3 ≈ objective_value(model) atol = 1e-3
     return
 end
 
 function test_jump_duals_LessThan()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
-    @variable(model, α in MOI.Parameter(-1.0))
+    set_silent(model)
+    @variable(model, α in Parameter(-1.0))
     @variable(model, x)
     cref = @constraint(model, x ≤ α)
     @objective(model, Max, x)
-    JuMP.optimize!(model)
-    @test JuMP.value(x) == -1.0
-    @test JuMP.dual(cref) == -1.0
+    optimize!(model)
+    @test value(x) == -1.0
+    @test dual(cref) == -1.0
     @test MOI.get(model, POI.ParameterDual(), α) == -1.0
 
     MOI.set(model, POI.ParameterValue(), α, 2.0)
-    JuMP.optimize!(model)
-    @test JuMP.value(x) == 2.0
-    @test JuMP.dual(cref) == -1.0
+    optimize!(model)
+    @test value(x) == 2.0
+    @test dual(cref) == -1.0
     @test MOI.get(model, POI.ParameterDual(), α) == -1.0
     return
 end
 
 function test_jump_duals_EqualTo()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
-    @variable(model, α in MOI.Parameter(-1.0))
+    set_silent(model)
+    @variable(model, α in Parameter(-1.0))
     @variable(model, x)
     cref = @constraint(model, x == α)
     @objective(model, Max, x)
-    JuMP.optimize!(model)
-    @test JuMP.value(x) == -1.0
-    @test JuMP.dual(cref) == -1.0
+    optimize!(model)
+    @test value(x) == -1.0
+    @test dual(cref) == -1.0
     @test MOI.get(model, POI.ParameterDual(), α) == -1.0
     MOI.set(model, POI.ParameterValue(), α, 2.0)
-    JuMP.optimize!(model)
-    @test JuMP.value(x) == 2.0
-    @test JuMP.dual(cref) == -1.0
+    optimize!(model)
+    @test value(x) == 2.0
+    @test dual(cref) == -1.0
     @test MOI.get(model, POI.ParameterDual(), α) == -1.0
     return
 end
 
 function test_jump_duals_GreaterThan()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
-    @variable(model, α in MOI.Parameter(1.0))
+    set_silent(model)
+    @variable(model, α in Parameter(1.0))
     MOI.set(model, POI.ParameterValue(), α, -1.0)
     @variable(model, x)
     cref = @constraint(model, x >= α)
     @objective(model, Min, x)
-    JuMP.optimize!(model)
-    @test JuMP.value(x) == -1.0
-    @test JuMP.dual(cref) == 1.0
+    optimize!(model)
+    @test value(x) == -1.0
+    @test dual(cref) == 1.0
     @test MOI.get(model, POI.ParameterDual(), α) == 1.0
     MOI.set(model, POI.ParameterValue(), α, 2.0)
-    JuMP.optimize!(model)
-    @test JuMP.value(x) == 2.0
-    @test JuMP.dual(cref) == 1.0
+    optimize!(model)
+    @test value(x) == 2.0
+    @test dual(cref) == 1.0
     @test MOI.get(model, POI.ParameterDual(), α) == 1.0
     return
 end
 
 function test_jump_dual_multiple_parameters_2()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
-    @variable(model, α[1:10] in MOI.Parameter.(ones(10)))
+    set_silent(model)
+    @variable(model, α[1:10] in Parameter.(ones(10)))
     @variable(model, x)
     cref = @constraint(model, x == sum(2 * α[i] for i in 1:10))
     @objective(model, Min, x)
-    JuMP.optimize!(model)
-    @test JuMP.value(x) == 20.0
-    @test JuMP.dual(cref) == 1.0
+    optimize!(model)
+    @test value(x) == 20.0
+    @test dual(cref) == 1.0
     @test MOI.get(model, POI.ParameterDual(), α[3]) == 2.0
     return
 end
 
 function test_jump_dual_mixing_params_and_vars_1()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
-    @variable(model, α[1:5] in MOI.Parameter.(ones(5)))
+    set_silent(model)
+    @variable(model, α[1:5] in Parameter.(ones(5)))
     @variable(model, x)
     cref = @constraint(model, sum(x for i in 1:5) == sum(2 * α[i] for i in 1:5))
     @objective(model, Min, x)
-    JuMP.optimize!(model)
-    @test JuMP.value(x) == 2.0
-    @test JuMP.dual(cref) == 1 / 5
+    optimize!(model)
+    @test value(x) == 2.0
+    @test dual(cref) == 1 / 5
     @test MOI.get(model, POI.ParameterDual(), α[3]) == 2 / 5
     return
 end
 
 function test_jump_dual_mixing_params_and_vars_2()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
-    @variable(model, α[1:5] in MOI.Parameter.(ones(5)))
+    set_silent(model)
+    @variable(model, α[1:5] in Parameter.(ones(5)))
     @variable(model, x)
     cref = @constraint(model, 0.0 == sum(-x + 2 * α[i] for i in 1:5))
     @objective(model, Min, x)
-    JuMP.optimize!(model)
-    @test JuMP.value(x) == 2.0
-    @test JuMP.dual(cref) == 1 / 5
+    optimize!(model)
+    @test value(x) == 2.0
+    @test dual(cref) == 1 / 5
     @test MOI.get(model, POI.ParameterDual(), α[3]) == 2 / 5
     return
 end
 
 function test_jump_dual_mixing_params_and_vars_3()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
-    @variable(model, α[1:5] in MOI.Parameter.(ones(5)))
+    set_silent(model)
+    @variable(model, α[1:5] in Parameter.(ones(5)))
     @variable(model, x)
     cref = @constraint(model, 0.0 == sum(-x + 2.0 + 2 * α[i] for i in 1:5))
     @objective(model, Min, x)
-    JuMP.optimize!(model)
-    @test JuMP.value(x) == 4.0
-    @test JuMP.dual(cref) == 1 / 5
+    optimize!(model)
+    @test value(x) == 4.0
+    @test dual(cref) == 1 / 5
     @test MOI.get(model, POI.ParameterDual(), α[3]) == 2 / 5
     return
 end
 
 function test_jump_dual_add_after_solve()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
-    @variable(model, α in MOI.Parameter(1.0))
+    set_silent(model)
+    @variable(model, α in Parameter(1.0))
     MOI.set(model, POI.ParameterValue(), α, -1.0)
     @variable(model, x)
     cref = @constraint(model, x <= α)
     @objective(model, Max, x)
-    JuMP.optimize!(model)
-    @test JuMP.value(x) == -1.0
-    @test JuMP.dual(cref) == -1.0
+    optimize!(model)
+    @test value(x) == -1.0
+    @test dual(cref) == -1.0
     @test MOI.get(model, POI.ParameterDual(), α) == -1.0
-    @variable(model, b in MOI.Parameter(-2.0))
+    @variable(model, b in Parameter(-2.0))
     cref = @constraint(model, x <= b)
-    JuMP.optimize!(model)
-    @test JuMP.value(x) == -2.0
-    @test JuMP.dual(cref) == -1.0
+    optimize!(model)
+    @test value(x) == -2.0
+    @test dual(cref) == -1.0
     @test MOI.get(model, POI.ParameterDual(), α) == 0.0
     @test MOI.get(model, POI.ParameterDual(), b) == -1.0
     return
@@ -724,44 +751,47 @@ end
 
 function test_jump_dual_add_ctr_alaternative()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
-    @variable(model, α in MOI.Parameter(-1.0))
+    set_silent(model)
+    @variable(model, α in Parameter(-1.0))
     @variable(model, x)
     exp = x - α
     cref = @constraint(model, exp ≤ 0)
     @objective(model, Max, x)
-    JuMP.optimize!(model)
-    @test JuMP.value(x) == -1.0
-    @test JuMP.dual(cref) == -1.0
+    optimize!(model)
+    @test value(x) == -1.0
+    @test dual(cref) == -1.0
     @test MOI.get(model, POI.ParameterDual(), α) == -1.0
     return
 end
 
 function test_jump_dual_delete_constraint()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
-    @variable(model, α in MOI.Parameter(-1.0))
+    set_silent(model)
+    @variable(model, α in Parameter(-1.0))
     @variable(model, x)
     cref1 = @constraint(model, x ≤ α / 2)
     cref2 = @constraint(model, x ≤ α)
     cref3 = @constraint(model, x ≤ 2α)
     @objective(model, Max, x)
-    JuMP.delete(model, cref3)
-    JuMP.optimize!(model)
-    @test JuMP.value(x) == -1.0
-    @test JuMP.dual(cref1) == 0.0
-    @test JuMP.dual(cref2) == -1.0
+    delete(model, cref3)
+    optimize!(model)
+    @test value(x) == -1.0
+    @test dual(cref1) == 0.0
+    @test dual(cref2) == -1.0
     @test MOI.get(model, POI.ParameterDual(), α) == -1.0
-    JuMP.delete(model, cref2)
-    JuMP.optimize!(model)
-    @test JuMP.value(x) == -0.5
-    @test JuMP.dual(cref1) == -1.0
+    delete(model, cref2)
+    optimize!(model)
+    @test value(x) == -0.5
+    @test dual(cref1) == -1.0
     @test MOI.get(model, POI.ParameterDual(), α) == -0.5
     return
 end
 
 function test_jump_dual_delete_constraint_2()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
-    @variable(model, α in MOI.Parameter(1.0))
-    @variable(model, β in MOI.Parameter(0.0))
+    set_silent(model)
+    @variable(model, α in Parameter(1.0))
+    @variable(model, β in Parameter(0.0))
     @variable(model, x)
     list = []
     cref = @constraint(model, x >= 1 * 1)
@@ -785,20 +815,20 @@ function test_jump_dual_delete_constraint_2()
     @objective(model, Min, x)
     cref1 = popfirst!(list)
     for i in 9:-1:2
-        JuMP.optimize!(model)
-        @test JuMP.value(x) == 1.0 * i
-        @test JuMP.dual(cref1) == 0.0
+        optimize!(model)
+        @test value(x) == 1.0 * i
+        @test dual(cref1) == 0.0
         for con in list[2:end]
-            @test JuMP.dual(con) == 0.0
+            @test dual(con) == 0.0
         end
-        @test JuMP.dual(list[1]) == 1.0
+        @test dual(list[1]) == 1.0
         if i in [7, 4]
             @test MOI.get(model, POI.ParameterDual(), α) == 0.0
         else
             @test MOI.get(model, POI.ParameterDual(), α) == 1.0 * i
         end
         con = popfirst!(list)
-        JuMP.delete(model, con)
+        delete(model, con)
     end
     return
 end
@@ -812,8 +842,8 @@ function test_jump_dual_delete_constraint_3()
     model = direct_model(optimizer)
     set_silent(model)
     list = []
-    @variable(model, α in MOI.Parameter(1.0))
-    @variable(model, β in MOI.Parameter(0.0))
+    @variable(model, α in Parameter(1.0))
+    @variable(model, β in Parameter(0.0))
     @variable(model, x)
     cref = @constraint(model, [x - 1 * 1] in MOI.Nonnegatives(1))
     push!(list, cref)
@@ -839,28 +869,29 @@ function test_jump_dual_delete_constraint_3()
     @objective(model, Min, 1.0 * x)
     cref1 = popfirst!(list)
     for i in 9:-1:2
-        JuMP.optimize!(model)
-        @test JuMP.value(x) ≈ 1.0 * i atol = 1e-5
-        @test JuMP.dual(cref1)[] ≈ 0.0 atol = 1e-5
+        optimize!(model)
+        @test value(x) ≈ 1.0 * i atol = 1e-5
+        @test dual(cref1)[] ≈ 0.0 atol = 1e-5
         for con in list[2:end]
-            @test JuMP.dual(con)[] ≈ 0.0 atol = 1e-5
+            @test dual(con)[] ≈ 0.0 atol = 1e-5
         end
-        @test JuMP.dual(list[1])[] ≈ 1.0 atol = 1e-5
+        @test dual(list[1])[] ≈ 1.0 atol = 1e-5
         if i in [7, 4]
             @test MOI.get(model, POI.ParameterDual(), α) ≈ 0.0 atol = 1e-5
         else
             @test MOI.get(model, POI.ParameterDual(), α) ≈ 1.0 * i atol = 1e-5
         end
         con = popfirst!(list)
-        JuMP.delete(model, con)
+        delete(model, con)
     end
     return
 end
 
 function test_jump_nlp()
     model = Model(() -> POI.Optimizer(Ipopt.Optimizer))
+    set_silent(model)
     @variable(model, x)
-    @variable(model, z in MOI.Parameter(10.0))
+    @variable(model, z in Parameter(10.0))
     @constraint(model, x >= z)
     @NLobjective(model, Min, x^2)
     @test_throws ErrorException optimize!(model)
@@ -878,11 +909,11 @@ function test_jump_direct_vector_parameter_affine_nonnegatives()
             y* = t-2
             obj = 2*t-3
     """
-    model = Model(() -> POI.Optimizer(SCS.Optimizer))
+    model = direct_model(POI.Optimizer(SCS.Optimizer))
     set_silent(model)
     @variable(model, x)
     @variable(model, y)
-    @variable(model, t in MOI.Parameter(5.0))
+    @variable(model, t in Parameter(5.0))
     @constraint(model, [(x - t + 1), (y - t + 2)...] in MOI.Nonnegatives(2))
     @objective(model, Min, x + y)
     optimize!(model)
@@ -910,7 +941,7 @@ function test_jump_direct_vector_parameter_affine_nonpositives()
     set_silent(model)
     @variable(model, x)
     @variable(model, y)
-    @variable(model, t in MOI.Parameter(5.0))
+    @variable(model, t in Parameter(5.0))
     @constraint(model, [(-x + t - 1), (-y + t - 2)...] in MOI.Nonpositives(2))
     @objective(model, Min, x + y)
     optimize!(model)
@@ -942,12 +973,12 @@ function test_jump_direct_soc_parameters()
             x* = p - 1/√2
             y* = 1/√2
     """
-    model = Model(() -> POI.Optimizer(SCS.Optimizer))
+    model = direct_model(POI.Optimizer(SCS.Optimizer))
     set_silent(model)
     @variable(model, x)
     @variable(model, y)
     @variable(model, t)
-    @variable(model, p in MOI.Parameter(0.0))
+    @variable(model, p in Parameter(0.0))
     @constraint(model, [y - 1 / √2] in MOI.Nonnegatives(1))
     @constraint(model, [t - 1] in MOI.Zeros(1))
     @constraint(model, [t, (x - p), y...] in SecondOrderCone())
@@ -980,10 +1011,11 @@ function test_jump_direct_rsoc_constraints()
             y* = max{1/√2,p}
     """
     model = Model(() -> POI.Optimizer(SCS.Optimizer))
+    set_silent(model)
     @variable(model, x)
     @variable(model, y)
     @variable(model, t)
-    @variable(model, p in MOI.Parameter(0.0))
+    @variable(model, p in Parameter(0.0))
     @constraint(model, [y - 1 / √2] in MOI.Nonnegatives(1))
     @constraint(model, [t - 1] in MOI.Zeros(1))
     @constraint(model, [t, x, y - p] in RotatedSecondOrderCone())
@@ -1002,14 +1034,12 @@ function test_jump_direct_rsoc_constraints()
 end
 
 function test_jump_quadratic_interval()
-    optimizer = POI.Optimizer(HiGHS.Optimizer)
-    # model = direct_model(optimizer)
-    model = Model(() -> optimizer)
-    MOI.set(model, MOI.Silent(), true)
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     @variable(model, x >= 0)
     @variable(model, y >= 0)
-    @variable(model, p in MOI.Parameter(10.0))
-    @variable(model, q in MOI.Parameter(4.0))
+    @variable(model, p in Parameter(10.0))
+    @variable(model, q in Parameter(4.0))
     @constraint(model, 0 <= x - p * y + q <= 0)
     @objective(model, Min, x + y)
     optimize!(model)
@@ -1028,14 +1058,16 @@ end
 
 function test_jump_quadratic_interval_cached()
     model = direct_model(POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     # optimizer = POI.Optimizer(HiGHS.Optimizer)
     # model = direct_model(optimizer)
+    set_silent(model)
     # model = Model(() -> optimizer)
     # MOI.set(model, MOI.Silent(), true)
     @variable(model, x >= 0)
     @variable(model, y >= 0)
-    @variable(model, p in MOI.Parameter(10.0))
-    @variable(model, q in MOI.Parameter(4.0))
+    @variable(model, p in Parameter(10.0))
+    @variable(model, q in Parameter(4.0))
     @constraint(model, 0 <= x - p * y + q <= 0)
     @objective(model, Min, x + y)
     optimize!(model)
@@ -1054,7 +1086,8 @@ end
 
 function test_affine_parametric_objective()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
-    @variable(model, p in MOI.Parameter(1.0))
+    set_silent(model)
+    @variable(model, p in Parameter(1.0))
     @variable(model, 0 <= x <= 1)
     @objective(model, Max, (p + 0.5) * x)
     optimize!(model)
@@ -1065,6 +1098,7 @@ end
 
 function test_abstract_optimizer_attributes()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     set_attribute(model, "time_limit", 60 * 1000.0)
     attr = MOI.RawOptimizerAttribute("time_limit")
     @test MOI.supports(unsafe_backend(model), attr)
@@ -1074,6 +1108,7 @@ end
 
 function test_get_quadratic_constraint()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     @variable(model, x)
     @variable(model, p in Parameter(2.0))
     @constraint(model, c, p * x <= 10)
@@ -1084,6 +1119,7 @@ end
 
 function test_get_duals_from_multiplicative_parameters_1()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     @variable(model, x)
     @variable(model, p1 in Parameter(2.0))
     @variable(model, p2 in Parameter(2.0))
@@ -1098,6 +1134,7 @@ end
 
 function test_get_duals_from_multiplicative_parameters_2()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     @variable(model, x)
     @variable(model, p1 in Parameter(40.0))
     @variable(model, p2 in Parameter(2.0))
@@ -1112,6 +1149,7 @@ end
 
 function test_get_duals_from_multiplicative_parameters_3()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     @variable(model, x)
     @variable(model, p in Parameter(4.0))
     @constraint(model, c, 3 * x >= p * p)
@@ -1124,6 +1162,7 @@ end
 
 function test_parameters_cannot_be_nan_1()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     @variable(model, x)
     @variable(model, p in Parameter(NaN))
     @constraint(model, c, 3 * x >= p * p)
@@ -1136,6 +1175,7 @@ end
 function test_parameters_cannot_be_nan_2()
     optimizer = POI.Optimizer(HiGHS.Optimizer)
     model = direct_model(optimizer)
+    set_silent(model)
     @variable(model, x[1:2])
     @test_throws AssertionError @variable(model, p in Parameter(NaN))
     @variable(model, p in Parameter(1.0))
@@ -1147,6 +1187,7 @@ end
 
 function test_parameter_Cannot_be_inf_1()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
     @variable(model, x)
     @variable(model, p in Parameter(Inf))
     @constraint(model, c, 3 * x >= p * p)
@@ -1159,6 +1200,7 @@ end
 function test_parameter_Cannot_be_inf_2()
     optimizer = POI.Optimizer(HiGHS.Optimizer)
     model = direct_model(optimizer)
+    set_silent(model)
     @variable(model, x[1:2])
     @test_throws AssertionError @variable(model, p in Parameter(Inf))
     @variable(model, p in Parameter(1.0))
@@ -1178,12 +1220,13 @@ function test_jump_psd_cone_with_parameter_pv()
     )
     optimizer = POI.Optimizer(cached)
     model = direct_model(optimizer)
+    set_silent(model)
     @variable(model, x)
-    @variable(model, p in MOI.Parameter(1.0))
+    @variable(model, p in Parameter(1.0))
     # @constraint(
     #     model,
     #     con,
-    #     [[0 (p * x - 1)]; [(p * x - 1) 0]] in JuMP.PSDCone()
+    #     [[0 (p * x - 1)]; [(p * x - 1) 0]] in PSDCone()
     # );
     # TODO: bridges do not support setting constraint function
     @constraint(
@@ -1203,17 +1246,19 @@ function test_jump_psd_cone_with_parameter_pv()
     set_parameter_value(p, 3.0)
     optimize!(model)
     @test value(x) ≈ 1 / 3 atol = 1e-5
-    return delete(model, con)
+    delete(model, con)
+    return
 end
 
 function test_jump_psd_cone_with_parameter_pp()
     model = Model(() -> POI.Optimizer(SCS.Optimizer))
+    set_silent(model)
     @variable(model, x)
-    @variable(model, p in MOI.Parameter(1.0))
+    @variable(model, p in Parameter(1.0))
     # @constraint(
     #     model,
     #     con,
-    #     [[0 (x - p * p)]; [(x - p * p) 0]] in JuMP.PSDCone()
+    #     [[0 (x - p * p)]; [(x - p * p) 0]] in PSDCone()
     # )
     @constraint(
         model,
@@ -1226,14 +1271,16 @@ function test_jump_psd_cone_with_parameter_pp()
     set_parameter_value(p, 3.0)
     optimize!(model)
     @test value(x) ≈ 9.0 atol = 1e-5
-    return delete(model, con)
+    delete(model, con)
+    return
 end
 
 function test_jump_psd_cone_with_parameter_p()
     model = Model(() -> POI.Optimizer(SCS.Optimizer))
+    set_silent(model)
     @variable(model, x)
-    @variable(model, p in MOI.Parameter(1.0))
-    # @constraint(model, con, [[0 (x - p)]; [(x - p) 0]] in JuMP.PSDCone())
+    @variable(model, p in Parameter(1.0))
+    # @constraint(model, con, [[0 (x - p)]; [(x - p) 0]] in PSDCone())
     @constraint(
         model,
         con,
@@ -1245,13 +1292,15 @@ function test_jump_psd_cone_with_parameter_p()
     set_parameter_value(p, 3.0)
     optimize!(model)
     @test value(x) ≈ 3.0 atol = 1e-5
-    return delete(model, con)
+    delete(model, con)
+    return
 end
 
 function test_jump_psd_cone_with_parameter_pv_v_pv()
     model = Model(() -> POI.Optimizer(SCS.Optimizer))
+    set_silent(model)
     @variable(model, x)
-    @variable(model, p in MOI.Parameter(1.0))
+    @variable(model, p in Parameter(1.0))
     @constraint(
         model,
         con,
@@ -1272,13 +1321,15 @@ function test_jump_psd_cone_with_parameter_pv_v_pv()
     optimize!(model)
     @test value(x) ≈ 0.416888 atol = 1e-5
     @test value(x) ≈ (9 * sqrt(3) - 6) / 23 atol = 1e-5
-    return delete(model, con)
+    delete(model, con)
+    return
 end
 
 function test_jump_psd_cone_with_parameter_pp_v_pv()
     model = Model(() -> POI.Optimizer(SCS.Optimizer))
+    set_silent(model)
     @variable(model, x)
-    @variable(model, p in MOI.Parameter(1.0))
+    @variable(model, p in Parameter(1.0))
     @constraint(
         model,
         con,
@@ -1292,13 +1343,15 @@ function test_jump_psd_cone_with_parameter_pp_v_pv()
     set_parameter_value(p, 3.0)
     optimize!(model)
     @test value(x) ≈ 0.0971795 atol = 1e-5
-    return delete(model, con)
+    delete(model, con)
+    return
 end
 
 function test_jump_psd_cone_with_parameter_p_v_pv()
     model = Model(() -> POI.Optimizer(SCS.Optimizer))
+    set_silent(model)
     @variable(model, x)
-    @variable(model, p in MOI.Parameter(1.0))
+    @variable(model, p in Parameter(1.0))
     @constraint(
         model,
         con,
@@ -1311,13 +1364,15 @@ function test_jump_psd_cone_with_parameter_p_v_pv()
     set_parameter_value(p, 3.0)
     optimize!(model)
     @test value(x) ≈ 0.236506 atol = 1e-3
-    return delete(model, con)
+    delete(model, con)
+    return
 end
 
 function test_jump_psd_cone_with_parameter_p_v_pp()
     model = Model(() -> POI.Optimizer(SCS.Optimizer))
+    set_silent(model)
     @variable(model, x)
-    @variable(model, p in MOI.Parameter(1.0))
+    @variable(model, p in Parameter(1.0))
     @constraint(
         model,
         con,
@@ -1330,13 +1385,15 @@ function test_jump_psd_cone_with_parameter_p_v_pp()
     set_parameter_value(p, Float32(3.0))
     optimize!(model)
     @test value(x) ≈ -2.9999734 atol = 1e-5
-    return delete(model, con)
+    delete(model, con)
+    return
 end
 
 function test_jump_psd_cone_without_parameter_v_and_vv()
     model = Model(() -> POI.Optimizer(SCS.Optimizer))
+    set_silent(model)
     @variable(model, x)
-    @variable(model, p in MOI.Parameter(1.0))
+    @variable(model, p in Parameter(1.0))
     @constraint(
         model,
         con,
@@ -1364,9 +1421,9 @@ function test_variable_and_constraint_not_registered()
     set_silent(model1)
     set_silent(model2)
     @variable(model1, x)
-    @variable(model1, p in MOI.Parameter(1.0))
-    @variable(model1, p1 in MOI.Parameter(1.0))
-    @variable(model2, p2 in MOI.Parameter(1.0))
+    @variable(model1, p in Parameter(1.0))
+    @variable(model1, p1 in Parameter(1.0))
+    @variable(model2, p2 in Parameter(1.0))
     @constraint(model1, con, [x - p] in MOI.Nonnegatives(1))
     @test !MOI.is_valid(backend(model2), index(x))
     @test_throws MOI.InvalidIndex MOI.get(
@@ -1552,7 +1609,8 @@ end
 
 function test_print()
     model = direct_model(POI.Optimizer(HiGHS.Optimizer))
-    @variable(model, p in MOI.Parameter(1.0))
+    set_silent(model)
+    @variable(model, p in Parameter(1.0))
     @variable(model, x)
     @constraint(model, con, x >= p + p * p + p * x)
     @objective(model, Min, 1 + 2x + 0.1p + 1.0p^2)
@@ -1573,7 +1631,8 @@ end
 
 function test_set_normalized_coefficient()
     model = direct_model(POI.Optimizer(HiGHS.Optimizer))
-    @variable(model, p in MOI.Parameter(1.0))
+    set_silent(model)
+    @variable(model, p in Parameter(1.0))
     @variable(model, x)
     @constraint(model, con, x >= p)
     @constraint(model, con1, x >= 1)
@@ -1591,7 +1650,8 @@ function test_ListOfConstraintAttributesSet()
     )
     optimizer = POI.Optimizer(cached)
     model = direct_model(optimizer)
-    @variable(model, p in MOI.Parameter(1.0))
+    set_silent(model)
+    @variable(model, p in Parameter(1.0))
     @variable(model, x)
     @constraint(model, con, [x * p] in MOI.Nonnegatives(1))
     ret = get_attribute(

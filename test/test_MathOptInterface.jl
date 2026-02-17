@@ -403,6 +403,7 @@ end
 
 function test_production_problem_example()
     optimizer = POI.Optimizer(HiGHS.Optimizer)
+    MOI.set(optimizer, MOI.Silent(), true)
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 1.0]
     A2 = [1.0, 2.0, 1.0]
@@ -481,6 +482,7 @@ end
 
 function test_production_problem_example_duals()
     optimizer = POI.Optimizer(HiGHS.Optimizer)
+    MOI.set(optimizer, MOI.Silent(), true)
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 3.0]
     A2 = [1.0, 2.0, 0.5]
@@ -576,6 +578,7 @@ function test_production_problem_example_parameters_for_duals_and_intervals()
         Float64,
     )
     optimizer = POI.Optimizer(cached)
+    MOI.set(optimizer, MOI.Silent(), true)
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 3.0]
     A2 = [1.0, 2.0, 0.5]
@@ -2040,6 +2043,7 @@ function test_copy_model()
     c = MOI.add_constraint(model, 1.0 * x, MOI.EqualTo(1.0))
     MOI.set(model, MOI.ConstraintName(), c, "c")
     poi = POI.Optimizer(HiGHS.Optimizer)
+    MOI.set(poi, MOI.Silent(), true)
     MOI.copy_to(poi, model)
     MOI.optimize!(poi)
     @test MOI.get(poi, MOI.VariablePrimal(), x) ≈ 1.0
