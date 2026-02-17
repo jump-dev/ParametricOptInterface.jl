@@ -135,7 +135,6 @@ function MOI.is_empty(model::Optimizer)
            model.affine_objective_cache === nothing &&
            model.quadratic_objective_cache === nothing &&
            MOI.is_empty(model.original_objective_cache) &&
-           isempty(model.quadratic_objective_cache_product) &&
            #
            isempty(model.vector_affine_constraint_cache) &&
            #
@@ -172,7 +171,6 @@ function MOI.empty!(model::Optimizer{T}) where {T}
     model.affine_objective_cache = nothing
     model.quadratic_objective_cache = nothing
     MOI.empty!(model.original_objective_cache)
-    empty!(model.quadratic_objective_cache_product)
     #
     empty!(model.vector_affine_constraint_cache)
     #
@@ -1232,8 +1230,7 @@ function MOI.modify(
     chg::Union{MOI.ScalarConstantChange{T},MOI.ScalarCoefficientChange{T}},
 ) where {F<:MathOptInterface.AbstractScalarFunction,T}
     if model.quadratic_objective_cache !== nothing ||
-       model.affine_objective_cache !== nothing ||
-       !isempty(model.quadratic_objective_cache_product)
+       model.affine_objective_cache !== nothing
         error(
             "A parametric objective cannot be modified as it would conflict with the parameter update mechanism. Please set a new objective or use parameters to perform such updates.",
         )
@@ -1946,128 +1943,6 @@ function MOI.set(
     return model.constraints_interpretation = value
 end
 
-struct QuadraticObjectiveCoef <: MOI.AbstractModelAttribute end
-
-function _set_quadratic_product_in_obj!(model::Optimizer{T}) where {T}
-    n = length(model.quadratic_objective_cache_product)
-
-    f = if model.affine_objective_cache !== nothing
-        _current_function(model.affine_objective_cache)
-    elseif model.quadratic_objective_cache !== nothing
-        _current_function(model.quadratic_objective_cache)
-    else
-        F = MOI.get(model.original_objective_cache, MOI.ObjectiveFunctionType())
-        MOI.get(model.original_objective_cache, MOI.ObjectiveFunction{F}())
-    end
-    F = typeof(f)
-
-    quadratic_prods_vector = MOI.ScalarQuadraticTerm{T}[]
-    sizehint!(quadratic_prods_vector, n)
-
-    for ((x, y), fparam) in model.quadratic_objective_cache_product
-        # x, y = prod_var
-        evaluated_fparam = _evaluate_parametric_expression(model, fparam)
-        push!(
-            quadratic_prods_vector,
-            MOI.ScalarQuadraticTerm(evaluated_fparam, x, y),
-        )
-    end
-
-    f_new = if F <: MOI.VariableIndex
-        MOI.ScalarQuadraticFunction(
-            quadratic_prods_vector,
-            MOI.ScalarAffineTerm{T}[MOI.ScalarAffineTerm{T}(1.0, f)],
-            0.0,
-        )
-    elseif F <: MOI.ScalarAffineFunction{T}
-        MOI.ScalarQuadraticFunction(quadratic_prods_vector, f.terms, f.constant)
-    elseif F <: MOI.ScalarQuadraticFunction{T}
-        quadratic_terms = vcat(f.quadratic_terms, quadratic_prods_vector)
-        MOI.ScalarQuadraticFunction(quadratic_terms, f.affine_terms, f.constant)
-    end
-
-    MOI.set(
-        model.optimizer,
-        MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{T}}(),
-        f_new,
-    )
-
-    return
-end
-
-function _evaluate_parametric_expression(model::Optimizer, p::MOI.VariableIndex)
-    return model.parameters[p_idx(p)]
-end
-
-function _evaluate_parametric_expression(
-    model::Optimizer,
-    fparam::MOI.ScalarAffineFunction{T},
-) where {T}
-    constant = fparam.constant
-    terms = fparam.terms
-    evaluated_parameter_expression = zero(T)
-    for term in terms
-        coef = term.coefficient
-        p = term.variable
-        evaluated_parameter_expression += coef * model.parameters[p_idx(p)]
-        evaluated_parameter_expression += constant
-    end
-    return evaluated_parameter_expression
-end
-
-function MOI.set(
-    model::Optimizer,
-    ::QuadraticObjectiveCoef,
-    (x1, x2)::Tuple{MOI.VariableIndex,MOI.VariableIndex},
-    ::Nothing,
-)
-    if x1.value > x2.value
-        aux = x1
-        x1 = x2
-        x2 = aux
-    end
-    delete!(model.quadratic_objective_cache_product, (x1, x2))
-    model.quadratic_objective_cache_product_changed = true
-    return
-end
-
-function MOI.set(
-    model::Optimizer,
-    ::QuadraticObjectiveCoef,
-    (x1, x2)::Tuple{MOI.VariableIndex,MOI.VariableIndex},
-    f_param::Union{MOI.VariableIndex,MOI.ScalarAffineFunction{T}},
-) where {T}
-    if x1.value > x2.value
-        aux = x1
-        x1 = x2
-        x2 = aux
-    end
-    model.quadratic_objective_cache_product[(x1, x2)] = f_param
-    model.quadratic_objective_cache_product_changed = true
-    return
-end
-
-function MOI.get(
-    model::Optimizer,
-    ::QuadraticObjectiveCoef,
-    (x1, x2)::Tuple{MOI.VariableIndex,MOI.VariableIndex},
-)
-    if x1.value > x2.value
-        aux = x1
-        x1 = x2
-        x2 = aux
-    end
-    if haskey(model.quadratic_objective_cache_product, (x1, x2))
-        return model.quadratic_objective_cache_product[(x1, x2)]
-    else
-        throw(
-            ErrorException(
-                "Parameter not set in product of variables ($x1,$x2)",
-            ),
-        )
-    end
-end
-
 #
 # Optimize
 #
@@ -2075,13 +1950,6 @@ end
 function MOI.optimize!(model::Optimizer)
     if !isempty(model.updated_parameters)
         update_parameters!(model)
-    end
-    if (
-        !isempty(model.quadratic_objective_cache_product) ||
-        model.quadratic_objective_cache_product_changed
-    )
-        model.quadratic_objective_cache_product_changed = false
-        _set_quadratic_product_in_obj!(model)
     end
     MOI.optimize!(model.optimizer)
     if MOI.get(model, MOI.DualStatus()) != MOI.NO_SOLUTION &&

@@ -196,12 +196,6 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     quadratic_objective_cache::Union{Nothing,ParametricQuadraticFunction{T}}
     cubic_objective_cache::Union{Nothing,ParametricCubicFunction{T}}
     original_objective_cache::MOI.Utilities.ObjectiveContainer{T}
-    # Store parametric expressions for product of variables
-    quadratic_objective_cache_product::Dict{
-        Tuple{MOI.VariableIndex,MOI.VariableIndex},
-        MOI.AbstractFunction,
-    }
-    quadratic_objective_cache_product_changed::Bool
 
     # vector affine function data
     # vector_constraint_cache::DoubleDict{Vector{MOI.VectorAffineTerm{T}}}
@@ -273,11 +267,6 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             nothing,
             nothing,  # cubic_objective_cache
             MOI.Utilities.ObjectiveContainer{T}(),
-            Dict{
-                Tuple{MOI.VariableIndex,MOI.VariableIndex},
-                MOI.AbstractFunction,
-            }(),
-            false,
             # vec affine
             # DoubleDict{Vector{MOI.VectorAffineTerm{T}}}(),
             DoubleDict{ParametricVectorAffineFunction{T}}(),
