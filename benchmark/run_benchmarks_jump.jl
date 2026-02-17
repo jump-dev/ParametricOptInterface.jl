@@ -3,11 +3,10 @@
 # Use of this source code is governed by an MIT-style license that can be found
 # in the LICENSE.md file or at https://opensource.org/licenses/MIT.
 
-using ParametricOptInterface
 using BenchmarkTools
 using JuMP
-using LinearAlgebra
-const POI = ParametricOptInterface
+
+import ParametricOptInterface as POI
 import Pkg
 
 function moi_add_variables(N::Int)
@@ -18,7 +17,7 @@ function moi_add_variables(N::Int)
         ),
     )
     @variable(model, x[i=1:N])
-    return nothing
+    return
 end
 
 function poi_add_variables(N::Int)
@@ -31,7 +30,7 @@ function poi_add_variables(N::Int)
         ),
     )
     @variable(model, x[i=1:N])
-    return nothing
+    return
 end
 
 function poi_add_parameters(N::Int)
@@ -43,8 +42,8 @@ function poi_add_parameters(N::Int)
             ),
         ),
     )
-    @variable(model, x[i=1:N] in MOI.Parameter(1.0))
-    return nothing
+    @variable(model, x[i=1:N] in Parameter(1))
+    return
 end
 
 function poi_add_parameters_and_variables(N::Int)
@@ -56,8 +55,8 @@ function poi_add_parameters_and_variables(N::Int)
             ),
         ),
     )
-    @variable(model, x[i=1:N] in MOI.Parameter(1.0))
-    return nothing
+    @variable(model, x[i=1:N] in Parameter(1))
+    return
 end
 
 function poi_add_parameters_and_variables_alternating(N::Int)
@@ -71,9 +70,9 @@ function poi_add_parameters_and_variables_alternating(N::Int)
     )
     for i in 1:Int(N/2)
         @variable(model)
-        @variable(model, set = MOI.Parameter(1.0))
+        @variable(model, set = Parameter(1))
     end
-    return nothing
+    return
 end
 
 function moi_add_saf_ctr(N::Int, M::Int)
@@ -85,7 +84,7 @@ function moi_add_saf_ctr(N::Int, M::Int)
     )
     @variable(model, x[i=1:N])
     @constraint(model, cons[i=1:M], sum(x) >= 1)
-    return nothing
+    return
 end
 
 function poi_add_saf_ctr(N::Int, M::Int)
@@ -99,7 +98,7 @@ function poi_add_saf_ctr(N::Int, M::Int)
     )
     @variable(model, x[i=1:N])
     @constraint(model, cons[i=1:M], sum(x) >= 1)
-    return nothing
+    return
 end
 
 function poi_add_saf_variables_and_parameters_ctr(N::Int, M::Int)
@@ -112,9 +111,9 @@ function poi_add_saf_variables_and_parameters_ctr(N::Int, M::Int)
         ),
     )
     @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(0))
+    @variable(model, p[i=1:Int(N/2)] in Parameter(0))
     @constraint(model, con[i=1:M], sum(x) + sum(p) >= 1)
-    return nothing
+    return
 end
 
 function poi_add_saf_variables_and_parameters_ctr_parameter_update(
@@ -130,11 +129,11 @@ function poi_add_saf_variables_and_parameters_ctr_parameter_update(
         ),
     )
     @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(0))
+    @variable(model, p[i=1:Int(N/2)] in Parameter(0))
     @constraint(model, con[i=1:M], sum(x) + sum(p) >= 1)
     MOI.set.(model, POI.ParameterValue(), p, 0.5)
     POI.update_parameters!(backend(model))
-    return nothing
+    return
 end
 
 function moi_add_sqf_variables_ctr(N::Int, M::Int)
@@ -145,8 +144,8 @@ function moi_add_sqf_variables_ctr(N::Int, M::Int)
         ),
     )
     @variable(model, x[i=1:N])
-    @constraint(model, con[i=1:M], dot(x, x) >= 1)
-    return nothing
+    @constraint(model, con[i=1:M], x' * x >= 1)
+    return
 end
 
 function poi_add_sqf_variables_ctr(N::Int, M::Int)
@@ -159,8 +158,8 @@ function poi_add_sqf_variables_ctr(N::Int, M::Int)
         ),
     )
     @variable(model, x[i=1:N])
-    @constraint(model, con[i=1:M], dot(x, x) >= 1)
-    return nothing
+    @constraint(model, con[i=1:M], x' * x >= 1)
+    return
 end
 
 function poi_add_sqf_variables_parameters_ctr(N::Int, M::Int)
@@ -173,9 +172,9 @@ function poi_add_sqf_variables_parameters_ctr(N::Int, M::Int)
         ),
     )
     @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
-    @constraint(model, con[i=1:M], dot(x, p) >= 1)
-    return nothing
+    @variable(model, p[i=1:Int(N/2)] in Parameter(1))
+    @constraint(model, con[i=1:M], x' * p >= 1)
+    return
 end
 
 function poi_add_sqf_variables_parameters_ctr_parameter_update(N::Int, M::Int)
@@ -188,11 +187,11 @@ function poi_add_sqf_variables_parameters_ctr_parameter_update(N::Int, M::Int)
         ),
     )
     @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
-    @constraint(model, con[i=1:M], dot(x, p) >= 1)
+    @variable(model, p[i=1:Int(N/2)] in Parameter(1))
+    @constraint(model, con[i=1:M], x' * p >= 1)
     MOI.set.(model, POI.ParameterValue(), p, 0.5)
     POI.update_parameters!(backend(model))
-    return nothing
+    return
 end
 
 function poi_add_sqf_parameters_parameters_ctr(N::Int, M::Int)
@@ -205,9 +204,9 @@ function poi_add_sqf_parameters_parameters_ctr(N::Int, M::Int)
         ),
     )
     @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
-    @constraint(model, con[i=1:M], dot(p, p) >= 1)
-    return nothing
+    @variable(model, p[i=1:Int(N/2)] in Parameter(1))
+    @constraint(model, con[i=1:M], p' * p >= 1)
+    return
 end
 
 function poi_add_sqf_parameters_parameters_ctr_parameter_update(N::Int, M::Int)
@@ -220,11 +219,11 @@ function poi_add_sqf_parameters_parameters_ctr_parameter_update(N::Int, M::Int)
         ),
     )
     @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
-    @constraint(model, con[i=1:M], dot(p, p) >= 1)
+    @variable(model, p[i=1:Int(N/2)] in Parameter(1))
+    @constraint(model, con[i=1:M], p' * p >= 1)
     MOI.set.(model, POI.ParameterValue(), p, 0.5)
     POI.update_parameters!(backend(model))
-    return nothing
+    return
 end
 
 function moi_add_saf_obj(N::Int, M::Int)
@@ -236,7 +235,7 @@ function moi_add_saf_obj(N::Int, M::Int)
     )
     @variable(model, x[i=1:N])
     @objective(model, Min, sum(x))
-    return nothing
+    return
 end
 
 function poi_add_saf_obj(N::Int, M::Int)
@@ -252,7 +251,7 @@ function poi_add_saf_obj(N::Int, M::Int)
     for _ in 1:M
         @objective(model, Min, sum(x))
     end
-    return nothing
+    return
 end
 
 function poi_add_saf_variables_and_parameters_obj(N::Int, M::Int)
@@ -265,11 +264,11 @@ function poi_add_saf_variables_and_parameters_obj(N::Int, M::Int)
         ),
     )
     @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
+    @variable(model, p[i=1:Int(N/2)] in Parameter(1))
     for _ in 1:M
         @objective(model, Min, sum(x) + sum(p))
     end
-    return nothing
+    return
 end
 
 function poi_add_saf_variables_and_parameters_obj_parameter_update(
@@ -285,7 +284,7 @@ function poi_add_saf_variables_and_parameters_obj_parameter_update(
         ),
     )
     @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
+    @variable(model, p[i=1:Int(N/2)] in Parameter(1))
     for _ in 1:M
         @objective(model, Min, sum(x) + sum(p))
     end
@@ -293,7 +292,7 @@ function poi_add_saf_variables_and_parameters_obj_parameter_update(
         MOI.set.(model, POI.ParameterValue(), p, 0.5)
         POI.update_parameters!(backend(model))
     end
-    return nothing
+    return
 end
 
 function moi_add_sqf_variables_obj(N::Int, M::Int)
@@ -305,9 +304,9 @@ function moi_add_sqf_variables_obj(N::Int, M::Int)
     )
     @variable(model, x[i=1:N])
     for _ in 1:M
-        @objective(model, Min, dot(x, x))
+        @objective(model, Min, x' * x)
     end
-    return nothing
+    return
 end
 
 function poi_add_sqf_variables_obj(N::Int, M::Int)
@@ -321,9 +320,9 @@ function poi_add_sqf_variables_obj(N::Int, M::Int)
     )
     @variable(model, x[i=1:N])
     for _ in 1:M
-        @objective(model, Min, dot(x, x))
+        @objective(model, Min, x' * x)
     end
-    return nothing
+    return
 end
 
 function poi_add_sqf_variables_parameters_obj(N::Int, M::Int)
@@ -336,11 +335,11 @@ function poi_add_sqf_variables_parameters_obj(N::Int, M::Int)
         ),
     )
     @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
+    @variable(model, p[i=1:Int(N/2)] in Parameter(1))
     for _ in 1:M
-        @objective(model, Min, dot(x, p))
+        @objective(model, Min, x' * p)
     end
-    return nothing
+    return
 end
 
 function poi_add_sqf_variables_parameters_obj_parameter_update(N::Int, M::Int)
@@ -353,15 +352,15 @@ function poi_add_sqf_variables_parameters_obj_parameter_update(N::Int, M::Int)
         ),
     )
     @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
+    @variable(model, p[i=1:Int(N/2)] in Parameter(1))
     for _ in 1:M
-        @objective(model, Min, dot(x, p))
+        @objective(model, Min, x' * p)
     end
     for _ in 1:M
         MOI.set.(model, POI.ParameterValue(), p, 0.5)
         POI.update_parameters!(backend(model))
     end
-    return nothing
+    return
 end
 
 function poi_add_sqf_parameters_parameters_obj(N::Int, M::Int)
@@ -374,11 +373,11 @@ function poi_add_sqf_parameters_parameters_obj(N::Int, M::Int)
         ),
     )
     @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
+    @variable(model, p[i=1:Int(N/2)] in Parameter(1))
     for _ in 1:M
-        @objective(model, Min, dot(p, p))
+        @objective(model, Min, p' * p)
     end
-    return nothing
+    return
 end
 
 function poi_add_sqf_parameters_parameters_obj_parameter_update(N::Int, M::Int)
@@ -391,15 +390,15 @@ function poi_add_sqf_parameters_parameters_obj_parameter_update(N::Int, M::Int)
         ),
     )
     @variable(model, x[i=1:Int(N/2)])
-    @variable(model, p[i=1:Int(N/2)] in MOI.Parameter.(1))
+    @variable(model, p[i=1:Int(N/2)] in Parameter(1))
     for _ in 1:M
-        @objective(model, Min, dot(p, p))
+        @objective(model, Min, p' * p)
     end
     for _ in 1:M
         MOI.set.(model, POI.ParameterValue(), p, 0.5)
         POI.update_parameters!(backend(model))
     end
-    return nothing
+    return
 end
 
 function run_benchmarks(N::Int, M::Int)
@@ -497,7 +496,7 @@ function run_benchmarks(N::Int, M::Int)
         "Update parameters in SQF objective with product of parameters on a POI.Optimizer.",
     )
     @btime poi_add_sqf_parameters_parameters_obj_parameter_update($N, $M)
-    return nothing
+    return
 end
 
 N = 10_000
