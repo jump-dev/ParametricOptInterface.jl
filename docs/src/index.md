@@ -284,3 +284,29 @@ set_attribute(model, POI.ConstraintsInterpretation(), POI.BOUNDS_AND_CONSTRAINTS
 @constraint(model, x >= p)
 optimize!(model)
 ```
+
+## Parameters multiplying quadratic terms
+
+POI supports parameters that multiply quadratic variable terms in objectives
+**only**. This creates cubic polynomial expressions of the form `c * p * x * y`
+where `c` is a number, `p` is a parameter, and `x` and `y` are variables. After
+parameter substitution, the objective is quadratic instead of cubic.
+
+Note that the maximum degree is 3 (cubic), at least one factor in each cubic
+term must be a parameter, and pure cubic variable terms (for example,
+`x * y * z` with no parameters) are not supported.
+
+```@repl
+using JuMP, HiGHS
+import ParametricOptInterface as POI
+model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+set_silent(model)
+@variable(model, 0 <= x <= 10)
+@variable(model, p in Parameter(2))
+@objective(model, Min, p * x^2 - 3x)
+optimize!(model)
+value(x)  # x = 3 / 2p = 0.75
+set_parameter_value(p, 3)
+optimize!(model)
+value(x)  # x = 3 / 2p = 0.5
+```

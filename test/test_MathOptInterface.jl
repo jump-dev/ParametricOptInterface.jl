@@ -297,14 +297,27 @@ function test_moi_highs()
     )
     MOI.set(model, MOI.Silent(), true)
     MOI.set(model, MOI.RawOptimizerAttribute("presolve"), "off")
-    MOI.Test.runtests(model, MOI.Test.Config(; atol = 1e-7); exclude = [])
+    # Exclude nonlinear tests that use functions outside POI's cubic polynomial support
+    # (general nonlinear functions like sin/cos/exp, or degree > 3 polynomials)
+    # POI only supports ScalarNonlinearFunction when it's a cubic polynomial with
+    # parameters multiplying at most quadratic variable terms
+    nonlinear_excludes = ["test_nonlinear_duals", "test_nonlinear_expression_"]
+    MOI.Test.runtests(
+        model,
+        MOI.Test.Config(; atol = 1e-7);
+        exclude = nonlinear_excludes,
+    )
 
     model = POI.Optimizer(
         MOI.instantiate(HiGHS.Optimizer; with_bridge_type = Float64),
     )
     MOI.set(model, MOI.Silent(), true)
     MOI.set(model, MOI.RawOptimizerAttribute("presolve"), "off")
-    MOI.Test.runtests(model, MOI.Test.Config(; atol = 1e-7); exclude = [])
+    MOI.Test.runtests(
+        model,
+        MOI.Test.Config(; atol = 1e-7);
+        exclude = nonlinear_excludes,
+    )
     return
 end
 
@@ -351,6 +364,9 @@ function test_moi_ipopt()
             #  - CachingOptimizer does not throw if optimizer not attached
             "test_model_copy_to_UnsupportedAttribute",
             "test_model_copy_to_UnsupportedConstraint",
+            #  - POI only supports cubic polynomial ScalarNonlinearFunction
+            "test_nonlinear_duals",
+            "test_nonlinear_expression_",
         ],
     )
     return
@@ -2080,7 +2096,7 @@ MOI.Utilities.@model(
     (MOI.ScalarAffineFunction,),
     (),
     ()
-);
+)
 
 MOI.Utilities.@model(
     Model185_2,
@@ -2092,7 +2108,7 @@ MOI.Utilities.@model(
     (),
     (),
     (MOI.VectorAffineFunction,)
-);
+)
 
 function test_issue_185()
     inner = Model185{Float64}()
