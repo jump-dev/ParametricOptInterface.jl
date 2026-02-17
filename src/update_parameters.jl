@@ -43,13 +43,13 @@ end
 
 function _update_affine_constraints!(
     model::Optimizer,
-    affine_constraint_cache_inner::DoubleDictInner{F,S,V},
-    affine_constraint_cache_set_inner::DoubleDictInner{
+    affine_constraint_cache_inner::DoubleDicts.DoubleDictInner{F,S,V},
+    affine_constraint_cache_set_inner::DoubleDicts.DoubleDictInner{
         F,
         S,
         MOI.AbstractScalarSet,
     },
-) where {F,S<:SIMPLE_SCALAR_SETS{T},V} where {T}
+) where {F,S<:Union{MOI.LessThan,MOI.GreaterThan,MOI.EqualTo},V}
     # cis = MOI.ConstraintIndex{F,S}[]
     # sets = S[]
     # sizehint!(cis, length(affine_constraint_cache_inner))
@@ -73,8 +73,8 @@ end
 
 function _update_affine_constraints!(
     model::Optimizer,
-    affine_constraint_cache_inner::DoubleDictInner{F,S,V},
-    affine_constraint_cache_set_inner::DoubleDictInner{
+    affine_constraint_cache_inner::DoubleDicts.DoubleDictInner{F,S,V},
+    affine_constraint_cache_set_inner::DoubleDicts.DoubleDictInner{
         F,
         S,
         MOI.AbstractScalarSet,
@@ -110,7 +110,7 @@ end
 
 function _update_vector_affine_constraints!(
     model::Optimizer,
-    vector_affine_constraint_cache_inner::DoubleDictInner{F,S,V},
+    vector_affine_constraint_cache_inner::DoubleDicts.DoubleDictInner{F,S,V},
 ) where {F<:MOI.VectorAffineFunction{T},S,V} where {T}
     for (inner_ci, pf) in vector_affine_constraint_cache_inner
         delta_constant = _delta_parametric_constant(model, pf)
@@ -185,13 +185,13 @@ end
 
 function _update_quadratic_constraints!(
     model::Optimizer,
-    quadratic_constraint_cache_inner::DoubleDictInner{F,S,V},
-    quadratic_constraint_cache_set_inner::DoubleDictInner{
+    quadratic_constraint_cache_inner::DoubleDicts.DoubleDictInner{F,S,V},
+    quadratic_constraint_cache_set_inner::DoubleDicts.DoubleDictInner{
         F,
         S,
         MOI.AbstractScalarSet,
     },
-) where {F,S<:SIMPLE_SCALAR_SETS{T},V} where {T}
+) where {F,S<:Union{MOI.LessThan,MOI.GreaterThan,MOI.EqualTo},V}
     # cis = MOI.ConstraintIndex{F,S}[]
     # sets = S[]
     # sizehint!(cis, length(quadratic_constraint_cache_inner))
@@ -221,8 +221,8 @@ end
 
 function _update_quadratic_constraints!(
     model::Optimizer,
-    quadratic_constraint_cache_inner::DoubleDictInner{F,S,V},
-    quadratic_constraint_cache_set_inner::DoubleDictInner{
+    quadratic_constraint_cache_inner::DoubleDicts.DoubleDictInner{F,S,V},
+    quadratic_constraint_cache_set_inner::DoubleDicts.DoubleDictInner{
         F,
         S,
         MOI.AbstractScalarSet,
@@ -326,7 +326,7 @@ end
 
 function _update_vector_quadratic_constraints!(
     model::Optimizer{T},
-    vector_quadratic_constraint_cache_inner::DoubleDictInner{F,S,V},
+    vector_quadratic_constraint_cache_inner::DoubleDicts.DoubleDictInner{F,S,V},
 ) where {T,F,S,V}
     for (inner_ci, pf) in vector_quadratic_constraint_cache_inner
         delta_constants = _delta_parametric_constant(model, pf)

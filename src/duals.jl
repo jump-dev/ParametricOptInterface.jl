@@ -50,7 +50,7 @@ end
 
 function _compute_parameters_in_ci!(
     model::Optimizer,
-    constraint_cache_inner::DoubleDictInner{F,S,V},
+    constraint_cache_inner::DoubleDicts.DoubleDictInner{F,S,V},
 ) where {F,S,V}
     for (inner_ci, pf) in constraint_cache_inner
         _compute_parameters_in_ci!(model, pf, inner_ci)
