@@ -31,6 +31,19 @@ function canonical_compare(f1, f2)
     return MOI.Utilities.canonical(f1) ≈ MOI.Utilities.canonical(f2)
 end
 
+"""
+    SCSOptimizerWithModelCache()
+
+We don't use the default cache because it doesn't support modification of the
+constraint matrix.
+"""
+function SCSOptimizerWithModelCache()
+    return MOI.Utilities.CachingOptimizer(
+        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+        SCS.Optimizer(),
+    )
+end
+
 function test_jump_direct_affine_parameters()
     optimizer = POI.Optimizer(HiGHS.Optimizer)
     model = direct_model(optimizer)
@@ -1297,7 +1310,7 @@ function test_jump_psd_cone_with_parameter_p()
 end
 
 function test_jump_psd_cone_with_parameter_pv_v_pv()
-    model = Model(() -> POI.Optimizer(SCS.Optimizer))
+    model = Model(() -> POI.Optimizer(SCSOptimizerWithModelCache))
     set_silent(model)
     @variable(model, x)
     @variable(model, p in Parameter(1.0))
@@ -1326,7 +1339,7 @@ function test_jump_psd_cone_with_parameter_pv_v_pv()
 end
 
 function test_jump_psd_cone_with_parameter_pp_v_pv()
-    model = Model(() -> POI.Optimizer(SCS.Optimizer))
+    model = Model(() -> POI.Optimizer(SCSOptimizerWithModelCache))
     set_silent(model)
     @variable(model, x)
     @variable(model, p in Parameter(1.0))
@@ -1348,7 +1361,7 @@ function test_jump_psd_cone_with_parameter_pp_v_pv()
 end
 
 function test_jump_psd_cone_with_parameter_p_v_pv()
-    model = Model(() -> POI.Optimizer(SCS.Optimizer))
+    model = Model(() -> POI.Optimizer(SCSOptimizerWithModelCache))
     set_silent(model)
     @variable(model, x)
     @variable(model, p in Parameter(1.0))
@@ -1406,18 +1419,8 @@ function test_jump_psd_cone_without_parameter_v_and_vv()
 end
 
 function test_variable_and_constraint_not_registered()
-    cached1 = MOI.Utilities.CachingOptimizer(
-        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-        SCS.Optimizer(),
-    )
-    optimizer1 = POI.Optimizer(cached1)
-    model1 = direct_model(optimizer1)
-    cached2 = MOI.Utilities.CachingOptimizer(
-        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-        SCS.Optimizer(),
-    )
-    optimizer2 = POI.Optimizer(cached2)
-    model2 = direct_model(optimizer2)
+    model1 = direct_model(POI.Optimizer(SCSOptimizerWithModelCache))
+    model2 = direct_model(POI.Optimizer(SCSOptimizerWithModelCache))
     set_silent(model1)
     set_silent(model2)
     @variable(model1, x)

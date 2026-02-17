@@ -30,6 +30,19 @@ function canonical_compare(f1, f2)
     return MOI.Utilities.canonical(f1) ≈ MOI.Utilities.canonical(f2)
 end
 
+"""
+    SCSOptimizerWithModelCache()
+
+We don't use the default cache because it doesn't support modification of the
+constraint matrix.
+"""
+function SCSOptimizerWithModelCache()
+    return MOI.Utilities.CachingOptimizer(
+        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+        SCS.Optimizer(),
+    )
+end
+
 MOI.Utilities.@model(
     NoFreeVariablesModel,
     (),
@@ -1999,7 +2012,8 @@ function test_psd_cone_with_parameter()
         minobjective: 1x
         c1: [0, px + -1, 0] in PositiveSemidefiniteConeTriangle(2)
     =#
-    model = POI.Optimizer(SCS.Optimizer; with_bridge_type = Float64)
+    model =
+        POI.Optimizer(SCSOptimizerWithModelCache; with_bridge_type = Float64)
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     p = first.(MOI.add_constrained_variable.(model, MOI.Parameter(1.0)))
@@ -2035,6 +2049,7 @@ function test_psd_cone_with_parameter()
     @test MOI.get(model, MOI.ConstraintName(), c_index) == ""
     MOI.set(model, MOI.ConstraintName(), c_index, "psd_cone")
     @test MOI.get(model, MOI.ConstraintName(), c_index) == "psd_cone"
+    return
 end
 
 function test_copy_model()

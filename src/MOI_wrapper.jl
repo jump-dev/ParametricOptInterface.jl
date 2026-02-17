@@ -1950,6 +1950,7 @@ end
 
 function MOI.optimize!(model::Optimizer)
     if !isempty(model.updated_parameters)
+        MOI.Utilities.final_touch(model, nothing)
         update_parameters!(model)
     end
     MOI.optimize!(model.optimizer)
