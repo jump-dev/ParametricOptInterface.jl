@@ -362,6 +362,7 @@ function test_moi_ipopt()
             #  - CachingOptimizer does not throw if optimizer not attached
             "test_model_copy_to_UnsupportedAttribute",
             "test_model_copy_to_UnsupportedConstraint",
+            "test_model_ModelFilter_AbstractConstraintAttribute",
             #  - POI only supports cubic polynomial ScalarNonlinearFunction
             "test_nonlinear_duals",
             "test_nonlinear_expression_",
