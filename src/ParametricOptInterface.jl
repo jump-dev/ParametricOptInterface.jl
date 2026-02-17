@@ -57,13 +57,17 @@ include("parametric_cubic_function.jl")
         evaluate_duals::Bool = true,
         save_original_objective_and_constraints::Bool = true,
         with_bridge_type = nothing,
+        with_cache_type = nothing,
     )
 
 Create an `Optimizer`, which allows the handling of parameters in an
 optimization model.
 
 If `optimizer` is not a `MOI.ModelLike,` the inner optimizer is constructed
-using `MOI.instantiate(optimizer; with_bridge_type)`.
+using `MOI.instantiate(optimizer; with_cache_type)`.
+
+If `with_bridge_type !== nothing`, a `MOI.Bridges.full_bridge_optimizer` is
+applied as an outer layer.
 
 The `{T}` type parameter is optional; it defaults to `Float64`.
 
@@ -82,8 +86,9 @@ The `{T}` type parameter is optional; it defaults to `Float64`.
   Note that this might break printing or queries such as
   `MOI.get(model, MOI.ConstraintFunction(), c)`. Defaults to `true`.
 
-- `with_bridge_type`: this is ignroed if `optimizer::MOI.ModelLike`, otherwise
-  it is passed to `MOI.instantiate`.
+- `with_bridge_type`: the type passed to `MOI.Bridges.full_bridge_optimizer`
+
+- `with_cache_type`: the type passed to `MOI.instantiate`
 
 ## Example
 
@@ -276,12 +281,23 @@ Optimizer(arg; kwargs...) = Optimizer{Float64}(arg; kwargs...)
 function Optimizer{T}(
     optimizer_fn;
     with_bridge_type = nothing,
+    with_cache_type = nothing,
     kwargs...,
 ) where {T}
-    inner = MOI.instantiate(optimizer_fn; with_bridge_type)
+    inner = MOI.instantiate(optimizer_fn; with_cache_type)
     if !MOI.supports_incremental_interface(inner)
-        cache = MOI.default_cache(inner, T)
+        # Don't use `default_cache` for the cache because, for example, SCS's
+        # default cache doesn't support modifying coefficients of the constraint
+        # matrix. JuMP uses the default cache with SCS because it has an outer
+        # layer of caching; we don't have that here, so we can't use the
+        # default.
+        #
+        # We could revert to using the default cache if we fix this in MOI.
+        cache = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{T}())
         inner = MOI.Utilities.CachingOptimizer(cache, inner)
+    end
+    if with_bridge_type !== nothing
+        inner = MOI.Bridges.full_bridge_optimizer(inner, with_bridge_type)
     end
     return Optimizer{T}(inner; kwargs...)
 end

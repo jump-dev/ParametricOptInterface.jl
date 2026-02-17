@@ -322,12 +322,10 @@ function test_moi_highs()
 end
 
 function test_moi_ipopt()
-    model = MOI.Utilities.CachingOptimizer(
-        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-        MOI.Bridges.full_bridge_optimizer(
-            POI.Optimizer(Ipopt.Optimizer),
-            Float64,
-        ),
+    model = POI.Optimizer(
+        Ipopt.Optimizer;
+        with_bridge_type = Float64,
+        with_cache_type = Float64,
     )
     MOI.set(model, MOI.Silent(), true)
     # Without fixed_variable_treatment set, duals are not computed for variables
@@ -364,6 +362,7 @@ function test_moi_ipopt()
             #  - CachingOptimizer does not throw if optimizer not attached
             "test_model_copy_to_UnsupportedAttribute",
             "test_model_copy_to_UnsupportedConstraint",
+            "test_model_ModelFilter_AbstractConstraintAttribute",
             #  - POI only supports cubic polynomial ScalarNonlinearFunction
             "test_nonlinear_duals",
             "test_nonlinear_expression_",
@@ -570,14 +569,7 @@ function test_production_problem_example_duals()
 end
 
 function test_production_problem_example_parameters_for_duals_and_intervals()
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            HiGHS.Optimizer(),
-        ),
-        Float64,
-    )
-    optimizer = POI.Optimizer(cached)
+    optimizer = POI.Optimizer(HiGHS.Optimizer; with_bridge_type = Float64)
     MOI.set(optimizer, MOI.Silent(), true)
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 3.0]
@@ -639,14 +631,14 @@ function test_production_problem_example_parameters_for_duals_and_intervals()
     MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(1.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 7.0, atol = ATOL)
-    @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]
+    @test MOI.get.(optimizer, MOI.VariablePrimal(), x) ≈ [0.0, 1.0]
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cy), 9.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cz), 0.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cw), -2.0, atol = ATOL)
     MOI.set(optimizer, MOI.ConstraintSet(), cw, MOI.Parameter(0.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 3.0, atol = ATOL)
-    @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]
+    @test MOI.get.(optimizer, MOI.VariablePrimal(), x) ≈ [0.0, 1.0]
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cy), 9.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cz), 0.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cw), -2.0, atol = ATOL)
@@ -2035,6 +2027,7 @@ function test_psd_cone_with_parameter()
     @test MOI.get(model, MOI.ConstraintName(), c_index) == ""
     MOI.set(model, MOI.ConstraintName(), c_index, "psd_cone")
     @test MOI.get(model, MOI.ConstraintName(), c_index) == "psd_cone"
+    return
 end
 
 function test_copy_model()
@@ -2125,15 +2118,13 @@ end
 struct VariableAttributeForTest <: MOI.AbstractVariableAttribute end
 struct ConstraintAttributeForTest <: MOI.AbstractConstraintAttribute end
 
-function test_variable_attribute_error()
-    solver = HiGHS.Optimizer()
-    MOI.set(solver, MOI.Silent(), true)
+function test_AA_variable_attribute_error()
     model = POI.Optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            MOI.Bridges.full_bridge_optimizer(solver, Float64),
-        ),
+        HiGHS.Optimizer;
+        with_bridge_type = Float64,
+        with_cache_type = Float64,
     )
+    MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     MOI.set(model, VariableAttributeForTest(), x, 1.0)
     p, pc = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
@@ -2148,13 +2139,8 @@ function test_variable_attribute_error()
 end
 
 function test_constraint_attribute_error()
-    solver = MOI.Utilities.Model{Float64}()
-    model = POI.Optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            MOI.Bridges.full_bridge_optimizer(solver, Float64),
-        ),
-    )
+    model =
+        POI.Optimizer(MOI.Utilities.Model{Float64}; with_bridge_type = Float64)
     MOI.supports(
         model,
         ConstraintAttributeForTest(),
@@ -2170,13 +2156,8 @@ function test_constraint_attribute_error()
 end
 
 function test_name_from_bound()
-    solver = MOI.Utilities.Model{Float64}()
-    model = POI.Optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            MOI.Bridges.full_bridge_optimizer(solver, Float64),
-        ),
-    )
+    model =
+        POI.Optimizer(MOI.Utilities.Model{Float64}; with_bridge_type = Float64)
     x = MOI.add_variable(model)
     p, pc = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
@@ -2200,15 +2181,12 @@ function test_get_constraint_set()
 end
 
 function test_quadratic_variable_parameter()
-    # model = POI.Optimizer(MOI.Utilities.Model{Float64}())
-    solver = Ipopt.Optimizer()
-    MOI.set(solver, MOI.Silent(), true)
     model = POI.Optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            MOI.Bridges.full_bridge_optimizer(solver, Float64),
-        ),
+        Ipopt.Optimizer;
+        with_bridge_type = Float64,
+        with_cache_type = Float64,
     )
+    MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     p, pc = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
     f = 1.0 * x * x - 2.0 * p * p

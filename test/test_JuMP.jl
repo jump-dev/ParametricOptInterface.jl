@@ -834,12 +834,7 @@ function test_jump_dual_delete_constraint_2()
 end
 
 function test_jump_dual_delete_constraint_3()
-    cached = MOI.Utilities.CachingOptimizer(
-        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-        SCS.Optimizer(),
-    )
-    optimizer = POI.Optimizer(cached)
-    model = direct_model(optimizer)
+    model = direct_model(POI.Optimizer(SCS.Optimizer))
     set_silent(model)
     list = []
     @variable(model, α in Parameter(1.0))
@@ -1211,15 +1206,8 @@ function test_parameter_Cannot_be_inf_2()
 end
 
 function test_jump_psd_cone_with_parameter_pv()
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            SCS.Optimizer(),
-        ),
-        Float64,
-    )
-    optimizer = POI.Optimizer(cached)
-    model = direct_model(optimizer)
+    inner = POI.Optimizer(SCS.Optimizer; with_bridge_type = Float64)
+    model = direct_model(inner)
     set_silent(model)
     @variable(model, x)
     @variable(model, p in Parameter(1.0))
@@ -1406,18 +1394,8 @@ function test_jump_psd_cone_without_parameter_v_and_vv()
 end
 
 function test_variable_and_constraint_not_registered()
-    cached1 = MOI.Utilities.CachingOptimizer(
-        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-        SCS.Optimizer(),
-    )
-    optimizer1 = POI.Optimizer(cached1)
-    model1 = direct_model(optimizer1)
-    cached2 = MOI.Utilities.CachingOptimizer(
-        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-        SCS.Optimizer(),
-    )
-    optimizer2 = POI.Optimizer(cached2)
-    model2 = direct_model(optimizer2)
+    model1 = direct_model(POI.Optimizer(SCS.Optimizer))
+    model2 = direct_model(POI.Optimizer(SCS.Optimizer))
     set_silent(model1)
     set_silent(model2)
     @variable(model1, x)
@@ -1505,12 +1483,7 @@ function test_variable_and_constraint_not_registered()
 end
 
 function test_jump_errors()
-    cached1 = MOI.Utilities.CachingOptimizer(
-        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-        SCS.Optimizer(),
-    )
-    optimizer1 = POI.Optimizer(cached1)
-    model = direct_model(optimizer1)
+    model = direct_model(POI.Optimizer(SCS.Optimizer))
     @test_throws MOI.UnsupportedAttribute MOI.get(
         backend(model),
         MOI.NLPBlock(),
