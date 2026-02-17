@@ -1,12 +1,16 @@
 # ParametricOptInterface.jl
 
-[![stable docs](https://img.shields.io/badge/docs-stable-blue.svg)](https://jump.dev/ParametricOptInterface.jl/stable)
-[![development docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://jump.dev/ParametricOptInterface.jl/dev)
 [![Build Status](https://github.com/jump-dev/ParametricOptInterface.jl/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/jump-dev/ParametricOptInterface.jl/actions?query=workflow%3ACI)
 [![Coverage](https://codecov.io/gh/jump-dev/ParametricOptInterface.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/jump-dev/ParametricOptInterface.jl)
 
 [ParametricOptInterface.jl](https://github.com/jump-dev/ParametricOptInterface.jl)
-is a package that adds parameters to models in JuMP and MathOptInterface.
+is a package for managing parameters in JuMP and MathOptInterface.
+
+## Getting help
+
+If you need help, please ask a question on the [JuMP community forum](https://jump.dev/forum).
+
+If you have a reproducible example of a bug, please [open a GitHub issue](https://github.com/jump-dev/HiGHS.jl/issues/new).
 
 ## License
 
@@ -24,27 +28,46 @@ Pkg.add("ParametricOptInterface")
 
 ## Documentation
 
-The [documentation for ParametricOptInterface.jl](https://jump.dev/ParametricOptInterface.jl/stable/)
-includes a detailed description of the theory behind the package, along with
-examples, tutorials, and an API reference.
+See the [documentation for ParametricOptInterface.jl](https://jump.dev/ParametricOptInterface.jl),
+as well as [tutorials that use ParametricOptInterface](https://jump.dev/JuMP.jl/stable/tutorials/overview/#tutorial_ParametricOptInterface)
+in the JuMP documentation.
 
 ## Use with JuMP
 
 Use ParametricOptInterface with JuMP by following this brief example:
 
 ```julia
-using JuMP, HiGHS
-import ParametricOptInterface as POI
-model = direct_model(POI.Optimizer(HiGHS.Optimizer))
-@variable(model, x)
-@variable(model, p in Parameter(1.0))
-@constraint(model, cons, x + p >= 3)
-@objective(model, Min, 2x)
-optimize!(model)
-@show value(x)
-set_parameter_value(p, 2.0)
-optimize!(model)
-@show value(x)
+julia> using JuMP, HiGHS
+
+julia> import ParametricOptInterface as POI
+
+julia> model = Model(() -> POI.Optimizer(HiGHS.Optimizer));
+
+julia> set_silent(model)
+
+julia> @variable(model, x)
+x
+
+julia> @variable(model, p in Parameter(1))
+p
+
+julia> @constraint(model, x + p >= 3)
+x + p ≥ 3
+
+julia> @objective(model, Min, 2x)
+2 x
+
+julia> optimize!(model)
+
+julia> value(x)
+2.0
+
+julia> set_parameter_value(p, 2.0)
+
+julia> optimize!(model)
+
+julia> value(x)
+1.0
 ```
 
 ## GSOC2020
