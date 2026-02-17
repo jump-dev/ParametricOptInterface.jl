@@ -5,21 +5,20 @@
 
 module ParametricOptInterface
 
-using MathOptInterface
+import MathOptInterface as MOI
+import MathOptInterface.Utilities: CleverDicts
+import MathOptInterface.Utilities: DoubleDicts
 
-const MOI = MathOptInterface
+@enum(
+    ConstraintsInterpretationCode,
+    ONLY_CONSTRAINTS,
+    ONLY_BOUNDS,
+    BOUNDS_AND_CONSTRAINTS,
+)
 
-@enum ConstraintsInterpretationCode ONLY_CONSTRAINTS ONLY_BOUNDS BOUNDS_AND_CONSTRAINTS
+const PARAMETER_INDEX_THRESHOLD_MAX = typemax(Int64)
 
-#
-# Parameter Index
-#
-
-const SIMPLE_SCALAR_SETS{T} =
-    Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}}
-
-const PARAMETER_INDEX_THRESHOLD_MAX = typemax(Int64) # div(typemax(Int64),2)+1
-const PARAMETER_INDEX_THRESHOLD = Int64(4_611_686_018_427_387_904) # div(typemax(Int64),2)+1
+const PARAMETER_INDEX_THRESHOLD = div(PARAMETER_INDEX_THRESHOLD_MAX, 2) + 1
 
 struct ParameterIndex
     index::Int64
@@ -41,50 +40,14 @@ function p_val(ci::MOI.ConstraintIndex)::Int64
     return ci.value - PARAMETER_INDEX_THRESHOLD
 end
 
-#
-# MOI Special structure helpers
-#
-
-# Utilities for using a CleverDict in Parameters
-function MOI.Utilities.CleverDicts.index_to_key(
-    ::Type{ParameterIndex},
-    index::Int64,
-)
+function CleverDicts.index_to_key(::Type{ParameterIndex}, index::Int64)
     return ParameterIndex(index)
 end
 
-function MOI.Utilities.CleverDicts.key_to_index(key::ParameterIndex)
-    return key.index
-end
-
-const ParamTo{T} = MOI.Utilities.CleverDicts.CleverDict{
-    ParameterIndex,
-    T,
-    typeof(MOI.Utilities.CleverDicts.key_to_index),
-    typeof(MOI.Utilities.CleverDicts.index_to_key),
-}
-
-const VariableMap = MOI.Utilities.CleverDicts.CleverDict{
-    MOI.VariableIndex,
-    MOI.VariableIndex,
-    typeof(MOI.Utilities.CleverDicts.key_to_index),
-    typeof(MOI.Utilities.CleverDicts.index_to_key),
-}
-
-const DoubleDict{T} = MOI.Utilities.DoubleDicts.DoubleDict{T}
-const DoubleDictInner{F,S,T} = MOI.Utilities.DoubleDicts.DoubleDictInner{F,S,T}
-
-#
-# cubic functions helpers
-#
+CleverDicts.key_to_index(key::ParameterIndex) = key.index
 
 include("cubic_types.jl")
 include("cubic_parser.jl")
-
-#
-# parametric functions
-#
-
 include("parametric_functions.jl")
 include("parametric_cubic_function.jl")
 
@@ -150,76 +113,82 @@ ParametricOptInterface.Optimizer{Float64, MOIB.LazyBridgeOptimizer{HiGHS.Optimiz
 """
 mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     optimizer::OT
-    parameters::ParamTo{T}
+    parameters::CleverDicts.CleverDict{
+        ParameterIndex,
+        T,
+        typeof(CleverDicts.key_to_index),
+        typeof(CleverDicts.index_to_key),
+    }
     parameters_name::Dict{MOI.VariableIndex,String}
     # The updated_parameters dictionary has the same dimension of the
     # parameters dictionary and if the value stored is a NaN is means
     # that the parameter has not been updated.
-    updated_parameters::ParamTo{T}
-    variables::VariableMap
+    updated_parameters::CleverDicts.CleverDict{
+        ParameterIndex,
+        T,
+        typeof(CleverDicts.key_to_index),
+        typeof(CleverDicts.index_to_key),
+    }
+    variables::CleverDicts.CleverDict{
+        MOI.VariableIndex,
+        MOI.VariableIndex,
+        typeof(CleverDicts.key_to_index),
+        typeof(CleverDicts.index_to_key),
+    }
     last_variable_index_added::Int64
     last_parameter_index_added::Int64
-
     # mapping of all constraints: necessary for getters
-    constraint_outer_to_inner::DoubleDict{MOI.ConstraintIndex}
-
+    constraint_outer_to_inner::DoubleDicts.DoubleDict{MOI.ConstraintIndex}
     # affine constraint data
     last_affine_added::Int64
     # Store the map for SAFs (some might be transformed into VI)
-    affine_outer_to_inner::DoubleDict{MOI.ConstraintIndex}
+    affine_outer_to_inner::DoubleDicts.DoubleDict{MOI.ConstraintIndex}
     # Clever cache of data (inner key)
-    affine_constraint_cache::DoubleDict{ParametricAffineFunction{T}}
+    affine_constraint_cache::DoubleDicts.DoubleDict{ParametricAffineFunction{T}}
     # Store original constraint set (inner key)
-    affine_constraint_cache_set::DoubleDict{MOI.AbstractScalarSet}
-
-    # quadratic constraitn data
+    affine_constraint_cache_set::DoubleDicts.DoubleDict{MOI.AbstractScalarSet}
+    # quadratic constraint data
     last_quad_add_added::Int64
     last_vec_quad_add_added::Int64
     # Store the map for SQFs (some might be transformed into SAF)
     # for instance p*p + var -> ScalarAffine(var)
-    quadratic_outer_to_inner::DoubleDict{MOI.ConstraintIndex}
-    vector_quadratic_outer_to_inner::DoubleDict{MOI.ConstraintIndex}
+    quadratic_outer_to_inner::DoubleDicts.DoubleDict{MOI.ConstraintIndex}
+    vector_quadratic_outer_to_inner::DoubleDicts.DoubleDict{MOI.ConstraintIndex}
     # Clever cache of data (inner key)
-    quadratic_constraint_cache::DoubleDict{ParametricQuadraticFunction{T}}
+    quadratic_constraint_cache::DoubleDicts.DoubleDict{
+        ParametricQuadraticFunction{T},
+    }
     # Store original constraint set (inner key)
-    quadratic_constraint_cache_set::DoubleDict{MOI.AbstractScalarSet}
+    quadratic_constraint_cache_set::DoubleDicts.DoubleDict{
+        MOI.AbstractScalarSet,
+    }
     # Vector quadratic function data
-    vector_quadratic_constraint_cache::DoubleDict{
+    vector_quadratic_constraint_cache::DoubleDicts.DoubleDict{
         ParametricVectorQuadraticFunction{T},
     }
     # Store original constraint set (inner key)
-    vector_quadratic_constraint_cache_set::DoubleDict{MOI.AbstractVectorSet}
-
+    vector_quadratic_constraint_cache_set::DoubleDicts.DoubleDict{
+        MOI.AbstractVectorSet,
+    }
     # objective function data
     # Clever cache of data (at most one can be !== nothing)
     affine_objective_cache::Union{Nothing,ParametricAffineFunction{T}}
     quadratic_objective_cache::Union{Nothing,ParametricQuadraticFunction{T}}
     cubic_objective_cache::Union{Nothing,ParametricCubicFunction{T}}
     original_objective_cache::MOI.Utilities.ObjectiveContainer{T}
-
-    # vector affine function data
-    # vector_constraint_cache::DoubleDict{Vector{MOI.VectorAffineTerm{T}}}
     # Clever cache of data (inner key)
-    vector_affine_constraint_cache::DoubleDict{
+    vector_affine_constraint_cache::DoubleDicts.DoubleDict{
         ParametricVectorAffineFunction{T},
     }
-
-    #
     multiplicative_parameters_pv::Set{Int64}
     multiplicative_parameters_pp::Set{Int64}
     dual_value_of_parameters::Vector{T}
-
-    # params
     evaluate_duals::Bool
     number_of_parameters_in_model::Int64
     constraints_interpretation::ConstraintsInterpretationCode
     save_original_objective_and_constraints::Bool
-
     parameters_in_conflict::Set{MOI.VariableIndex}
-
     warn_quad_affine_ambiguous::Bool
-
-    # extension data
     ext::Dict{Symbol,Any}
 
     function Optimizer{T}(
@@ -228,58 +197,75 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
         save_original_objective_and_constraints::Bool = true,
     ) where {T,OT<:MOI.ModelLike}
         return new{T,OT}(
+            # optimizer
             optimizer,
-            MOI.Utilities.CleverDicts.CleverDict{ParameterIndex,T}(
-                MOI.Utilities.CleverDicts.key_to_index,
-                MOI.Utilities.CleverDicts.index_to_key,
-            ),
+            # parameters
+            CleverDicts.CleverDict{ParameterIndex,T}(),
+            # parameters_name
             Dict{MOI.VariableIndex,String}(),
-            MOI.Utilities.CleverDicts.CleverDict{ParameterIndex,T}(
-                MOI.Utilities.CleverDicts.key_to_index,
-                MOI.Utilities.CleverDicts.index_to_key,
-            ),
-            MOI.Utilities.CleverDicts.CleverDict{
-                MOI.VariableIndex,
-                MOI.VariableIndex,
-            }(
-                MOI.Utilities.CleverDicts.key_to_index,
-                MOI.Utilities.CleverDicts.index_to_key,
-            ),
+            # updated_parameters
+            CleverDicts.CleverDict{ParameterIndex,T}(),
+            # variables
+            CleverDicts.CleverDict{MOI.VariableIndex,MOI.VariableIndex}(),
+            # last_variable_index_added
             0,
+            # last_parameter_index_added
             PARAMETER_INDEX_THRESHOLD,
-            DoubleDict{MOI.ConstraintIndex}(),
-            # affine constraint
+            # constraint_outer_to_inner
+            DoubleDicts.DoubleDict{MOI.ConstraintIndex}(),
+            # last_affine_added
             0,
-            DoubleDict{MOI.ConstraintIndex}(),
-            DoubleDict{ParametricAffineFunction{T}}(),
-            DoubleDict{MOI.AbstractScalarSet}(),
-            # quadratic constraint
+            # affine_outer_to_inner
+            DoubleDicts.DoubleDict{MOI.ConstraintIndex}(),
+            # affine_constraint_cache
+            DoubleDicts.DoubleDict{ParametricAffineFunction{T}}(),
+            # affine_constraint_cache_set
+            DoubleDicts.DoubleDict{MOI.AbstractScalarSet}(),
+            # last_quad_add_added
             0,
+            # last_vec_quad_add_added
             0,
-            DoubleDict{MOI.ConstraintIndex}(),
-            DoubleDict{MOI.ConstraintIndex}(),
-            DoubleDict{ParametricQuadraticFunction{T}}(),
-            DoubleDict{MOI.AbstractScalarSet}(),
-            DoubleDict{ParametricVectorQuadraticFunction{T}}(),
-            DoubleDict{MOI.AbstractVectorSet}(),
-            # objective
+            # quadratic_outer_to_inner
+            DoubleDicts.DoubleDict{MOI.ConstraintIndex}(),
+            # vector_quadratic_outer_to_inner
+            DoubleDicts.DoubleDict{MOI.ConstraintIndex}(),
+            # quadratic_constraint_cache
+            DoubleDicts.DoubleDict{ParametricQuadraticFunction{T}}(),
+            # quadratic_constraint_cache_set
+            DoubleDicts.DoubleDict{MOI.AbstractScalarSet}(),
+            # vector_quadratic_constraint_cache
+            DoubleDicts.DoubleDict{ParametricVectorQuadraticFunction{T}}(),
+            # vector_quadratic_constraint_cache_set
+            DoubleDicts.DoubleDict{MOI.AbstractVectorSet}(),
+            # affine_objective_cache
             nothing,
+            # quadratic_objective_cache
             nothing,
-            nothing,  # cubic_objective_cache
+            # cubic_objective_cache
+            nothing,
+            # original_objective_cache
             MOI.Utilities.ObjectiveContainer{T}(),
-            # vec affine
-            # DoubleDict{Vector{MOI.VectorAffineTerm{T}}}(),
-            DoubleDict{ParametricVectorAffineFunction{T}}(),
-            # other
+            # vector_affine_constraint_cache
+            DoubleDicts.DoubleDict{ParametricVectorAffineFunction{T}}(),
+            # multiplicative_parameters_pv
             Set{Int64}(),
+            # multiplicative_parameters_pp
             Set{Int64}(),
-            Vector{T}(),
+            # dual_value_of_parameters
+            T[],
+            # evaluate_duals
             evaluate_duals,
+            # number_of_parameters_in_model
             0,
+            # constraints_interpretation
             ONLY_CONSTRAINTS,
+            # save_original_objective_and_constraints
             save_original_objective_and_constraints,
+            # parameters_in_conflict
             Set{MOI.VariableIndex}(),
+            # warn_quad_affine_ambiguous
             true,
+            # ext
             Dict{Symbol,Any}(),
         )
     end
@@ -300,23 +286,8 @@ function Optimizer{T}(
     return Optimizer{T}(inner; kwargs...)
 end
 
-function _next_parameter_index!(model::Optimizer)
-    return model.last_parameter_index_added += 1
-end
-
-# TODO: remove this
-function _update_number_of_parameters!(model::Optimizer)
-    return model.number_of_parameters_in_model += 1
-end
-
 function _parameter_in_model(model::Optimizer, v::MOI.VariableIndex)
-    if !_is_parameter(v)
-        return false
-    elseif haskey(model.parameters, p_idx(v))
-        return true
-    else
-        return false
-    end
+    return _is_parameter(v) && haskey(model.parameters, p_idx(v))
 end
 
 include("duals.jl")
