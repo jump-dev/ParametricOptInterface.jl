@@ -239,6 +239,12 @@ git-tree-sha1 = "05868e21324cede2207c6f0f466b4bfef6d5e7ee"
 uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 version = "1.8.1"
 
+[[ParameterJuMP]]
+deps = ["JuMP", "MathOptInterface", "MutableArithmetics", "SparseArrays"]
+git-tree-sha1 = "a7ea1d5263f9a3aa0670fbcc58c2cca275baa3fc"
+uuid = "774612a8-9878-5177-865a-ca53ae2495f9"
+version = "0.4.1"
+
 [[ParametricOptInterface]]
 deps = ["MathOptInterface"]
 path = ".."
