@@ -1246,7 +1246,8 @@ function test_jump_psd_cone_with_parameter_pv()
     set_parameter_value(p, 3.0)
     optimize!(model)
     @test value(x) ≈ 1 / 3 atol = 1e-5
-    return delete(model, con)
+    delete(model, con)
+    return
 end
 
 function test_jump_psd_cone_with_parameter_pp()
@@ -1270,7 +1271,8 @@ function test_jump_psd_cone_with_parameter_pp()
     set_parameter_value(p, 3.0)
     optimize!(model)
     @test value(x) ≈ 9.0 atol = 1e-5
-    return delete(model, con)
+    delete(model, con)
+    return
 end
 
 function test_jump_psd_cone_with_parameter_p()
@@ -1290,7 +1292,8 @@ function test_jump_psd_cone_with_parameter_p()
     set_parameter_value(p, 3.0)
     optimize!(model)
     @test value(x) ≈ 3.0 atol = 1e-5
-    return delete(model, con)
+    delete(model, con)
+    return
 end
 
 function test_jump_psd_cone_with_parameter_pv_v_pv()
@@ -1318,7 +1321,8 @@ function test_jump_psd_cone_with_parameter_pv_v_pv()
     optimize!(model)
     @test value(x) ≈ 0.416888 atol = 1e-5
     @test value(x) ≈ (9 * sqrt(3) - 6) / 23 atol = 1e-5
-    return delete(model, con)
+    delete(model, con)
+    return
 end
 
 function test_jump_psd_cone_with_parameter_pp_v_pv()
@@ -1339,7 +1343,8 @@ function test_jump_psd_cone_with_parameter_pp_v_pv()
     set_parameter_value(p, 3.0)
     optimize!(model)
     @test value(x) ≈ 0.0971795 atol = 1e-5
-    return delete(model, con)
+    delete(model, con)
+    return
 end
 
 function test_jump_psd_cone_with_parameter_p_v_pv()
@@ -1359,7 +1364,8 @@ function test_jump_psd_cone_with_parameter_p_v_pv()
     set_parameter_value(p, 3.0)
     optimize!(model)
     @test value(x) ≈ 0.236506 atol = 1e-3
-    return delete(model, con)
+    delete(model, con)
+    return
 end
 
 function test_jump_psd_cone_with_parameter_p_v_pp()
@@ -1379,7 +1385,8 @@ function test_jump_psd_cone_with_parameter_p_v_pp()
     set_parameter_value(p, Float32(3.0))
     optimize!(model)
     @test value(x) ≈ -2.9999734 atol = 1e-5
-    return delete(model, con)
+    delete(model, con)
+    return
 end
 
 function test_jump_psd_cone_without_parameter_v_and_vv()
