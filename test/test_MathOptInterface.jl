@@ -1525,7 +1525,6 @@ function test_qp_objective_affine_parameter()
     return
 end
 
-
 function test_compute_conflict!()
     T = Float64
     mock = MOI.Utilities.MockOptimizer(MOI.Utilities.Model{T}())

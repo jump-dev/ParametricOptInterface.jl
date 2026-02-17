@@ -964,7 +964,6 @@ function test_jump_direct_soc_parameters()
     return
 end
 
-
 function test_jump_direct_rsoc_constraints()
     """
         Problem RSOC
