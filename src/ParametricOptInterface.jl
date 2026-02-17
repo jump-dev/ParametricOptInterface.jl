@@ -276,9 +276,10 @@ Optimizer(arg; kwargs...) = Optimizer{Float64}(arg; kwargs...)
 function Optimizer{T}(
     optimizer_fn;
     with_bridge_type = nothing,
+    with_cache_type = nothing,
     kwargs...,
 ) where {T}
-    inner = MOI.instantiate(optimizer_fn)
+    inner = MOI.instantiate(optimizer_fn; with_cache_type)
     if !MOI.supports_incremental_interface(inner)
         # Don't use `default_cache` for the cache because, for example, SCS's
         # default cache doesn't support modifying coefficients of the constraint

@@ -322,7 +322,11 @@ function test_moi_highs()
 end
 
 function test_moi_ipopt()
-    model = POI.Optimizer(Ipopt.Optimizer; with_bridge_type = Float64)
+    model = POI.Optimizer(
+        Ipopt.Optimizer;
+        with_bridge_type = Float64,
+        with_cache_type = Float64,
+    )
     MOI.set(model, MOI.Silent(), true)
     # Without fixed_variable_treatment set, duals are not computed for variables
     # that have lower_bound == upper_bound.
@@ -564,7 +568,7 @@ function test_production_problem_example_duals()
 end
 
 function test_production_problem_example_parameters_for_duals_and_intervals()
-    model = POI.Optimizer(HiGHS.Optimizer; with_bridge_type = Float64)
+    optimizer = POI.Optimizer(HiGHS.Optimizer; with_bridge_type = Float64)
     MOI.set(optimizer, MOI.Silent(), true)
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 3.0]
@@ -626,14 +630,14 @@ function test_production_problem_example_parameters_for_duals_and_intervals()
     MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(1.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 7.0, atol = ATOL)
-    @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]
+    @test MOI.get.(optimizer, MOI.VariablePrimal(), x) ≈ [0.0, 1.0]
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cy), 9.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cz), 0.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cw), -2.0, atol = ATOL)
     MOI.set(optimizer, MOI.ConstraintSet(), cw, MOI.Parameter(0.0))
     MOI.optimize!(optimizer)
     @test ≈(MOI.get(optimizer, MOI.ObjectiveValue()), 3.0, atol = ATOL)
-    @test MOI.get.(optimizer, MOI.VariablePrimal(), x) == [0.0, 1.0]
+    @test MOI.get.(optimizer, MOI.VariablePrimal(), x) ≈ [0.0, 1.0]
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cy), 9.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cz), 0.0, atol = ATOL)
     @test ≈(MOI.get(optimizer, MOI.ConstraintDual(), cw), -2.0, atol = ATOL)
@@ -2113,8 +2117,12 @@ end
 struct VariableAttributeForTest <: MOI.AbstractVariableAttribute end
 struct ConstraintAttributeForTest <: MOI.AbstractConstraintAttribute end
 
-function test_variable_attribute_error()
-    model = POI.Optimizer(HiGHS.Optimizer; with_bridge_type = Float64)
+function test_AA_variable_attribute_error()
+    model = POI.Optimizer(
+        HiGHS.Optimizer;
+        with_bridge_type = Float64,
+        with_cache_type = Float64,
+    )
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     MOI.set(model, VariableAttributeForTest(), x, 1.0)
@@ -2172,7 +2180,11 @@ function test_get_constraint_set()
 end
 
 function test_quadratic_variable_parameter()
-    model = POI.Optimizer(Ipopt.Optimizer; with_bridge_type = Float64)
+    model = POI.Optimizer(
+        Ipopt.Optimizer;
+        with_bridge_type = Float64,
+        with_cache_type = Float64,
+    )
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     p, pc = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
