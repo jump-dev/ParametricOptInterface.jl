@@ -3,25 +3,11 @@
 # Use of this source code is governed by an MIT-style license that can be found
 # in the LICENSE.md file or at https://opensource.org/licenses/MIT.
 
-push!(LOAD_PATH, "./src")
-using ParametricOptInterface
-using MathOptInterface
-using HiGHS
+import HiGHS
+import MathOptInterface as MOI
+import ParametricOptInterface as POI
 import Random
-#using SparseArrays
-using TimerOutputs
-
-const MOI = MathOptInterface
-const POI = ParametricOptInterface
-SOLVER = HiGHS
-
-if SOLVER == HiGHS
-    MAX_ITER_PARAM = "simplex_iteration_limit"
-elseif SOLVER == Gurobi
-    MAX_ITER_PARAM = "IterationLimit"
-elseif SOLVER == Xpress
-    MAX_ITER_PARAM = "LPITERLIMIT"
-end
+import TimerOutputs
 
 struct PMedianData
     num_facilities::Int
@@ -117,7 +103,7 @@ function generate_poi_problem(model, data::PMedianData, add_parameters::Bool)
     if add_parameters
         d, cd = MOI.add_constrained_variable(
             model,
-            MOI.Parameter(data.num_facilities),
+            MOI.Parameter{Float64}(data.num_facilities),
         )
     end
 
@@ -128,7 +114,7 @@ function generate_poi_problem(model, data::PMedianData, add_parameters::Bool)
                 MOI.ScalarAffineTerm.(1.0, vcat(facility_variables, d)),
                 0.0,
             ),
-            MOI.EqualTo{Float64}(0),
+            MOI.EqualTo{Float64}(0.0),
         )
     else
         MOI.add_constraint(
@@ -147,127 +133,54 @@ end
 function solve_moi(
     data::PMedianData,
     optimizer;
-    vector_version,
     params,
-    add_parameters = false,
+    add_parameters::Bool = false,
 )
-    model = optimizer()
+    model = MOI.instantiate(optimizer)
     for (param, value) in params
         MOI.set(model, param, value)
     end
-    @timeit "generate" x, y = if vector_version
-        generate_poi_problem_vector(model, data, add_parameters)
-    else
-        generate_poi_problem(model, data, add_parameters)
-    end
-    @timeit "solve" MOI.optimize!(model)
-    return MOI.get(model, MOI.ObjectiveValue())
-end
-
-function POI_OPTIMIZER()
-    return POI.Optimizer(SOLVER.Optimizer)
+    TimerOutputs.@timeit(
+        "generate",
+        generate_poi_problem(model, data, add_parameters),
+    )
+    TimerOutputs.@timeit "solve" MOI.optimize!(model)
+    return MOI.get(model, MOI.TerminationStatus())
 end
 
 function solve_moi_loop(
+    optimizer,
+    name,
     data::PMedianData;
-    vector_version,
     max_iters = Inf,
     time_limit_sec = Inf,
     loops,
+    kwargs...,
 )
-    params = []
+    params = Any[(MOI.Silent(), true)]
     if isfinite(time_limit_sec)
         push!(params, (MOI.TimeLimitSec(), time_limit_sec))
     end
     if isfinite(max_iters)
-        push!(params, (MOI.RawOptimizerAttribute(MAX_ITER_PARAM), max_iters))
+        push!(
+            params,
+            (MOI.RawOptimizerAttribute("simplex_iteration_limit"), max_iters),
+        )
     end
-    push!(params, (MOI.Silent(), true))
-    s_type = vector_version ? "vector" : "scalar"
-
-    @timeit(
-        "$(SOLVER) MOI $(s_type)",
-        for _ in 1:loops
-            solve_moi(
-                data,
-                SOLVER.Optimizer();
-                vector_version = vector_version,
-                params = params,
-            )
-        end
-    )
-end
-
-function solve_poi_no_params_loop(
-    data::PMedianData;
-    vector_version,
-    max_iters = Inf,
-    time_limit_sec = Inf,
-    loops,
-)
-    params = []
-    if isfinite(time_limit_sec)
-        push!(params, (MOI.TimeLimitSec(), time_limit_sec))
+    TimerOutputs.@timeit "$name" for _ in 1:loops
+        solve_moi(data, optimizer; params, kwargs...)
     end
-    if isfinite(max_iters)
-        push!(params, (MOI.RawOptimizerAttribute(MAX_ITER_PARAM), max_iters))
-    end
-    push!(params, (MOI.Silent(), true))
-    s_type = vector_version ? "vector" : "scalar"
-    @timeit(
-        "$(SOLVER) POI NO PARAMS $(s_type)",
-        for _ in 1:loops
-            solve_moi(
-                data,
-                POI_OPTIMIZER;
-                vector_version = vector_version,
-                params = params,
-            )
-        end
-    )
-end
-
-function solve_poi_loop(
-    data::PMedianData;
-    vector_version,
-    max_iters = Inf,
-    time_limit_sec = Inf,
-    loops = 1,
-)
-    params = []
-    if isfinite(time_limit_sec)
-        push!(params, (MOI.TimeLimitSec(), time_limit_sec))
-    end
-    if isfinite(max_iters)
-        push!(params, (MOI.RawOptimizerAttribute(MAX_ITER_PARAM), max_iters))
-    end
-    push!(params, (MOI.Silent(), true))
-    s_type = vector_version ? "vector" : "scalar"
-
-    @timeit(
-        "$(SOLVER) POI $(s_type)",
-        for _ in 1:loops
-            solve_moi(
-                data,
-                POI_OPTIMIZER;
-                vector_version = vector_version,
-                params = params,
-                add_parameters = true,
-            )
-        end
-    )
+    return
 end
 
 function run_benchmark(;
     num_facilities,
     num_customers,
     num_locations,
-    time_limit_sec,
-    max_iters,
-    loops,
+    kwargs...,
 )
     Random.seed!(10)
-    reset_timer!()
+    TimerOutputs.reset_timer!()
     data = PMedianData(
         num_facilities,
         num_customers,
@@ -275,35 +188,21 @@ function run_benchmark(;
         rand(num_customers) .* num_locations,
     )
     GC.gc()
-    solve_moi_loop(
-        data,
-        vector_version = false,
-        max_iters = max_iters,
-        time_limit_sec = time_limit_sec,
-        loops = loops,
-    )
+    solve_moi_loop(HiGHS.Optimizer, "HiGHS MOI NO PARAMS", data; kwargs...)
     GC.gc()
-    solve_poi_no_params_loop(
-        data,
-        vector_version = false,
-        max_iters = max_iters,
-        time_limit_sec = time_limit_sec,
-        loops = loops,
-    )
+    solve_moi_loop("HiGHS POI NO PARAMS", data; kwargs...) do
+        return POI.Optimizer(HiGHS.Optimizer)
+    end
     GC.gc()
-    solve_poi_loop(
-        data,
-        vector_version = false,
-        max_iters = max_iters,
-        time_limit_sec = time_limit_sec,
-        loops = loops,
-    )
+    solve_moi_loop("HiGHS POI", data; add_parameters = true, kwargs...) do
+        return POI.Optimizer(HiGHS.Optimizer)
+    end
     GC.gc()
-    print_timer()
-    return println()
+    TimerOutputs.print_timer()
+    return
 end
 
-run_benchmark(
+run_benchmark(;
     num_facilities = 100,
     num_customers = 100,
     num_locations = 100,
@@ -312,7 +211,7 @@ run_benchmark(
     loops = 1,
 )
 
-run_benchmark(
+run_benchmark(;
     num_facilities = 100,
     num_customers = 100,
     num_locations = 100,

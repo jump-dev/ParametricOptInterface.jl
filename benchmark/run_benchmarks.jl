@@ -3,36 +3,35 @@
 # Use of this source code is governed by an MIT-style license that can be found
 # in the LICENSE.md file or at https://opensource.org/licenses/MIT.
 
-using MathOptInterface
-using ParametricOptInterface
 using BenchmarkTools
-const MOI = MathOptInterface
-const POI = ParametricOptInterface
+
+import MathOptInterface as MOI
+import ParametricOptInterface as POI
 import Pkg
 
 function moi_add_variables(N::Int)
     model = MOI.Utilities.Model{Float64}()
     MOI.add_variables(model, N)
-    return nothing
+    return
 end
 
 function poi_add_variables(N::Int)
     model = POI.Optimizer(MOI.Utilities.Model{Float64}())
     MOI.add_variables(model, N)
-    return nothing
+    return
 end
 
 function poi_add_parameters(N::Int)
     model = POI.Optimizer(MOI.Utilities.Model{Float64}())
     MOI.add_constrained_variable.(model, MOI.Parameter.(ones(N)))
-    return nothing
+    return
 end
 
 function poi_add_parameters_and_variables(N::Int)
     model = POI.Optimizer(MOI.Utilities.Model{Float64}())
     MOI.add_variables(model, N / 2)
     MOI.add_constrained_variable.(model, MOI.Parameter.(ones(Int(N / 2))))
-    return nothing
+    return
 end
 
 function poi_add_parameters_and_variables_alternating(N::Int)
@@ -41,7 +40,7 @@ function poi_add_parameters_and_variables_alternating(N::Int)
         MOI.add_variable(model)
         MOI.add_constrained_variable(model, MOI.Parameter(1.0))
     end
-    return nothing
+    return
 end
 
 function moi_add_saf_ctr(N::Int, M::Int)
@@ -54,7 +53,7 @@ function moi_add_saf_ctr(N::Int, M::Int)
             MOI.GreaterThan(1.0),
         )
     end
-    return nothing
+    return
 end
 
 function poi_add_saf_ctr(N::Int, M::Int)
@@ -67,7 +66,7 @@ function poi_add_saf_ctr(N::Int, M::Int)
             MOI.GreaterThan(1.0),
         )
     end
-    return nothing
+    return
 end
 
 function poi_add_saf_variables_and_parameters_ctr(N::Int, M::Int)
@@ -86,7 +85,7 @@ function poi_add_saf_variables_and_parameters_ctr(N::Int, M::Int)
             MOI.GreaterThan(1.0),
         )
     end
-    return nothing
+    return
 end
 
 function poi_add_saf_variables_and_parameters_ctr_parameter_update(
@@ -110,7 +109,7 @@ function poi_add_saf_variables_and_parameters_ctr_parameter_update(
     end
     MOI.set.(model, POI.ParameterValue(), y, 0.5)
     POI.update_parameters!(model)
-    return nothing
+    return
 end
 
 function moi_add_sqf_variables_ctr(N::Int, M::Int)
@@ -127,7 +126,7 @@ function moi_add_sqf_variables_ctr(N::Int, M::Int)
             MOI.GreaterThan(1.0),
         )
     end
-    return nothing
+    return
 end
 
 function poi_add_sqf_variables_ctr(N::Int, M::Int)
@@ -144,7 +143,7 @@ function poi_add_sqf_variables_ctr(N::Int, M::Int)
             MOI.GreaterThan(1.0),
         )
     end
-    return nothing
+    return
 end
 
 function poi_add_sqf_variables_parameters_ctr(N::Int, M::Int)
@@ -164,7 +163,7 @@ function poi_add_sqf_variables_parameters_ctr(N::Int, M::Int)
             MOI.GreaterThan(1.0),
         )
     end
-    return nothing
+    return
 end
 
 function poi_add_sqf_variables_parameters_ctr_parameter_update(N::Int, M::Int)
@@ -186,7 +185,7 @@ function poi_add_sqf_variables_parameters_ctr_parameter_update(N::Int, M::Int)
     end
     MOI.set.(model, POI.ParameterValue(), y, 0.5)
     POI.update_parameters!(model)
-    return nothing
+    return
 end
 
 function poi_add_sqf_parameters_parameters_ctr(N::Int, M::Int)
@@ -206,7 +205,7 @@ function poi_add_sqf_parameters_parameters_ctr(N::Int, M::Int)
             MOI.GreaterThan(1.0),
         )
     end
-    return nothing
+    return
 end
 
 function poi_add_sqf_parameters_parameters_ctr_parameter_update(N::Int, M::Int)
@@ -228,7 +227,7 @@ function poi_add_sqf_parameters_parameters_ctr_parameter_update(N::Int, M::Int)
     end
     MOI.set.(model, POI.ParameterValue(), y, 0.5)
     POI.update_parameters!(model)
-    return nothing
+    return
 end
 
 function moi_add_saf_obj(N::Int, M::Int)
@@ -241,7 +240,7 @@ function moi_add_saf_obj(N::Int, M::Int)
             MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(1.0, x), 0.0),
         )
     end
-    return nothing
+    return
 end
 
 function poi_add_saf_obj(N::Int, M::Int)
@@ -254,7 +253,7 @@ function poi_add_saf_obj(N::Int, M::Int)
             MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(1.0, x), 0.0),
         )
     end
-    return nothing
+    return
 end
 
 function poi_add_saf_variables_and_parameters_obj(N::Int, M::Int)
@@ -273,7 +272,7 @@ function poi_add_saf_variables_and_parameters_obj(N::Int, M::Int)
             ),
         )
     end
-    return nothing
+    return
 end
 
 function poi_add_saf_variables_and_parameters_obj_parameter_update(
@@ -299,7 +298,7 @@ function poi_add_saf_variables_and_parameters_obj_parameter_update(
         MOI.set.(model, POI.ParameterValue(), y, 0.5)
         POI.update_parameters!(model)
     end
-    return nothing
+    return
 end
 
 function moi_add_sqf_variables_obj(N::Int, M::Int)
@@ -316,7 +315,7 @@ function moi_add_sqf_variables_obj(N::Int, M::Int)
             ),
         )
     end
-    return nothing
+    return
 end
 
 function poi_add_sqf_variables_obj(N::Int, M::Int)
@@ -333,7 +332,7 @@ function poi_add_sqf_variables_obj(N::Int, M::Int)
             ),
         )
     end
-    return nothing
+    return
 end
 
 function poi_add_sqf_variables_parameters_obj(N::Int, M::Int)
@@ -353,7 +352,7 @@ function poi_add_sqf_variables_parameters_obj(N::Int, M::Int)
             ),
         )
     end
-    return nothing
+    return
 end
 
 function poi_add_sqf_variables_parameters_obj_parameter_update(N::Int, M::Int)
@@ -377,7 +376,7 @@ function poi_add_sqf_variables_parameters_obj_parameter_update(N::Int, M::Int)
         MOI.set.(model, POI.ParameterValue(), y, 0.5)
         POI.update_parameters!(model)
     end
-    return nothing
+    return
 end
 
 function poi_add_sqf_parameters_parameters_obj(N::Int, M::Int)
@@ -397,7 +396,7 @@ function poi_add_sqf_parameters_parameters_obj(N::Int, M::Int)
             ),
         )
     end
-    return nothing
+    return
 end
 
 function poi_add_sqf_parameters_parameters_obj_parameter_update(N::Int, M::Int)
@@ -421,7 +420,7 @@ function poi_add_sqf_parameters_parameters_obj_parameter_update(N::Int, M::Int)
         MOI.set.(model, POI.ParameterValue(), y, 0.5)
         POI.update_parameters!(model)
     end
-    return nothing
+    return
 end
 
 function run_benchmarks(N::Int, M::Int)
@@ -519,7 +518,7 @@ function run_benchmarks(N::Int, M::Int)
         "Update parameters in SQF objective with product of parameters on a POI.Optimizer.",
     )
     @btime poi_add_sqf_parameters_parameters_obj_parameter_update($N, $M)
-    return nothing
+    return
 end
 
 N = 10_000
