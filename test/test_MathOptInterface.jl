@@ -30,19 +30,6 @@ function canonical_compare(f1, f2)
     return MOI.Utilities.canonical(f1) ≈ MOI.Utilities.canonical(f2)
 end
 
-"""
-    SCSOptimizerWithModelCache()
-
-We don't use the default cache because it doesn't support modification of the
-constraint matrix.
-"""
-function SCSOptimizerWithModelCache()
-    return MOI.Utilities.CachingOptimizer(
-        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-        SCS.Optimizer(),
-    )
-end
-
 MOI.Utilities.@model(
     NoFreeVariablesModel,
     (),
@@ -335,13 +322,7 @@ function test_moi_highs()
 end
 
 function test_moi_ipopt()
-    model = MOI.Utilities.CachingOptimizer(
-        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-        MOI.Bridges.full_bridge_optimizer(
-            POI.Optimizer(Ipopt.Optimizer),
-            Float64,
-        ),
-    )
+    model = POI.Optimizer(Ipopt.Optimizer; with_bridge_type = Float64)
     MOI.set(model, MOI.Silent(), true)
     # Without fixed_variable_treatment set, duals are not computed for variables
     # that have lower_bound == upper_bound.
@@ -583,14 +564,7 @@ function test_production_problem_example_duals()
 end
 
 function test_production_problem_example_parameters_for_duals_and_intervals()
-    cached = MOI.Bridges.full_bridge_optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            HiGHS.Optimizer(),
-        ),
-        Float64,
-    )
-    optimizer = POI.Optimizer(cached)
+    model = POI.Optimizer(HiGHS.Optimizer; with_bridge_type = Float64)
     MOI.set(optimizer, MOI.Silent(), true)
     c = [4.0, 3.0]
     A1 = [2.0, 1.0, 3.0]
@@ -2012,8 +1986,7 @@ function test_psd_cone_with_parameter()
         minobjective: 1x
         c1: [0, px + -1, 0] in PositiveSemidefiniteConeTriangle(2)
     =#
-    model =
-        POI.Optimizer(SCSOptimizerWithModelCache; with_bridge_type = Float64)
+    model = POI.Optimizer(SCS.Optimizer; with_bridge_type = Float64)
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     p = first.(MOI.add_constrained_variable.(model, MOI.Parameter(1.0)))
@@ -2141,14 +2114,8 @@ struct VariableAttributeForTest <: MOI.AbstractVariableAttribute end
 struct ConstraintAttributeForTest <: MOI.AbstractConstraintAttribute end
 
 function test_variable_attribute_error()
-    solver = HiGHS.Optimizer()
-    MOI.set(solver, MOI.Silent(), true)
-    model = POI.Optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            MOI.Bridges.full_bridge_optimizer(solver, Float64),
-        ),
-    )
+    model = POI.Optimizer(HiGHS.Optimizer; with_bridge_type = Float64)
+    MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     MOI.set(model, VariableAttributeForTest(), x, 1.0)
     p, pc = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
@@ -2163,13 +2130,8 @@ function test_variable_attribute_error()
 end
 
 function test_constraint_attribute_error()
-    solver = MOI.Utilities.Model{Float64}()
-    model = POI.Optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            MOI.Bridges.full_bridge_optimizer(solver, Float64),
-        ),
-    )
+    model =
+        POI.Optimizer(MOI.Utilities.Model{Float64}; with_bridge_type = Float64)
     MOI.supports(
         model,
         ConstraintAttributeForTest(),
@@ -2185,13 +2147,8 @@ function test_constraint_attribute_error()
 end
 
 function test_name_from_bound()
-    solver = MOI.Utilities.Model{Float64}()
-    model = POI.Optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            MOI.Bridges.full_bridge_optimizer(solver, Float64),
-        ),
-    )
+    model =
+        POI.Optimizer(MOI.Utilities.Model{Float64}; with_bridge_type = Float64)
     x = MOI.add_variable(model)
     p, pc = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
     MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
@@ -2215,15 +2172,8 @@ function test_get_constraint_set()
 end
 
 function test_quadratic_variable_parameter()
-    # model = POI.Optimizer(MOI.Utilities.Model{Float64}())
-    solver = Ipopt.Optimizer()
-    MOI.set(solver, MOI.Silent(), true)
-    model = POI.Optimizer(
-        MOI.Utilities.CachingOptimizer(
-            MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-            MOI.Bridges.full_bridge_optimizer(solver, Float64),
-        ),
-    )
+    model = POI.Optimizer(Ipopt.Optimizer; with_bridge_type = Float64)
+    MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
     p, pc = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
     f = 1.0 * x * x - 2.0 * p * p

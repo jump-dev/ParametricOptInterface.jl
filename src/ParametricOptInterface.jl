@@ -280,7 +280,14 @@ function Optimizer{T}(
 ) where {T}
     inner = MOI.instantiate(optimizer_fn; with_bridge_type)
     if !MOI.supports_incremental_interface(inner)
-        cache = MOI.default_cache(inner, T)
+        # Don't use `default_cache` for the cache because, for example, SCS's
+        # default cache doesn't support modifying coefficients of the constraint
+        # matrix. JuMP uses the default cache with SCS because it has an outer
+        # layer of caching; we don't have that here, so we can't use the
+        # default.
+        #
+        # We could revert to using the default cache if we fix this in MOI.
+        cache = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{T}())
         inner = MOI.Utilities.CachingOptimizer(cache, inner)
     end
     return Optimizer{T}(inner; kwargs...)
