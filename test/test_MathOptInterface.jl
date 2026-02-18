@@ -2275,7 +2275,7 @@ function test_multiplicative_dual_error()
     f = 1.0 * x * p
     ci = MOI.add_constraint(model, f, MOI.EqualTo{Float64}(0.0))
     @test_throws(
-        MOI.GetAttributeNotAllowed,
+        ErrorException("Cannot compute the dual of a multiplicative parameter"),
         MOI.get(model, MOI.ConstraintDual(), pc),
     )
     return
