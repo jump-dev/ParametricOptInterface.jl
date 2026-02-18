@@ -7,3 +7,12 @@ ParameterJuMP = "774612a8-9878-5177-865a-ca53ae2495f9"
 ParametricOptInterface = "0ce4ce61-57bf-432b-a095-efac525d185e"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
+
+[compat]
+BenchmarkTools = "1"
+HiGHS = "1"
+JuMP = "1"
+MathOptInterface = "1"
+ParameterJuMP = "0.4"
+Random = "1"
+TimerOutputs = "0.5"
