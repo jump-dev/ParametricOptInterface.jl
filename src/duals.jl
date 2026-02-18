@@ -82,17 +82,14 @@ function _compute_parameters_in_ci!(
             cons_dual * term.coefficient
     end
     for term in pf.pp
-        coef = ifelse(term.variable_1 == term.variable_2, T(1 // 2), T(1))
+        mult = cons_dual * term.coefficient
+        if term.variable_1 == term.variable_2
+            mult /= 2
+        end
         model.dual_value_of_parameters[p_val(term.variable_1)] -=
-            coef *
-            cons_dual *
-            term.coefficient *
-            MOI.get(model, ParameterValue(), term.variable_2)
+            mult * model.parameters[p_idx(term.variable_2)]
         model.dual_value_of_parameters[p_val(term.variable_2)] -=
-            coef *
-            cons_dual *
-            term.coefficient *
-            MOI.get(model, ParameterValue(), term.variable_1)
+            mult * model.parameters[p_idx(term.variable_1)]
     end
     return
 end
@@ -117,30 +114,6 @@ function _update_duals_from_objective!(model::Optimizer{T}, pf) where {T}
             ifelse(is_min, 1, -1) * param.coefficient
     end
     return
-end
-
-"""
-    ParameterDual <: MOI.AbstractVariableAttribute
-
-Attribute defined to get the dual values associated to parameters
-
-# Example
-
-```julia
-MOI.get(model, POI.ParameterValue(), p)
-```
-"""
-struct ParameterDual <: MOI.AbstractVariableAttribute end
-
-MOI.is_set_by_optimize(::ParametricOptInterface.ParameterDual) = true
-
-function MOI.get(
-    model::Optimizer{T},
-    ::ParameterDual,
-    v::MOI.VariableIndex,
-) where {T}
-    ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.Parameter{T}}(v.value)
-    return MOI.get(model, MOI.ConstraintDual(), ci)
 end
 
 function MOI.get(
@@ -187,22 +160,15 @@ function _compute_parameters_in_ci!(
         model.dual_value_of_parameters[p_val(term.scalar_term.variable)] -=
             cons_dual[term.output_index] * term.scalar_term.coefficient
     end
-    for term in pf.pp
-        coef = ifelse(
-            term.scalar_term.variable_1 == term.scalar_term.variable_2,
-            T(1 // 2),
-            T(1),
-        )
-        model.dual_value_of_parameters[p_val(term.scalar_term.variable_1)] -=
-            coef *
-            cons_dual[term.output_index] *
-            term.scalar_term.coefficient *
-            MOI.get(model, ParameterValue(), term.scalar_term.variable_2)
-        model.dual_value_of_parameters[p_val(term.scalar_term.variable_2)] -=
-            coef *
-            cons_dual[term.output_index] *
-            term.scalar_term.coefficient *
-            MOI.get(model, ParameterValue(), term.scalar_term.variable_1)
+    for t in pf.pp
+        mult = cons_dual[t.output_index] * t.scalar_term.coefficient
+        if t.scalar_term.variable_1 == t.scalar_term.variable_2
+            mult /= 2
+        end
+        model.dual_value_of_parameters[p_val(t.scalar_term.variable_1)] -=
+            mult * model.parameters[p_idx(t.scalar_term.variable_2)]
+        model.dual_value_of_parameters[p_val(t.scalar_term.variable_2)] -=
+            mult * model.parameters[p_idx(t.scalar_term.variable_1)]
     end
     return
 end

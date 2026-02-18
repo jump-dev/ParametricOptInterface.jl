@@ -131,7 +131,7 @@ function poi_add_saf_variables_and_parameters_ctr_parameter_update(
     @variable(model, x[i=1:Int(N/2)])
     @variable(model, p[i=1:Int(N/2)] in Parameter(0))
     @constraint(model, con[i=1:M], sum(x) + sum(p) >= 1)
-    MOI.set.(model, POI.ParameterValue(), p, 0.5)
+    set_parameter_value.(p, 0.5)
     POI.update_parameters!(backend(model))
     return
 end
@@ -189,7 +189,7 @@ function poi_add_sqf_variables_parameters_ctr_parameter_update(N::Int, M::Int)
     @variable(model, x[i=1:Int(N/2)])
     @variable(model, p[i=1:Int(N/2)] in Parameter(1))
     @constraint(model, con[i=1:M], x' * p >= 1)
-    MOI.set.(model, POI.ParameterValue(), p, 0.5)
+    set_parameter_value.(p, 0.5)
     POI.update_parameters!(backend(model))
     return
 end
@@ -221,7 +221,7 @@ function poi_add_sqf_parameters_parameters_ctr_parameter_update(N::Int, M::Int)
     @variable(model, x[i=1:Int(N/2)])
     @variable(model, p[i=1:Int(N/2)] in Parameter(1))
     @constraint(model, con[i=1:M], p' * p >= 1)
-    MOI.set.(model, POI.ParameterValue(), p, 0.5)
+    set_parameter_value.(p, 0.5)
     POI.update_parameters!(backend(model))
     return
 end
@@ -289,7 +289,7 @@ function poi_add_saf_variables_and_parameters_obj_parameter_update(
         @objective(model, Min, sum(x) + sum(p))
     end
     for _ in 1:M
-        MOI.set.(model, POI.ParameterValue(), p, 0.5)
+        set_parameter_value.(p, 0.5)
         POI.update_parameters!(backend(model))
     end
     return
@@ -357,7 +357,7 @@ function poi_add_sqf_variables_parameters_obj_parameter_update(N::Int, M::Int)
         @objective(model, Min, x' * p)
     end
     for _ in 1:M
-        MOI.set.(model, POI.ParameterValue(), p, 0.5)
+        set_parameter_value.(p, 0.5)
         POI.update_parameters!(backend(model))
     end
     return
@@ -395,7 +395,7 @@ function poi_add_sqf_parameters_parameters_obj_parameter_update(N::Int, M::Int)
         @objective(model, Min, p' * p)
     end
     for _ in 1:M
-        MOI.set.(model, POI.ParameterValue(), p, 0.5)
+        set_parameter_value.(p, 0.5)
         POI.update_parameters!(backend(model))
     end
     return
