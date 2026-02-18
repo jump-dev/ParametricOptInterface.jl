@@ -617,8 +617,8 @@ function test_jump_dual_multiple_parameters_1()
           dual(ctr6) atol = 1e-3
     @test 0.0 ≈ dual(ctr7) atol = 1e-3
     @test 0.0 ≈ dual(ctr8) atol = 1e-3
-    @test [0.0, 0.0, -35 / 3, 0.0, 0.0, 0.0] ≈
-          dual.(ParameterRef.(x)) atol = 1e-3
+    @test [0.0, 0.0, -35 / 3, 0.0, 0.0, 0.0] ≈ dual.(ParameterRef.(x)) atol =
+        1e-3
     @test [-26 / 3, 0.0, 0.0, 0.0, 0.0, 0.0] ≈ value.(y) atol = 1e-3
     @test -130 / 3 ≈ objective_value(model) atol = 1e-3
     return
