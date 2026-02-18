@@ -4,6 +4,10 @@ on:
     branches: [master]
   pull_request:
     types: [opened, synchronize, reopened]
+# needed to allow julia-actions/cache to delete old caches that it has created
+permissions:
+  actions: write
+  contents: read
 jobs:
   test:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
@@ -37,13 +41,18 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
   benchmark:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - file: 'run_benchmarks.jl'
+          - file: 'run_benchmarks_jump.jl'
+          - file: 'run_benchmarks_pmedian.jl'
+          - file: 'run_benders_quantile_regression_benchmark.jl'
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@latest
         with:
           version: '1'
       - run: julia --project=benchmark -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
-      - run: julia --color=yes --project=benchmark benchmark/run_benchmarks.jl
-      - run: julia --color=yes --project=benchmark benchmark/run_benchmarks_jump.jl
-      - run: julia --color=yes --project=benchmark benchmark/run_benchmarks_pmedian.jl
-      - run: julia --color=yes --project=benchmark benchmark/run_benders_quantile_regression_benchmark.jl
+      - run: julia --color=yes --project=benchmark benchmark/${{ matrix.file }}
