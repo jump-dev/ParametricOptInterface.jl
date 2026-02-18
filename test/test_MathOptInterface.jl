@@ -699,7 +699,7 @@ function test_vector_parameter_affine_nonnegatives()
     @test MOI.get(model, MOI.ObjectiveValue()) ≈ 7 atol = ATOL
     @test MOI.get(model, MOI.DualObjectiveValue()) ≈ 7 atol = ATOL
     @test MOI.get(model, MOI.ConstraintDual(), cnn) ≈ [1.0, 1.0] atol = ATOL
-    MOI.set(model, POI.ParameterValue(), t, 6)
+    MOI.set(model, MOI.ConstraintSet(), ct, MOI.Parameter(6.0))
     MOI.optimize!(model)
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 5 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 4 atol = ATOL
@@ -750,7 +750,7 @@ function test_vector_parameter_affine_nonpositives()
     @test MOI.get(model, MOI.ObjectiveValue()) ≈ 7 atol = ATOL
     @test MOI.get(model, MOI.DualObjectiveValue()) ≈ 7 atol = ATOL
     @test MOI.get(model, MOI.ConstraintDual(), cnn) ≈ [-1.0, -1.0] atol = ATOL
-    MOI.set(model, POI.ParameterValue(), t, 6)
+    MOI.set(model, MOI.ConstraintSet(), ct, MOI.Parameter(6.0))
     MOI.optimize!(model)
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 5 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 4 atol = ATOL
@@ -829,7 +829,7 @@ function test_vector_soc_parameters()
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ -1 / √2 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), y) ≈ 1 / √2 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), t) ≈ 1 atol = ATOL
-    MOI.set(model, POI.ParameterValue(), p, 1)
+    MOI.set(model, MOI.ConstraintSet(), cp, MOI.Parameter(1.0))
     MOI.optimize!(model)
     @test MOI.get(model, MOI.ObjectiveValue()) ≈ 1 - 1 / √2 atol = ATOL
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1 - 1 / √2 atol = ATOL
@@ -1459,13 +1459,16 @@ function test_qp_objective_parameter_times_parameter()
     MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(3.0))
     MOI.optimize!(optimizer)
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 6.0, atol = ATOL)
-    MOI.set(optimizer, POI.ParameterValue(), y, 5)
-    MOI.set(optimizer, POI.ParameterValue(), z, 5.0)
-    @test_throws MOI.InvalidIndex MOI.set(
-        optimizer,
-        POI.ParameterValue(),
-        MOI.VariableIndex(10872368175),
-        5.0,
+    MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(5.0))
+    MOI.set(optimizer, MOI.ConstraintSet(), cz, MOI.Parameter(5.0))
+    @test_throws(
+        MOI.InvalidIndex,
+        MOI.set(
+            optimizer,
+            MOI.ConstraintSet(),
+            typeof(cy)(cy.value + 10),
+            MOI.Parameter(5.0),
+        )
     )
     MOI.optimize!(optimizer)
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 25.0, atol = ATOL)
@@ -1994,7 +1997,7 @@ function test_psd_cone_with_parameter()
     model = POI.Optimizer(SCS.Optimizer; with_bridge_type = Float64)
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
-    p = first.(MOI.add_constrained_variable.(model, MOI.Parameter(1.0)))
+    p, cp = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
 
     # Set objective: minimize x
     obj_func = MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(1.0, x)], 0.0)
@@ -2018,7 +2021,7 @@ function test_psd_cone_with_parameter()
     @test MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1.0 atol = 1e-5
 
-    MOI.set(model, POI.ParameterValue(), p, 3.0)
+    MOI.set(model, MOI.ConstraintSet(), cp, MOI.Parameter(3.0))
 
     MOI.optimize!(model)
     @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 1 / 3 atol = 1e-5
@@ -2272,7 +2275,7 @@ function test_multiplicative_dual_error()
     f = 1.0 * x * p
     ci = MOI.add_constraint(model, f, MOI.EqualTo{Float64}(0.0))
     @test_throws(
-        MOI.GetAttributeNotAllowed,
+        ErrorException("Cannot compute the dual of a multiplicative parameter"),
         MOI.get(model, MOI.ConstraintDual(), pc),
     )
     return

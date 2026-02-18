@@ -47,7 +47,7 @@ function test_jump_direct_affine_parameters()
     @test isapprox.(value(x[2]), 4.0 / 3.0, atol = ATOL)
     @test isapprox.(value(y), 0, atol = ATOL)
     # ===== Set parameter value =====
-    MOI.set(model, POI.ParameterValue(), y, 2.0)
+    set_parameter_value(y, 2.0)
     optimize!(model)
     @test isapprox.(value(x[1]), 0.0, atol = ATOL)
     @test isapprox.(value(x[2]), 2.0, atol = ATOL)
@@ -71,7 +71,7 @@ function test_jump_direct_parameter_times_variable()
     @test isapprox.(value(x[2]), 4.0 / 3.0, atol = ATOL)
     @test isapprox.(value(y), 0, atol = ATOL)
     # ===== Set parameter value =====
-    MOI.set(model, POI.ParameterValue(), y, 2.0)
+    set_parameter_value(y, 2.0)
     optimize!(model)
     @test isapprox.(value(x[1]), 0.0, atol = ATOL)
     @test isapprox.(value(x[2]), 2.0, atol = ATOL)
@@ -94,7 +94,7 @@ function test_jump_affine_parameters()
     @test isapprox.(value(x[2]), 4.0 / 3.0, atol = ATOL)
     @test isapprox.(value(y), 0, atol = ATOL)
     # ===== Set parameter value =====
-    MOI.set(model, POI.ParameterValue(), y, 2.0)
+    set_parameter_value(y, 2.0)
     optimize!(model)
     @test isapprox.(value(x[1]), 0.0, atol = ATOL)
     @test isapprox.(value(x[2]), 2.0, atol = ATOL)
@@ -109,7 +109,7 @@ function test_jump_parameter_times_variable()
     @variable(model, y in Parameter(0.0))
     @variable(model, w in Parameter(0.0))
     @variable(model, z in Parameter(0.0))
-    @test MOI.get(model, POI.ParameterValue(), y) == 0
+    @test parameter_value(y) == 0
     @constraint(model, 2 * x[1] + x[2] + y <= 4)
     @constraint(model, (1 + y) * x[1] + 2 * x[2] + z <= 4)
     @objective(model, Max, 4 * x[1] + 3 * x[2] + w)
@@ -118,7 +118,7 @@ function test_jump_parameter_times_variable()
     @test isapprox.(value(x[2]), 4.0 / 3.0, atol = ATOL)
     @test isapprox.(value(y), 0, atol = ATOL)
     # ===== Set parameter value =====
-    MOI.set(model, POI.ParameterValue(), y, 2.0)
+    set_parameter_value(y, 2.0)
     optimize!(model)
     @test isapprox.(value(x[1]), 0.0, atol = ATOL)
     @test isapprox.(value(x[2]), 2.0, atol = ATOL)
@@ -307,7 +307,7 @@ function test_jump_interpret_parameteric_bounds()
     @test Set(result) == Set(expected)
     @test length(result) == length(expected)
     @test objective_value(model) == -2
-    MOI.set(model, POI.ParameterValue(), p[1], 4.0)
+    set_parameter_value(p[1], 4.0)
     optimize!(model)
     @test objective_value(model) == 3
     return
@@ -337,7 +337,7 @@ function test_jump_interpret_parameteric_bounds_expression()
     @test Set(result) == Set(expected)
     @test length(result) == length(expected)
     @test objective_value(model) == -4
-    MOI.set(model, POI.ParameterValue(), p[1], 4.0)
+    set_parameter_value(p[1], 4.0)
     optimize!(model)
     @test objective_value(model) == 11.0
     return
@@ -365,7 +365,7 @@ function test_jump_direct_interpret_parameteric_bounds()
     @test Set(result) == Set(expected)
     @test length(result) == length(expected)
     @test objective_value(model) == -2
-    MOI.set(model, POI.ParameterValue(), p[1], 4.0)
+    set_parameter_value(p[1], 4.0)
     optimize!(model)
     @test objective_value(model) == 3
     return
@@ -396,7 +396,7 @@ function test_jump_direct_interpret_parameteric_bounds_no_interpretation()
     @test Set(result) == Set(expected)
     @test length(result) == length(expected)
     @test objective_value(model) == -2
-    MOI.set(model, POI.ParameterValue(), p[1], 4.0)
+    set_parameter_value(p[1], 4.0)
     optimize!(model)
     @test objective_value(model) == 3
     return
@@ -415,7 +415,7 @@ function test_jump_direct_interpret_parameteric_bounds_change()
     @objective(model, Min, sum(x))
     optimize!(model)
     @test objective_value(model) == -1
-    MOI.set(model, POI.ParameterValue(), p[1], 4.0)
+    set_parameter_value(p[1], 4.0)
     optimize!(model)
     @test objective_value(model) == 3.5
     return
@@ -432,7 +432,7 @@ function test_jump_direct_interpret_parameteric_bounds_both()
     @objective(model, Min, sum(x))
     optimize!(model)
     @test objective_value(model) == -1
-    MOI.set(model, POI.ParameterValue(), p[1], 4.0)
+    set_parameter_value(p[1], 4.0)
     optimize!(model)
     @test objective_value(model) == 3.5
     return
@@ -474,7 +474,7 @@ function test_jump_direct_get_parameter_value()
     @variable(model, z, set = MOI.Parameter(10.0))
     c = @constraint(model, 19.0 * x - z + 22.0 * y <= 1.0)
     @objective(model, Min, x + y)
-    @test MOI.get(model, POI.ParameterValue(), z) == 10
+    @test parameter_value(z) == 10
     return
 end
 
@@ -486,7 +486,7 @@ function test_jump_get_parameter_value()
     @variable(model, z, set = MOI.Parameter(10))
     c = @constraint(model, 19.0 * x - z + 22.0 * y <= 1.0)
     @objective(model, Min, x + y)
-    @test MOI.get(model, POI.ParameterValue(), z) == 10
+    @test parameter_value(z) == 10
     return
 end
 
@@ -499,7 +499,7 @@ function test_jump_sdp_scalar_parameter()
     @constraint(m, LinearAlgebra.Symmetric(x .- [1+p 0; 0 1+p]) in PSDCone())
     optimize!(m)
     @test all(isapprox.(value.(x), [1 0; 0 1], atol = ATOL))
-    MOI.set(m, POI.ParameterValue(), p, 1)
+    set_parameter_value(p, 1)
     optimize!(m)
     @test all(isapprox.(value.(x), [2 0; 0 2], atol = ATOL))
     return
@@ -516,7 +516,7 @@ function test_jump_sdp_matrix_parameter()
     optimize!(m)
     @test all(isapprox.(value.(x), P1, atol = ATOL))
     P2 = [1 2; 2 1]
-    MOI.set.(m, POI.ParameterValue(), p, P2)
+    set_parameter_value.(p, P2)
     optimize!(m)
     @test all(isapprox.(value.(x), P2, atol = ATOL))
     return
@@ -531,25 +531,24 @@ function test_jump_dual_basic()
     @objective(model, Min, 5 * y[1])
     optimize!(model)
     @test 5 / 3 ≈ dual(ctr1) atol = 1e-3
-    @test [-35 / 3, 0.0] ≈ MOI.get.(model, POI.ParameterDual(), x) atol = 1e-3
+    @test [-35 / 3, 0.0] ≈ dual.(ParameterRef.(x)) atol = 1e-3
     @test [-26 / 3, 0.0, 0.0, 0.0, 0.0, 0.0] ≈ value.(y) atol = 1e-3
     @test -130 / 3 ≈ objective_value(model) atol = 1e-3
     return
 end
 
 function test_jump_dual_multiplicative_fail()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    model = direct_model(POI.Optimizer(HiGHS.Optimizer))
     set_silent(model)
     @variable(model, x)
     @variable(model, p in Parameter(1.0))
     @constraint(model, cons, x * p >= 3)
     @objective(model, Min, 2x)
     optimize!(model)
-    err = MOI.GetAttributeNotAllowed(
-        MOI.ConstraintDual(),
-        "Cannot compute the dual of a multiplicative parameter",
+    @test_throws(
+        ErrorException("Cannot compute the dual of a multiplicative parameter"),
+        dual(ParameterRef(p)),
     )
-    @test_throws err MOI.get(model, POI.ParameterDual(), p)
     return
 end
 
@@ -561,7 +560,7 @@ function test_jump_dual_objective_min()
     @constraint(model, cons, x >= 3 * p)
     @objective(model, Min, 2x + p)
     optimize!(model)
-    @test MOI.get(model, POI.ParameterDual(), p) == 7
+    @test dual(ParameterRef(p)) == 7
     return
 end
 
@@ -573,7 +572,7 @@ function test_jump_dual_objective_max()
     @constraint(model, cons, x >= 3 * p)
     @objective(model, Max, -2x + p)
     optimize!(model)
-    @test MOI.get(model, POI.ParameterDual(), p) == 5
+    @test dual(ParameterRef(p)) == 5
     return
 end
 
@@ -605,8 +604,8 @@ function test_jump_dual_multiple_parameters_1()
           dual(ctr6) atol = 1e-3
     @test 0.0 ≈ dual(ctr7) atol = 1e-3
     @test 0.0 ≈ dual(ctr8) atol = 1e-3
-    @test [0.0, 0.0, -35 / 3, 0.0, 0.0, 0.0] ≈
-          MOI.get.(model, POI.ParameterDual(), x) atol = 1e-3
+    @test [0.0, 0.0, -35 / 3, 0.0, 0.0, 0.0] ≈ dual.(ParameterRef.(x)) atol =
+        1e-3
     @test [-26 / 3, 0.0, 0.0, 0.0, 0.0, 0.0] ≈ value.(y) atol = 1e-3
     @test -130 / 3 ≈ objective_value(model) atol = 1e-3
     return
@@ -622,13 +621,13 @@ function test_jump_duals_LessThan()
     optimize!(model)
     @test value(x) == -1.0
     @test dual(cref) == -1.0
-    @test MOI.get(model, POI.ParameterDual(), α) == -1.0
+    @test dual(ParameterRef(α)) == -1.0
 
-    MOI.set(model, POI.ParameterValue(), α, 2.0)
+    set_parameter_value(α, 2.0)
     optimize!(model)
     @test value(x) == 2.0
     @test dual(cref) == -1.0
-    @test MOI.get(model, POI.ParameterDual(), α) == -1.0
+    @test dual(ParameterRef(α)) == -1.0
     return
 end
 
@@ -642,12 +641,12 @@ function test_jump_duals_EqualTo()
     optimize!(model)
     @test value(x) == -1.0
     @test dual(cref) == -1.0
-    @test MOI.get(model, POI.ParameterDual(), α) == -1.0
-    MOI.set(model, POI.ParameterValue(), α, 2.0)
+    @test dual(ParameterRef(α)) == -1.0
+    set_parameter_value(α, 2.0)
     optimize!(model)
     @test value(x) == 2.0
     @test dual(cref) == -1.0
-    @test MOI.get(model, POI.ParameterDual(), α) == -1.0
+    @test dual(ParameterRef(α)) == -1.0
     return
 end
 
@@ -655,19 +654,19 @@ function test_jump_duals_GreaterThan()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     set_silent(model)
     @variable(model, α in Parameter(1.0))
-    MOI.set(model, POI.ParameterValue(), α, -1.0)
+    set_parameter_value(α, -1.0)
     @variable(model, x)
     cref = @constraint(model, x >= α)
     @objective(model, Min, x)
     optimize!(model)
     @test value(x) == -1.0
     @test dual(cref) == 1.0
-    @test MOI.get(model, POI.ParameterDual(), α) == 1.0
-    MOI.set(model, POI.ParameterValue(), α, 2.0)
+    @test dual(ParameterRef(α)) == 1.0
+    set_parameter_value(α, 2.0)
     optimize!(model)
     @test value(x) == 2.0
     @test dual(cref) == 1.0
-    @test MOI.get(model, POI.ParameterDual(), α) == 1.0
+    @test dual(ParameterRef(α)) == 1.0
     return
 end
 
@@ -681,7 +680,7 @@ function test_jump_dual_multiple_parameters_2()
     optimize!(model)
     @test value(x) == 20.0
     @test dual(cref) == 1.0
-    @test MOI.get(model, POI.ParameterDual(), α[3]) == 2.0
+    @test dual(ParameterRef(α[3])) == 2.0
     return
 end
 
@@ -695,7 +694,7 @@ function test_jump_dual_mixing_params_and_vars_1()
     optimize!(model)
     @test value(x) == 2.0
     @test dual(cref) == 1 / 5
-    @test MOI.get(model, POI.ParameterDual(), α[3]) == 2 / 5
+    @test dual(ParameterRef(α[3])) == 2 / 5
     return
 end
 
@@ -709,7 +708,7 @@ function test_jump_dual_mixing_params_and_vars_2()
     optimize!(model)
     @test value(x) == 2.0
     @test dual(cref) == 1 / 5
-    @test MOI.get(model, POI.ParameterDual(), α[3]) == 2 / 5
+    @test dual(ParameterRef(α[3])) == 2 / 5
     return
 end
 
@@ -723,7 +722,7 @@ function test_jump_dual_mixing_params_and_vars_3()
     optimize!(model)
     @test value(x) == 4.0
     @test dual(cref) == 1 / 5
-    @test MOI.get(model, POI.ParameterDual(), α[3]) == 2 / 5
+    @test dual(ParameterRef(α[3])) == 2 / 5
     return
 end
 
@@ -731,21 +730,21 @@ function test_jump_dual_add_after_solve()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     set_silent(model)
     @variable(model, α in Parameter(1.0))
-    MOI.set(model, POI.ParameterValue(), α, -1.0)
+    set_parameter_value(α, -1.0)
     @variable(model, x)
     cref = @constraint(model, x <= α)
     @objective(model, Max, x)
     optimize!(model)
     @test value(x) == -1.0
     @test dual(cref) == -1.0
-    @test MOI.get(model, POI.ParameterDual(), α) == -1.0
+    @test dual(ParameterRef(α)) == -1.0
     @variable(model, b in Parameter(-2.0))
     cref = @constraint(model, x <= b)
     optimize!(model)
     @test value(x) == -2.0
     @test dual(cref) == -1.0
-    @test MOI.get(model, POI.ParameterDual(), α) == 0.0
-    @test MOI.get(model, POI.ParameterDual(), b) == -1.0
+    @test dual(ParameterRef(α)) == 0.0
+    @test dual(ParameterRef(b)) == -1.0
     return
 end
 
@@ -760,7 +759,7 @@ function test_jump_dual_add_ctr_alaternative()
     optimize!(model)
     @test value(x) == -1.0
     @test dual(cref) == -1.0
-    @test MOI.get(model, POI.ParameterDual(), α) == -1.0
+    @test dual(ParameterRef(α)) == -1.0
     return
 end
 
@@ -778,12 +777,12 @@ function test_jump_dual_delete_constraint()
     @test value(x) == -1.0
     @test dual(cref1) == 0.0
     @test dual(cref2) == -1.0
-    @test MOI.get(model, POI.ParameterDual(), α) == -1.0
+    @test dual(ParameterRef(α)) == -1.0
     delete(model, cref2)
     optimize!(model)
     @test value(x) == -0.5
     @test dual(cref1) == -1.0
-    @test MOI.get(model, POI.ParameterDual(), α) == -0.5
+    @test dual(ParameterRef(α)) == -0.5
     return
 end
 
@@ -823,9 +822,9 @@ function test_jump_dual_delete_constraint_2()
         end
         @test dual(list[1]) == 1.0
         if i in [7, 4]
-            @test MOI.get(model, POI.ParameterDual(), α) == 0.0
+            @test dual(ParameterRef(α)) == 0.0
         else
-            @test MOI.get(model, POI.ParameterDual(), α) == 1.0 * i
+            @test dual(ParameterRef(α)) == 1.0 * i
         end
         con = popfirst!(list)
         delete(model, con)
@@ -872,9 +871,9 @@ function test_jump_dual_delete_constraint_3()
         end
         @test dual(list[1])[] ≈ 1.0 atol = 1e-5
         if i in [7, 4]
-            @test MOI.get(model, POI.ParameterDual(), α) ≈ 0.0 atol = 1e-5
+            @test dual(ParameterRef(α)) ≈ 0.0 atol = 1e-5
         else
-            @test MOI.get(model, POI.ParameterDual(), α) ≈ 1.0 * i atol = 1e-5
+            @test dual(ParameterRef(α)) ≈ 1.0 * i atol = 1e-5
         end
         con = popfirst!(list)
         delete(model, con)
@@ -914,7 +913,7 @@ function test_jump_direct_vector_parameter_affine_nonnegatives()
     optimize!(model)
     @test isapprox.(value(x), 4.0, atol = ATOL)
     @test isapprox.(value(y), 3.0, atol = ATOL)
-    MOI.set(model, POI.ParameterValue(), t, 6)
+    set_parameter_value(t, 6)
     optimize!(model)
     @test isapprox.(value(x), 5.0, atol = ATOL)
     @test isapprox.(value(y), 4.0, atol = ATOL)
@@ -942,7 +941,7 @@ function test_jump_direct_vector_parameter_affine_nonpositives()
     optimize!(model)
     @test isapprox.(value(x), 4.0, atol = ATOL)
     @test isapprox.(value(y), 3.0, atol = ATOL)
-    MOI.set(model, POI.ParameterValue(), t, 6)
+    set_parameter_value(t, 6)
     optimize!(model)
     @test isapprox.(value(x), 5.0, atol = ATOL)
     @test isapprox.(value(y), 4.0, atol = ATOL)
@@ -983,7 +982,7 @@ function test_jump_direct_soc_parameters()
     @test value(x) ≈ -1 / √2 atol = ATOL
     @test value(y) ≈ 1 / √2 atol = ATOL
     @test value(t) ≈ 1 atol = ATOL
-    MOI.set(model, POI.ParameterValue(), p, 1)
+    set_parameter_value(p, 1)
     optimize!(model)
     @test objective_value(model) ≈ 1 - 1 / √2 atol = ATOL
     @test value(x) ≈ 1 - 1 / √2 atol = ATOL
@@ -1020,7 +1019,7 @@ function test_jump_direct_rsoc_constraints()
     @test value(x) ≈ 1 / 4 atol = ATOL
     @test value(y) ≈ 1 / √2 atol = ATOL
     @test value(t) ≈ 1 atol = ATOL
-    MOI.set(model, POI.ParameterValue(), p, 2)
+    set_parameter_value(p, 2)
     optimize!(model)
     @test objective_value(model) ≈ 0.0 atol = ATOL
     @test value(x) ≈ 0.0 atol = ATOL
@@ -1040,11 +1039,11 @@ function test_jump_quadratic_interval()
     optimize!(model)
     @test value(x) ≈ 0 atol = ATOL
     @test value(y) ≈ 0.4 atol = ATOL
-    MOI.set(model, POI.ParameterValue(), p, 20.0)
+    set_parameter_value(p, 20.0)
     optimize!(model)
     @test value(x) ≈ 0 atol = ATOL
     @test value(y) ≈ 0.2 atol = ATOL
-    MOI.set(model, POI.ParameterValue(), q, 6.0)
+    set_parameter_value(q, 6.0)
     optimize!(model)
     @test value(x) ≈ 0 atol = ATOL
     @test value(y) ≈ 0.3 atol = ATOL
@@ -1068,11 +1067,11 @@ function test_jump_quadratic_interval_cached()
     optimize!(model)
     @test value(x) ≈ 0 atol = ATOL
     @test value(y) ≈ 0.4 atol = ATOL
-    MOI.set(model, POI.ParameterValue(), p, 20.0)
+    set_parameter_value(p, 20.0)
     optimize!(model)
     @test value(x) ≈ 0 atol = ATOL
     @test value(y) ≈ 0.2 atol = ATOL
-    MOI.set(model, POI.ParameterValue(), q, 6.0)
+    set_parameter_value(q, 6.0)
     optimize!(model)
     @test value(x) ≈ 0 atol = ATOL
     @test value(y) ≈ 0.3 atol = ATOL
@@ -1122,8 +1121,8 @@ function test_get_duals_from_multiplicative_parameters_1()
     @objective(model, Min, sum(x))
     optimize!(model)
     @test dual(c) ≈ 1.0 / 3.0
-    @test MOI.get.(model, POI.ParameterDual(), p1) ≈ 2.0 / 3
-    @test MOI.get.(model, POI.ParameterDual(), p2) ≈ 2.0 / 3
+    @test dual.(ParameterRef.(p1)) ≈ 2.0 / 3
+    @test dual.(ParameterRef.(p2)) ≈ 2.0 / 3
     return
 end
 
@@ -1137,8 +1136,8 @@ function test_get_duals_from_multiplicative_parameters_2()
     @objective(model, Min, sum(x))
     optimize!(model)
     @test dual(c) ≈ 1.0 / 3.0
-    @test MOI.get.(model, POI.ParameterDual(), p1) ≈ 2.0 / 3
-    @test MOI.get.(model, POI.ParameterDual(), p2) ≈ 40.0 / 3
+    @test dual.(ParameterRef.(p1)) ≈ 2.0 / 3
+    @test dual.(ParameterRef.(p2)) ≈ 40.0 / 3
     return
 end
 
@@ -1151,7 +1150,7 @@ function test_get_duals_from_multiplicative_parameters_3()
     @objective(model, Min, sum(x))
     optimize!(model)
     @test dual(c) ≈ 1.0 / 3.0
-    @test MOI.get.(model, POI.ParameterDual(), p) ≈ 2 * 4.0 / 3
+    @test dual.(ParameterRef.(p)) ≈ 2 * 4.0 / 3
     return
 end
 
@@ -1163,7 +1162,7 @@ function test_parameters_cannot_be_nan_1()
     @constraint(model, c, 3 * x >= p * p)
     @objective(model, Min, sum(x))
     @test_throws AssertionError optimize!(model)
-    MOI.set(model, POI.ParameterValue(), p, 20.0)
+    set_parameter_value(p, 20.0)
     return
 end
 
@@ -1176,7 +1175,7 @@ function test_parameters_cannot_be_nan_2()
     @variable(model, p in Parameter(1.0))
     @constraint(model, c, 3 * x[1] + x[2] >= p * p)
     @objective(model, Min, sum(x))
-    @test_throws AssertionError MOI.set(model, POI.ParameterValue(), p, NaN)
+    @test_throws AssertionError set_parameter_value(p, NaN)
     return
 end
 
@@ -1188,7 +1187,7 @@ function test_parameter_Cannot_be_inf_1()
     @constraint(model, c, 3 * x >= p * p)
     @objective(model, Min, sum(x))
     @test_throws AssertionError optimize!(model)
-    MOI.set(model, POI.ParameterValue(), p, 20.0)
+    set_parameter_value(p, 20.0)
     return
 end
 
@@ -1201,7 +1200,7 @@ function test_parameter_Cannot_be_inf_2()
     @variable(model, p in Parameter(1.0))
     @constraint(model, c, 3 * x[1] + x[2] >= p * p)
     @objective(model, Min, sum(x))
-    @test_throws AssertionError MOI.set(model, POI.ParameterValue(), p, Inf)
+    @test_throws AssertionError set_parameter_value(p, Inf)
     return
 end
 
