@@ -545,23 +545,10 @@ function test_jump_dual_multiplicative_fail()
     @constraint(model, cons, x * p >= 3)
     @objective(model, Min, 2x)
     optimize!(model)
-    err = MOI.GetAttributeNotAllowed(
-        MOI.ConstraintDual(),
-        "Cannot compute the dual of a multiplicative parameter",
+    @test_throws(
+        ErrorException("Cannot compute the dual of a multiplicative parameter"),
+        dual(ParameterRef(p)),
     )
-    @test_throws err dual(ParameterRef(p))
-    return
-end
-
-function test_jump_dual_multiplicative_get_fallback()
-    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
-    set_silent(model)
-    @variable(model, x)
-    @variable(model, p in Parameter(1.0))
-    @constraint(model, cons, x * p >= 3)
-    @objective(model, Min, 2x)
-    optimize!(model)
-    @test isapprox(dual(ParameterRef(p)), -6; atol = 1e-4)
     return
 end
 

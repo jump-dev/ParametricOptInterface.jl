@@ -125,8 +125,7 @@ function MOI.get(
         msg = "$attr not available when evaluate_duals is set to false. Create an optimizer such as `POI.Optimizer(HiGHS.Optimizer; evaluate_duals = true)` to enable this feature."
         throw(MOI.GetAttributeNotAllowed(attr, msg))
     elseif !_is_additive(model, cp)
-        msg = "Cannot compute the dual of a multiplicative parameter"
-        throw(MOI.GetAttributeNotAllowed(attr, msg))
+        error("Cannot compute the dual of a multiplicative parameter")
     end
     return model.dual_value_of_parameters[p_val(cp)]
 end
