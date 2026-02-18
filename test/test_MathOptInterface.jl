@@ -2278,6 +2278,44 @@ function test_multiplicative_dual_error()
     return
 end
 
+function test_vector_quadratic_has_parameters_affine_path()
+    model = POI.Optimizer(SCS.Optimizer)
+    MOI.set(model, MOI.Silent(), true)
+    x = MOI.add_variable(model)
+    p, pc = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
+    quadratic_terms = MOI.VectorQuadraticTerm{Float64}[]
+    affine_terms = [
+        MOI.VectorAffineTerm(1, MOI.ScalarAffineTerm(1.0, p)),
+        MOI.VectorAffineTerm(1, MOI.ScalarAffineTerm(1.0, x)),
+    ]
+    constants = [0.0]
+    f = MOI.VectorQuadraticFunction(quadratic_terms, affine_terms, constants)
+    ci = MOI.add_constraint(model, f, MOI.Nonnegatives(1))
+    @test MOI.is_valid(model, ci)
+    return
+end
+
+function test_nlpblock_supports()
+    model = POI.Optimizer(Ipopt.Optimizer)
+    @test !MOI.supports(model, MOI.NLPBlock())
+    return
+end
+
+function test_generic_model_attribute_set()
+    model = POI.Optimizer(HiGHS.Optimizer)
+    MOI.set(model, MOI.TimeLimitSec(), 10.0)
+    @test MOI.get(model, MOI.TimeLimitSec()) == 10.0
+    return
+end
+
+function test_constraint_primal_start_get_for_parameter()
+    model = POI.Optimizer(Ipopt.Optimizer)
+    p, cp = MOI.add_constrained_variable(model, MOI.Parameter(3.0))
+    val = MOI.get(model, MOI.ConstraintPrimalStart(), cp)
+    @test val == 3.0
+    return
+end
+
 end # module
 
 TestMathOptInterfaceTests.runtests()
