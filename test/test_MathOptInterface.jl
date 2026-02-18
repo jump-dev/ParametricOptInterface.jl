@@ -2296,7 +2296,7 @@ function test_multiplicative_dual_error()
     return
 end
 
-function test_coverage_vector_quadratic_has_parameters_affine_path()
+function test_vector_quadratic_has_parameters_affine_path()
     model = POI.Optimizer(SCS.Optimizer)
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variable(model)
@@ -2313,20 +2313,20 @@ function test_coverage_vector_quadratic_has_parameters_affine_path()
     return
 end
 
-function test_coverage_nlpblock_supports()
+function test_nlpblock_supports()
     model = POI.Optimizer(Ipopt.Optimizer)
     @test !MOI.supports(model, MOI.NLPBlock())
     return
 end
 
-function test_coverage_generic_model_attribute_set()
+function test_generic_model_attribute_set()
     model = POI.Optimizer(HiGHS.Optimizer)
     MOI.set(model, MOI.TimeLimitSec(), 10.0)
     @test MOI.get(model, MOI.TimeLimitSec()) == 10.0
     return
 end
 
-function test_coverage_constraint_primal_start_get_for_parameter()
+function test_constraint_primal_start_get_for_parameter()
     model = POI.Optimizer(Ipopt.Optimizer)
     p, cp = MOI.add_constrained_variable(model, MOI.Parameter(3.0))
     val = MOI.get(model, MOI.ConstraintPrimalStart(), cp)
