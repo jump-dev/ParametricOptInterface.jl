@@ -74,10 +74,6 @@ function _cache_multiplicative_params!(
     for term in f.pv
         push!(model.multiplicative_parameters_pv, term.variable_1.value)
     end
-    for term in f.pp
-        push!(model.multiplicative_parameters_pp, term.variable_1.value)
-        push!(model.multiplicative_parameters_pp, term.variable_2.value)
-    end
     return
 end
 
@@ -91,15 +87,22 @@ function _cache_multiplicative_params!(
             term.scalar_term.variable_1.value,
         )
     end
-    for term in f.pp
-        push!(
-            model.multiplicative_parameters_pp,
-            term.scalar_term.variable_1.value,
-        )
-        push!(
-            model.multiplicative_parameters_pp,
-            term.scalar_term.variable_2.value,
-        )
+    return
+end
+
+function _cache_multiplicative_params!(
+    model::Optimizer{T},
+    f::ParametricCubicFunction{T},
+) where {T}
+    for term in f.pv
+        push!(model.multiplicative_parameters_pv, term.variable_1.value)
+    end
+    for term in f.pvv
+        push!(model.multiplicative_parameters_pv, term.index_1.value)
+    end
+    for term in f.ppv
+        push!(model.multiplicative_parameters_pv, term.index_1.value)
+        push!(model.multiplicative_parameters_pv, term.index_2.value)
     end
     return
 end
@@ -137,7 +140,6 @@ function MOI.is_empty(model::Optimizer)
            isempty(model.vector_affine_constraint_cache) &&
            #
            isempty(model.multiplicative_parameters_pv) &&
-           isempty(model.multiplicative_parameters_pp) &&
            isempty(model.dual_value_of_parameters) &&
            model.number_of_parameters_in_model == 0 &&
            isempty(model.parameters_in_conflict) &&
@@ -197,8 +199,6 @@ function MOI.empty!(model::Optimizer{T}) where {T}
     empty!(model.vector_affine_constraint_cache)
     # multiplicative_parameters_pv
     empty!(model.multiplicative_parameters_pv)
-    # multiplicative_parameters_pp
-    empty!(model.multiplicative_parameters_pp)
     # dual_value_of_parameters
     empty!(model.dual_value_of_parameters)
     # [SKIP] evaluate_duals

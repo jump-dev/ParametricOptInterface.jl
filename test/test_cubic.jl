@@ -1623,6 +1623,79 @@ function test_jump_cubic_direct_model_ppp()
     return
 end
 
+# ============================================================================
+# Contribution of objective parameters in duals
+# ============================================================================
+
+function test_cubic_dual_ppp_terms()
+    # min x + p^3  s.t.  x >= 1,  p = 2
+    # Optimal: x = 1, obj = 1 + 8 = 9
+    # ∂(p^3)/∂p = 3p^2 = 12
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    set_silent(model)
+    @variable(model, x)
+    @variable(model, p in MOI.Parameter(2.0))
+    @constraint(model, x >= 1)
+    @objective(model, Min, x + p^3)
+    optimize!(model)
+    @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
+    @test dual(ParameterRef(p)) ≈ 12.0 atol = ATOL
+    return
+end
+
+function test_cubic_dual_ppv_terms()
+    # min p1*p2*x + x^2  s.t.  x >= 0,  p1 = 1, p2 = -2
+    # ppv is multiplicative → dual query should error
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    set_silent(model)
+    @variable(model, x >= 0)
+    @variable(model, p1 in MOI.Parameter(1.0))
+    @variable(model, p2 in MOI.Parameter(-2.0))
+    @objective(model, Min, p1 * p2 * x + x^2)
+    optimize!(model)
+    @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
+    @test value(x) ≈ 1.0 atol = ATOL
+    @test_throws ErrorException dual(ParameterRef(p1))
+    @test_throws ErrorException dual(ParameterRef(p2))
+    return
+end
+
+function test_cubic_dual_pvv_terms()
+    # min p*x^2 - 3x  s.t.  0 <= x <= 10,  p = 1
+    # pvv is multiplicative → dual query should error
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    set_silent(model)
+    @variable(model, 0 <= x <= 10)
+    @variable(model, p in MOI.Parameter(1.0))
+    @objective(model, Min, p * x^2 - 3 * x)
+    optimize!(model)
+    @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
+    @test value(x) ≈ 1.5 atol = ATOL
+    @test_throws ErrorException dual(ParameterRef(p))
+    return
+end
+
+function test_cubic_dual_ppp_three_distinct()
+    # min x + p1*p2*p3  s.t.  x >= 1,  p1=2, p2=3, p3=4
+    # ∂/∂p1 = p2*p3 = 12
+    # ∂/∂p2 = p1*p3 = 8
+    # ∂/∂p3 = p1*p2 = 6
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    set_silent(model)
+    @variable(model, x)
+    @variable(model, p1 in MOI.Parameter(2.0))
+    @variable(model, p2 in MOI.Parameter(3.0))
+    @variable(model, p3 in MOI.Parameter(4.0))
+    @constraint(model, x >= 1)
+    @objective(model, Min, x + p1 * p2 * p3)
+    optimize!(model)
+    @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
+    @test dual(ParameterRef(p1)) ≈ 12.0 atol = ATOL
+    @test dual(ParameterRef(p2)) ≈ 8.0 atol = ATOL
+    @test dual(ParameterRef(p3)) ≈ 6.0 atol = ATOL
+    return
+end
+
 end  # module
 
 TestCubic.runtests()

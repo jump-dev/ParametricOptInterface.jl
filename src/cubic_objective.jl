@@ -45,10 +45,13 @@ function MOI.set(
     # 5. Clear old caches
     _empty_objective_function_caches!(model)
 
-    # 6. Store new cache
+    # 6. Cache multiplicative parameters
+    _cache_multiplicative_params!(model, cubic_func)
+
+    # 7. Store new cache
     model.cubic_objective_cache = cubic_func
 
-    # 7. Store original for retrieval if option is enabled
+    # 8. Store original for retrieval if option is enabled
     if model.save_original_objective_and_constraints
         MOI.set(
             model.original_objective_cache,

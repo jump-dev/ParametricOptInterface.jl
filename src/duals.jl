@@ -16,6 +16,9 @@ function _compute_dual_of_parameters!(model::Optimizer{T}) where {T}
     if model.quadratic_objective_cache !== nothing
         _update_duals_from_objective!(model, model.quadratic_objective_cache)
     end
+    if model.cubic_objective_cache !== nothing
+        _update_duals_from_objective!(model, model.cubic_objective_cache)
+    end
     return
 end
 
@@ -112,6 +115,69 @@ function _update_duals_from_objective!(model::Optimizer{T}, pf) where {T}
     for param in pf.p
         model.dual_value_of_parameters[p_val(param.variable)] +=
             ifelse(is_min, 1, -1) * param.coefficient
+    end
+    return
+end
+
+function _update_duals_from_objective!(
+    model::Optimizer{T},
+    pf::ParametricQuadraticFunction{T},
+) where {T}
+    is_min = MOI.get(model.optimizer, MOI.ObjectiveSense()) == MOI.MIN_SENSE
+    sign = ifelse(is_min, one(T), -one(T))
+    # p terms: ∂(c·p_i)/∂p_i = c
+    for term in pf.p
+        model.dual_value_of_parameters[p_val(term.variable)] +=
+            sign * term.coefficient
+    end
+    # pp terms: ∂(c·p_i·p_j)/∂p_i = c·p_j
+    for term in pf.pp
+        mult = sign * term.coefficient
+        if term.variable_1 == term.variable_2
+            mult /= 2
+        end
+        model.dual_value_of_parameters[p_val(term.variable_1)] +=
+            mult * model.parameters[p_idx(term.variable_2)]
+        model.dual_value_of_parameters[p_val(term.variable_2)] +=
+            mult * model.parameters[p_idx(term.variable_1)]
+    end
+    return
+end
+
+function _update_duals_from_objective!(
+    model::Optimizer{T},
+    pf::ParametricCubicFunction{T},
+) where {T}
+    is_min = MOI.get(model.optimizer, MOI.ObjectiveSense()) == MOI.MIN_SENSE
+    sign = ifelse(is_min, one(T), -one(T))
+    # p terms: ∂(c·p_i)/∂p_i = c
+    for term in pf.p
+        model.dual_value_of_parameters[p_val(term.variable)] +=
+            sign * term.coefficient
+    end
+    # pp terms: ∂(c·p_i·p_j)/∂p_i = c·p_j (diagonal: c/2·2·p_i = c·p_i)
+    for term in pf.pp
+        mult = sign * term.coefficient
+        if term.variable_1 == term.variable_2
+            mult /= 2
+        end
+        model.dual_value_of_parameters[p_val(term.variable_1)] +=
+            mult * model.parameters[p_idx(term.variable_2)]
+        model.dual_value_of_parameters[p_val(term.variable_2)] +=
+            mult * model.parameters[p_idx(term.variable_1)]
+    end
+    # ppp terms: ∂(c·p_i·p_j·p_k)/∂p_i = c·p_j·p_k
+    for term in pf.ppp
+        coef = sign * term.coefficient
+        p1_val = model.parameters[p_idx(term.index_1)]
+        p2_val = model.parameters[p_idx(term.index_2)]
+        p3_val = model.parameters[p_idx(term.index_3)]
+        model.dual_value_of_parameters[p_val(term.index_1)] +=
+            coef * p2_val * p3_val
+        model.dual_value_of_parameters[p_val(term.index_2)] +=
+            coef * p1_val * p3_val
+        model.dual_value_of_parameters[p_val(term.index_3)] +=
+            coef * p1_val * p2_val
     end
     return
 end

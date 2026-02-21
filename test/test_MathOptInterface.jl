@@ -1451,8 +1451,16 @@ function test_qp_objective_parameter_times_parameter()
         0.0,
         atol = ATOL,
     )
-    @test MOI.get(optimizer, MOI.ConstraintDual(), cy) == 0.0
-    @test MOI.get(optimizer, MOI.ConstraintDual(), cz) == 0.0
+    @test isapprox(
+        MOI.get(optimizer, MOI.ConstraintDual(), cy),
+        1.0,
+        atol = ATOL,
+    )
+    @test isapprox(
+        MOI.get(optimizer, MOI.ConstraintDual(), cz),
+        1.0,
+        atol = ATOL,
+    )
     MOI.set(optimizer, MOI.ConstraintSet(), cy, MOI.Parameter(2.0))
     MOI.optimize!(optimizer)
     @test isapprox(MOI.get(optimizer, MOI.ObjectiveValue()), 2.0, atol = ATOL)
