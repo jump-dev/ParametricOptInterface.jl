@@ -186,7 +186,6 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
         ParametricVectorAffineFunction{T},
     }
     multiplicative_parameters_pv::Set{Int64}
-    multiplicative_parameters_pp::Set{Int64}
     dual_value_of_parameters::Vector{T}
     evaluate_duals::Bool
     number_of_parameters_in_model::Int64
@@ -253,8 +252,6 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             # vector_affine_constraint_cache
             DoubleDicts.DoubleDict{ParametricVectorAffineFunction{T}}(),
             # multiplicative_parameters_pv
-            Set{Int64}(),
-            # multiplicative_parameters_pp
             Set{Int64}(),
             # dual_value_of_parameters
             T[],
