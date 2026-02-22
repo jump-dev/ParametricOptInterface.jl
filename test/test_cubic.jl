@@ -1623,6 +1623,40 @@ function test_jump_cubic_direct_model_ppp()
     return
 end
 
+function test_parametric_objective_type_cubic()
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    set_silent(model)
+    @variable(model, x)
+    @variable(model, p in MOI.Parameter(2.0))
+    @variable(model, q in MOI.Parameter(3.0))
+    @constraint(model, x >= 1)
+    @objective(model, Min, x + p * q^2)
+    optimize!(model)
+    inner = unsafe_backend(model)
+    @test MOI.get(inner, POI.ParametricObjectiveType()) ==
+          POI.ParametricCubicFunction{Float64}
+    pf = MOI.get(
+        inner,
+        POI.ParametricObjectiveFunction{POI.ParametricCubicFunction{Float64}}(),
+    )
+    @test pf isa POI.ParametricCubicFunction{Float64}
+    return
+end
+
+function test_parametric_objective_type_cubic_error()
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    set_silent(model)
+    @variable(model, x >= 1)
+    @objective(model, Min, x)
+    optimize!(model)
+    inner = unsafe_backend(model)
+    @test_throws ErrorException MOI.get(
+        inner,
+        POI.ParametricObjectiveFunction{POI.ParametricCubicFunction{Float64}}(),
+    )
+    return
+end
+
 # ============================================================================
 # Contribution of objective parameters in duals
 # ============================================================================
