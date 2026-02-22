@@ -1664,7 +1664,9 @@ queried using the [`ParametricObjectiveFunction{P}`](@ref) attribute. The type
 struct ParametricObjectiveType <: MOI.AbstractModelAttribute end
 
 function MOI.get(model::Optimizer{T}, ::ParametricObjectiveType) where {T}
-    if model.quadratic_objective_cache !== nothing
+    if model.cubic_objective_cache !== nothing
+        return ParametricCubicFunction{T}
+    elseif model.quadratic_objective_cache !== nothing
         return ParametricQuadraticFunction{T}
     elseif model.affine_objective_cache !== nothing
         return ParametricAffineFunction{T}
@@ -1702,6 +1704,18 @@ function MOI.get(
         ")
     end
     return model.affine_objective_cache
+end
+
+function MOI.get(
+    model::Optimizer{T},
+    ::ParametricObjectiveFunction{ParametricCubicFunction{T}},
+) where {T}
+    if model.cubic_objective_cache === nothing
+        error("
+            There is no parametric cubic objective function in the model.
+        ")
+    end
+    return model.cubic_objective_cache
 end
 
 """
