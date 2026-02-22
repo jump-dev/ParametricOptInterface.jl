@@ -1633,8 +1633,12 @@ function test_parametric_objective_type_cubic()
     @objective(model, Min, x + p * q^2)
     optimize!(model)
     inner = unsafe_backend(model)
-    @test MOI.get(inner, POI.ParametricObjectiveType()) == POI.ParametricCubicFunction{Float64}
-    pf = MOI.get(inner, POI.ParametricObjectiveFunction{POI.ParametricCubicFunction{Float64}}())
+    @test MOI.get(inner, POI.ParametricObjectiveType()) ==
+          POI.ParametricCubicFunction{Float64}
+    pf = MOI.get(
+        inner,
+        POI.ParametricObjectiveFunction{POI.ParametricCubicFunction{Float64}}(),
+    )
     @test pf isa POI.ParametricCubicFunction{Float64}
     return
 end
