@@ -7,7 +7,7 @@ CurrentModule = ParametricOptInterface
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Version 0.15.0 (February 19, 2026)
+## Version 0.15.0 (February 24, 2026)
 
 This breaking release removes a number of ParametricOptInterface-specific
 features in favor of the officially supported MathOptInterface functions for
@@ -15,7 +15,7 @@ dealing with parameters.
 
 ### Breaking
 
-- Removed `QuadraticObjectiveCoef` (#213)
+- Removed `QuadraticObjectiveCoef` (#213), (#224), (#225)
 
   This breaking change removed `QuadraticObjectiveCoef` and all related
   functions.
@@ -71,3 +71,5 @@ dealing with parameters.
 - Make the explanation a separate page (#217)
 - Increase coverage (#218)
 - Run the benchmarks in CI to ensure they stay updated (#220)
+- Added this changelog (#221)
+- Added a cleanup action (#222)
