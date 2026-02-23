@@ -576,6 +576,80 @@ function test_jump_dual_objective_max()
     return
 end
 
+function test_jump_dual_objective_pv()
+    # p*x is multiplicative → dual query should error
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
+    @variable(model, x >= 0)
+    @variable(model, p in Parameter(-2.0))
+    @objective(model, Min, p * x + x^2)
+    optimize!(model)
+    @test_throws ErrorException dual(ParameterRef(p))
+    return
+end
+
+function test_jump_dual_objective_pp_same()
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
+    @variable(model, x >= 1)
+    @variable(model, p in Parameter(3.0))
+    @objective(model, Min, x + p^2)
+    optimize!(model)
+    # ∂(p²)/∂p = 2p = 6
+    @test dual(ParameterRef(p)) ≈ 6.0 atol = 1e-4
+    return
+end
+
+function test_jump_dual_objective_pp_different()
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
+    @variable(model, x >= 1)
+    @variable(model, p1 in Parameter(2.0))
+    @variable(model, p2 in Parameter(3.0))
+    @objective(model, Min, x + p1 * p2)
+    optimize!(model)
+    # ∂(p1*p2)/∂p1 = p2 = 3, ∂(p1*p2)/∂p2 = p1 = 2
+    @test dual(ParameterRef(p1)) ≈ 3.0 atol = 1e-4
+    @test dual(ParameterRef(p2)) ≈ 2.0 atol = 1e-4
+    return
+end
+
+function test_jump_dual_objective_mixed_terms()
+    # min x + 2p + p^2  s.t.  x >= p,  p = 3
+    # Optimal: x* = 3, obj = 3 + 6 + 9 = 18
+    # ∂f/∂p from obj = 2 + 2p = 8
+    # Constraint x - p >= 0: dual λ = 1, ∂g/∂p = -1, contribution = 1
+    # Total = 8 + 1 = 9
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
+    @variable(model, x)
+    @variable(model, p in Parameter(3.0))
+    @constraint(model, x >= p)
+    @objective(model, Min, x + 2 * p + p^2)
+    optimize!(model)
+    @test objective_value(model) ≈ 18.0 atol = 1e-4
+    @test dual(ParameterRef(p)) ≈ 9.0 atol = 1e-4
+    return
+end
+
+function test_jump_dual_objective_parameter_update()
+    # min x + p^2  s.t.  x >= 1,  p = 2 then p = 3
+    # ∂(p^2)/∂p = 2p
+    # p=2: dual = 4, p=3: dual = 6
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
+    set_silent(model)
+    @variable(model, x)
+    @variable(model, p in Parameter(2.0))
+    @constraint(model, x >= 1)
+    @objective(model, Min, x + p^2)
+    optimize!(model)
+    @test dual(ParameterRef(p)) ≈ 4.0 atol = 1e-4
+    set_parameter_value(p, 3.0)
+    optimize!(model)
+    @test dual(ParameterRef(p)) ≈ 6.0 atol = 1e-4
+    return
+end
+
 function test_jump_dual_multiple_parameters_1()
     model = Model(() -> POI.Optimizer(HiGHS.Optimizer))
     set_silent(model)
