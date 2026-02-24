@@ -1,7 +1,7 @@
 name = "ParametricOptInterface"
 uuid = "0ce4ce61-57bf-432b-a095-efac525d185e"
 authors = ["Tomás Gutierrez <tomasfmgutierrez@gmail.com>"]
-version = "0.14.3"
+version = "0.15.0"
 
 [deps]
 MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
