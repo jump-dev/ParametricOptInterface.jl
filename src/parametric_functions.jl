@@ -239,9 +239,10 @@ function _delta_parametric_constant(
             new_1 = ifelse(isnan_1, old_p1, new_p1)
             new_2 = ifelse(isnan_2, old_p2, new_p2)
             delta_constant +=
-                (term.coefficient /
-                    ifelse(term.variable_1 == term.variable_2, 2, 1)) *
-                (new_1 * new_2 - old_p1 * old_p2)
+                (
+                    term.coefficient /
+                    ifelse(term.variable_1 == term.variable_2, 2, 1)
+                ) * (new_1 * new_2 - old_p1 * old_p2)
         end
     end
     return delta_constant
@@ -749,8 +750,7 @@ function _delta_parametric_constant(
             new_1 = isnan_1 ? old_p1 : new_p1
             new_2 = isnan_2 ? old_p2 : new_p2
             coef = term.scalar_term.coefficient / (var1 == var2 ? 2 : 1)
-            delta_constants[idx] +=
-                coef * (new_1 * new_2 - old_p1 * old_p2)
+            delta_constants[idx] += coef * (new_1 * new_2 - old_p1 * old_p2)
         end
     end
 
