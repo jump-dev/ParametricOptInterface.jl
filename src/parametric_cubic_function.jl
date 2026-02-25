@@ -129,9 +129,9 @@ function ParametricCubicFunction(parsed::_ParsedCubicExpression{T}) where {T}
 end
 
 # Accessors for cubic terms by type (direct field access)
-_cubic_pvv_terms(f::ParametricCubicFunction) = f.pvv
-_cubic_ppv_terms(f::ParametricCubicFunction) = f.ppv
-_cubic_ppp_terms(f::ParametricCubicFunction) = f.ppp
+cubic_parameter_variable_variable_terms(f::ParametricCubicFunction) = f.pvv
+cubic_parameter_parameter_variable_terms(f::ParametricCubicFunction) = f.ppv
+cubic_parameter_parameter_parameter_terms(f::ParametricCubicFunction) = f.ppp
 
 """
     _effective_param_value(model, pi::ParameterIndex)
@@ -173,7 +173,7 @@ function _parametric_constant(model, f::ParametricCubicFunction{T}) where {T}
     end
 
     # From cubic ppp terms (all 3 indices are parameters)
-    for term in _cubic_ppp_terms(f)
+    for term in cubic_parameter_parameter_parameter_terms(f)
         p1 = term.index_1
         p2 = term.index_2
         p3 = term.index_3
@@ -210,7 +210,7 @@ function _parametric_affine_terms(
     end
 
     # Add contributions from ppv cubic terms
-    for term in _cubic_ppv_terms(f)
+    for term in cubic_parameter_parameter_variable_terms(f)
         var = term.index_3
         p1_val = _effective_param_value(model, p_idx(term.index_1))
         p2_val = _effective_param_value(model, p_idx(term.index_2))
@@ -235,7 +235,7 @@ function _parametric_quadratic_terms(
     terms_dict = copy(f.quadratic_data)
 
     # Add contributions from pvv cubic terms
-    for term in _cubic_pvv_terms(f)
+    for term in cubic_parameter_variable_variable_terms(f)
         p = term.index_1
         first_is_greater = term.index_2.value > term.index_3.value
         v1 = ifelse(first_is_greater, term.index_3, term.index_2)
@@ -351,7 +351,7 @@ function _delta_parametric_constant(
     end
 
     # From ppp cubic terms
-    for term in _cubic_ppp_terms(f)
+    for term in cubic_parameter_parameter_parameter_terms(f)
         pi1 = p_idx(term.index_1)
         pi2 = p_idx(term.index_2)
         pi3 = p_idx(term.index_3)
@@ -411,7 +411,7 @@ function _delta_parametric_affine_terms(
     end
 
     # From ppv cubic terms
-    for term in _cubic_ppv_terms(f)
+    for term in cubic_parameter_parameter_variable_terms(f)
         var = term.index_3
         pi1 = p_idx(term.index_1)
         pi2 = p_idx(term.index_2)
@@ -449,7 +449,7 @@ function _delta_parametric_quadratic_terms(
 ) where {T}
     delta_dict = Dict{Tuple{MOI.VariableIndex,MOI.VariableIndex},T}()
 
-    for term in _cubic_pvv_terms(f)
+    for term in cubic_parameter_variable_variable_terms(f)
         p_i = p_idx(term.index_1)
         first_is_greater = term.index_2.value > term.index_3.value
         v1 = ifelse(first_is_greater, term.index_3, term.index_2)
