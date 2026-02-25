@@ -2276,6 +2276,25 @@ function test_get_constraint_function_vector()
     return
 end
 
+function test_get_constraint_function_vector_affine()
+    # MOI.get(ConstraintFunction) for a parametric
+    # VectorAffineFunction constraint must return the original function
+    # (with parameter VariableIndex terms), not the solver-side function
+    # (with parameters already substituted into constants).
+    model = POI.Optimizer(MOI.Utilities.Model{Float64}())
+    x = MOI.add_variable(model)
+    p, pc = MOI.add_constrained_variable(model, MOI.Parameter(3.0))
+    terms = [
+        MOI.VectorAffineTerm(1, MOI.ScalarAffineTerm(2.0, x)),
+        MOI.VectorAffineTerm(1, MOI.ScalarAffineTerm(5.0, p)),
+    ]
+    f = MOI.VectorAffineFunction(terms, [0.0])
+    ci = MOI.add_constraint(model, f, MOI.Zeros(1))
+    f2 = MOI.get(model, MOI.ConstraintFunction(), ci)
+    @test canonical_compare(f, f2)
+    return
+end
+
 function test_multiplicative_dual_error()
     model = POI.Optimizer(MOI.Utilities.Model{Float64}())
     x = MOI.add_variable(model)

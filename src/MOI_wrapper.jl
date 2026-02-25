@@ -746,6 +746,8 @@ function MOI.get(
     elseif haskey(model.affine_outer_to_inner, ci)
         inner_ci = model.affine_outer_to_inner[ci]
         return _original_function(model.affine_constraint_cache[inner_ci])
+    elseif haskey(model.vector_affine_constraint_cache, ci)
+        return _original_function(model.vector_affine_constraint_cache[ci])
     else
         MOI.throw_if_not_valid(model, ci)
         return MOI.get(model.optimizer, attr, ci)
