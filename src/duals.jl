@@ -4,8 +4,12 @@
 # in the LICENSE.md file or at https://opensource.org/licenses/MIT.
 
 function _compute_dual_of_parameters!(model::Optimizer{T}) where {T}
-    model.dual_value_of_parameters =
-        zeros(T, model.number_of_parameters_in_model)
+    n = model.number_of_parameters_in_model
+    if length(model.dual_value_of_parameters) != n
+        model.dual_value_of_parameters = zeros(T, n)
+    else
+        fill!(model.dual_value_of_parameters, zero(T))
+    end
     _update_duals_from_affine_constraints!(model)
     _update_duals_from_vector_affine_constraints!(model)
     _update_duals_from_quadratic_constraints!(model)
