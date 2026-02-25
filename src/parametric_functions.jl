@@ -221,34 +221,28 @@ function _delta_parametric_constant(
     delta_constant = zero(T)
     for term in affine_parameter_terms(f)
         p = p_idx(term.variable)
-        if !isnan(model.updated_parameters[p])
-            delta_constant +=
-                term.coefficient *
-                (model.updated_parameters[p] - model.parameters[p])
+        new_p = model.updated_parameters[p]
+        if !isnan(new_p)
+            delta_constant += term.coefficient * (new_p - model.parameters[p])
         end
     end
     for term in quadratic_parameter_parameter_terms(f)
         p1 = p_idx(term.variable_1)
         p2 = p_idx(term.variable_2)
-        isnan_1 = isnan(model.updated_parameters[p1])
-        isnan_2 = isnan(model.updated_parameters[p2])
+        new_p1 = model.updated_parameters[p1]
+        new_p2 = model.updated_parameters[p2]
+        isnan_1 = isnan(new_p1)
+        isnan_2 = isnan(new_p2)
         if !isnan_1 || !isnan_2
-            new_1 = ifelse(
-                isnan_1,
-                model.parameters[p1],
-                model.updated_parameters[p1],
-            )
-            new_2 = ifelse(
-                isnan_2,
-                model.parameters[p2],
-                model.updated_parameters[p2],
-            )
+            old_p1 = model.parameters[p1]
+            old_p2 = model.parameters[p2]
+            new_1 = ifelse(isnan_1, old_p1, new_p1)
+            new_2 = ifelse(isnan_2, old_p2, new_p2)
             delta_constant +=
                 (
                     term.coefficient /
                     ifelse(term.variable_1 == term.variable_2, 2, 1)
-                ) *
-                (new_1 * new_2 - model.parameters[p1] * model.parameters[p2])
+                ) * (new_1 * new_2 - old_p1 * old_p2)
         end
     end
     return delta_constant
@@ -403,10 +397,9 @@ function _delta_parametric_constant(
     delta_constant = zero(T)
     for term in affine_parameter_terms(f)
         p = p_idx(term.variable)
-        if !isnan(model.updated_parameters[p])
-            delta_constant +=
-                term.coefficient *
-                (model.updated_parameters[p] - model.parameters[p])
+        new_p = model.updated_parameters[p]
+        if !isnan(new_p)
+            delta_constant += term.coefficient * (new_p - model.parameters[p])
         end
     end
     return delta_constant
@@ -521,10 +514,10 @@ function _delta_parametric_constant(
     delta_constant = zeros(T, length(f.c))
     for term in vector_affine_parameter_terms(f)
         p = p_idx(term.scalar_term.variable)
-        if !isnan(model.updated_parameters[p])
+        new_p = model.updated_parameters[p]
+        if !isnan(new_p)
             delta_constant[term.output_index] +=
-                term.scalar_term.coefficient *
-                (model.updated_parameters[p] - model.parameters[p])
+                term.scalar_term.coefficient * (new_p - model.parameters[p])
         end
     end
     return delta_constant
@@ -747,21 +740,17 @@ function _delta_parametric_constant(
         var2 = term.scalar_term.variable_2
         p1 = p_idx(var1)
         p2 = p_idx(var2)
-
-        if !isnan(model.updated_parameters[p1]) ||
-           !isnan(model.updated_parameters[p2])
-            old_val1 = model.parameters[p1]
-            old_val2 = model.parameters[p2]
-            new_val1 =
-                !isnan(model.updated_parameters[p1]) ?
-                model.updated_parameters[p1] : old_val1
-            new_val2 =
-                !isnan(model.updated_parameters[p2]) ?
-                model.updated_parameters[p2] : old_val2
-
+        new_p1 = model.updated_parameters[p1]
+        new_p2 = model.updated_parameters[p2]
+        isnan_1 = isnan(new_p1)
+        isnan_2 = isnan(new_p2)
+        if !isnan_1 || !isnan_2
+            old_p1 = model.parameters[p1]
+            old_p2 = model.parameters[p2]
+            new_1 = isnan_1 ? old_p1 : new_p1
+            new_2 = isnan_2 ? old_p2 : new_p2
             coef = term.scalar_term.coefficient / (var1 == var2 ? 2 : 1)
-            delta_constants[idx] +=
-                coef * (new_val1 * new_val2 - old_val1 * old_val2)
+            delta_constants[idx] += coef * (new_1 * new_2 - old_p1 * old_p2)
         end
     end
 
