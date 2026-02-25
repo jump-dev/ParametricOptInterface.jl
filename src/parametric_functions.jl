@@ -62,7 +62,7 @@ function ParametricQuadraticFunction(
     affine_data = Dict{MOI.VariableIndex,T}()
     sizehint!(affine_data, length(v_in_pv))
     affine_data_np = Dict{MOI.VariableIndex,T}()
-    sizehint!(affine_data, length(v))
+    sizehint!(affine_data_np, length(v))
     for term in v
         if term.variable in v_in_pv
             base = get(affine_data, term.variable, zero(T))
@@ -783,10 +783,9 @@ function _delta_parametric_affine_terms(
         p_idx_val = p_idx(term.scalar_term.variable_1)
         var = term.scalar_term.variable_2
         output_idx = term.output_index
-        if haskey(model.updated_parameters, p_idx_val) &&
-           !isnan(model.updated_parameters[p_idx_val])
+        new_param_val = model.updated_parameters[p_idx_val]
+        if !isnan(new_param_val)
             old_param_val = model.parameters[p_idx_val]
-            new_param_val = model.updated_parameters[p_idx_val]
             delta_coef =
                 term.scalar_term.coefficient * (new_param_val - old_param_val)
             base = get(delta_terms_dict, (var, output_idx), zero(T))

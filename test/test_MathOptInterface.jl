@@ -377,9 +377,13 @@ function test_moi_ListOfConstraintTypesPresent()
     model = POI.Optimizer(ipopt)
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variables(model, N / 2)
-    y = first.(
-        MOI.add_constrained_variable.(model, MOI.Parameter.(ones(Int(N / 2)))),
-    )
+    y =
+        first.(
+            MOI.add_constrained_variable.(
+                model,
+                MOI.Parameter.(ones(Int(N / 2))),
+            ),
+        )
 
     MOI.add_constraint(
         model,
@@ -673,10 +677,11 @@ function test_vector_parameter_affine_nonnegatives()
     t, ct = MOI.add_constrained_variable(model, MOI.Parameter(5.0))
     A = [1.0 0 -1; 0 1 -1]
     b = [1.0; 2]
-    terms = MOI.VectorAffineTerm.(
-        1:2,
-        MOI.ScalarAffineTerm.(A, reshape([x, y, t], 1, 3)),
-    )
+    terms =
+        MOI.VectorAffineTerm.(
+            1:2,
+            MOI.ScalarAffineTerm.(A, reshape([x, y, t], 1, 3)),
+        )
     f = MOI.VectorAffineFunction(vec(terms), b)
     set = MOI.Nonnegatives(2)
     cnn = MOI.add_constraint(model, f, MOI.Nonnegatives(2))
@@ -725,10 +730,11 @@ function test_vector_parameter_affine_nonpositives()
     t, ct = MOI.add_constrained_variable(model, MOI.Parameter(5.0))
     A = [-1.0 0 1; 0 -1 1]
     b = [-1.0; -2]
-    terms = MOI.VectorAffineTerm.(
-        1:2,
-        MOI.ScalarAffineTerm.(A, reshape([x, y, t], 1, 3)),
-    )
+    terms =
+        MOI.VectorAffineTerm.(
+            1:2,
+            MOI.ScalarAffineTerm.(A, reshape([x, y, t], 1, 3)),
+        )
     f = MOI.VectorAffineFunction(vec(terms), b)
     set = MOI.Nonnegatives(2)
     cnn = MOI.add_constraint(model, f, MOI.Nonpositives(2))
@@ -2273,6 +2279,25 @@ function test_get_constraint_function_vector()
     ci = MOI.add_constraint(model, MOI.Utilities.vectorize([f]), MOI.Zeros(1))
     f2 = MOI.get(model, MOI.ConstraintFunction(), ci)
     @test canonical_compare(MOI.Utilities.vectorize([f]), f2)
+    return
+end
+
+function test_get_constraint_function_vector_affine()
+    # MOI.get(ConstraintFunction) for a parametric
+    # VectorAffineFunction constraint must return the original function
+    # (with parameter VariableIndex terms), not the solver-side function
+    # (with parameters already substituted into constants).
+    model = POI.Optimizer(MOI.Utilities.Model{Float64}())
+    x = MOI.add_variable(model)
+    p, pc = MOI.add_constrained_variable(model, MOI.Parameter(3.0))
+    terms = [
+        MOI.VectorAffineTerm(1, MOI.ScalarAffineTerm(2.0, x)),
+        MOI.VectorAffineTerm(1, MOI.ScalarAffineTerm(5.0, p)),
+    ]
+    f = MOI.VectorAffineFunction(terms, [0.0])
+    ci = MOI.add_constraint(model, f, MOI.Zeros(1))
+    f2 = MOI.get(model, MOI.ConstraintFunction(), ci)
+    @test canonical_compare(f, f2)
     return
 end
 
