@@ -129,6 +129,9 @@ function ParametricCubicFunction(parsed::_ParsedCubicExpression{T}) where {T}
 end
 
 # Accessors for cubic terms by type (direct field access)
+cubic_affine_parameter_terms(f::ParametricCubicFunction) = f.p
+cubic_parameter_variable_terms(f::ParametricCubicFunction) = f.pv
+cubic_parameter_parameter_terms(f::ParametricCubicFunction) = f.pp
 cubic_parameter_variable_variable_terms(f::ParametricCubicFunction) = f.pvv
 cubic_parameter_parameter_variable_terms(f::ParametricCubicFunction) = f.ppv
 cubic_parameter_parameter_parameter_terms(f::ParametricCubicFunction) = f.ppp
@@ -156,7 +159,7 @@ function _parametric_constant(model, f::ParametricCubicFunction{T}) where {T}
     constant = f.c
 
     # From affine parameter terms (p)
-    for term in f.p
+    for term in cubic_affine_parameter_terms(f)
         constant +=
             term.coefficient *
             _effective_param_value(model, p_idx(term.variable))
@@ -164,7 +167,7 @@ function _parametric_constant(model, f::ParametricCubicFunction{T}) where {T}
 
     # From quadratic parameter-parameter terms (pp)
     # MOI convention: diagonal C means C/2*p^2, off-diagonal C means C*p1*p2
-    for term in f.pp
+    for term in cubic_parameter_parameter_terms(f)
         divisor = term.variable_1 == term.variable_2 ? 2 : 1
         constant +=
             (term.coefficient / divisor) *
@@ -202,7 +205,7 @@ function _parametric_affine_terms(
 
     # Add contributions from pv terms (parameter * variable)
     # These are always off-diagonal (p != v), so coefficient is used as-is
-    for term in f.pv
+    for term in cubic_parameter_variable_terms(f)
         var = term.variable_2
         coef = term.coefficient
         p_val = _effective_param_value(model, p_idx(term.variable_1))
@@ -314,7 +317,7 @@ function _delta_parametric_constant(
     delta = zero(T)
 
     # From p terms
-    for term in f.p
+    for term in cubic_affine_parameter_terms(f)
         p_i = p_idx(term.variable)
         if haskey(model.updated_parameters, p_i) &&
            !isnan(model.updated_parameters[p_i])
@@ -325,7 +328,7 @@ function _delta_parametric_constant(
     end
 
     # From pp terms
-    for term in f.pp
+    for term in cubic_parameter_parameter_terms(f)
         pi1 = p_idx(term.variable_1)
         pi2 = p_idx(term.variable_2)
         updated1 =
@@ -397,7 +400,7 @@ function _delta_parametric_affine_terms(
     delta_dict = Dict{MOI.VariableIndex,T}()
 
     # From pv terms (parameter * variable, always off-diagonal)
-    for term in f.pv
+    for term in cubic_parameter_variable_terms(f)
         p_i = p_idx(term.variable_1)
         if haskey(model.updated_parameters, p_i) &&
            !isnan(model.updated_parameters[p_i])
