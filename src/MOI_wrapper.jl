@@ -1116,9 +1116,10 @@ function MOI.add_constraint(
             fa = MOI.VectorAffineFunction(f.affine_terms, f.constants)
             inner_ci = MOI.add_constraint(model.optimizer, fa, set)
             model.last_vec_quad_add_added += 1
-            outer_ci = MOI.ConstraintIndex{MOI.VectorQuadraticFunction{T},typeof(set)}(
-                model.last_vec_quad_add_added,
-            )
+            outer_ci =
+                MOI.ConstraintIndex{MOI.VectorQuadraticFunction{T},typeof(set)}(
+                    model.last_vec_quad_add_added,
+                )
             model.vector_quadratic_outer_to_inner[outer_ci] = inner_ci
             model.constraint_outer_to_inner[outer_ci] = inner_ci
             model.vector_quadratic_constraint_cache_set[inner_ci] = set
