@@ -1107,6 +1107,23 @@ function MOI.add_constraint(
     set::MOI.AbstractVectorSet,
 ) where {T}
     if !_has_parameters(f)
+        # The user might construct a VectorQuadraticFunction with no actual
+        # quadratic terms (e.g. from a JuMP expression that simplifies to
+        # affine). Convert to VectorAffineFunction while still recording the
+        # outer_to_inner map so that get(ConstraintFunction) can return the
+        # original VectorQuadraticFunction type.
+        if _is_vector_affine(f)
+            fa = MOI.VectorAffineFunction(f.affine_terms, f.constants)
+            inner_ci = MOI.add_constraint(model.optimizer, fa, set)
+            model.last_vec_quad_add_added += 1
+            outer_ci = MOI.ConstraintIndex{MOI.VectorQuadraticFunction{T},typeof(set)}(
+                model.last_vec_quad_add_added,
+            )
+            model.vector_quadratic_outer_to_inner[outer_ci] = inner_ci
+            model.constraint_outer_to_inner[outer_ci] = inner_ci
+            model.vector_quadratic_constraint_cache_set[inner_ci] = set
+            return outer_ci
+        end
         return _add_constraint_direct_and_cache_map!(model, f, set)
     else
         return _add_constraint_with_parameters_on_function(model, f, set)

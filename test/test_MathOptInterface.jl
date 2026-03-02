@@ -2346,6 +2346,25 @@ function test_constraint_primal_start_get_for_parameter()
     return
 end
 
+function test_vector_quadratic_no_parameters_affine_get_constraint_function()
+    # A VectorQuadraticFunction with no parameters and no quadratic terms
+    # (empty quadratic_terms) should use the affine fast path. The outer
+    # constraint index is a VectorQuadraticFunction index (preserving the
+    # original type), but the inner optimizer stores it as VectorAffine.
+    # get(ConstraintFunction) must reconstruct the original VQF.
+    model = POI.Optimizer(MOI.Utilities.Model{Float64}())
+    x = MOI.add_variable(model)
+    quadratic_terms = MOI.VectorQuadraticTerm{Float64}[]
+    affine_terms = [MOI.VectorAffineTerm(1, MOI.ScalarAffineTerm(2.0, x))]
+    constants = [1.0]
+    f = MOI.VectorQuadraticFunction(quadratic_terms, affine_terms, constants)
+    ci = MOI.add_constraint(model, f, MOI.Zeros(1))
+    @test MOI.is_valid(model, ci)
+    f2 = MOI.get(model, MOI.ConstraintFunction(), ci)
+    @test canonical_compare(f, f2)
+    return
+end
+
 end # module
 
 TestMathOptInterfaceTests.runtests()

@@ -2,3 +2,4 @@ docs/build
 docs/src/release_notes.md
 Manifest.toml
 .DS_Store
+*.cov
