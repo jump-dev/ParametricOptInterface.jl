@@ -71,7 +71,7 @@ function _cache_multiplicative_params!(
     model::Optimizer{T},
     f::ParametricQuadraticFunction{T},
 ) where {T}
-    for term in f.pv
+    for term in quadratic_parameter_variable_terms(f)
         push!(model.multiplicative_parameters_pv, term.variable_1.value)
     end
     return
@@ -81,7 +81,7 @@ function _cache_multiplicative_params!(
     model::Optimizer{T},
     f::ParametricVectorQuadraticFunction{T},
 ) where {T}
-    for term in f.pv
+    for term in vector_quadratic_parameter_variable_terms(f)
         push!(
             model.multiplicative_parameters_pv,
             term.scalar_term.variable_1.value,
@@ -94,13 +94,13 @@ function _cache_multiplicative_params!(
     model::Optimizer{T},
     f::ParametricCubicFunction{T},
 ) where {T}
-    for term in f.pv
+    for term in cubic_parameter_variable_terms(f)
         push!(model.multiplicative_parameters_pv, term.variable_1.value)
     end
-    for term in f.pvv
+    for term in cubic_parameter_variable_variable_terms(f)
         push!(model.multiplicative_parameters_pv, term.index_1.value)
     end
-    for term in f.ppv
+    for term in cubic_parameter_parameter_variable_terms(f)
         push!(model.multiplicative_parameters_pv, term.index_1.value)
         push!(model.multiplicative_parameters_pv, term.index_2.value)
     end
@@ -868,7 +868,8 @@ function _add_constraint_with_parameters_on_function(
 ) where {T,S}
     pf = ParametricAffineFunction(f)
     if model.constraints_interpretation == ONLY_BOUNDS
-        if length(pf.v) == 1 && isone(MOI.coefficient(pf.v[]))
+        if length(affine_variable_terms(pf)) == 1 &&
+           isone(MOI.coefficient(affine_variable_terms(pf)[]))
             poi_ci = _add_vi_constraint(model, pf, set)
         else
             error(
@@ -878,7 +879,8 @@ function _add_constraint_with_parameters_on_function(
     elseif model.constraints_interpretation == ONLY_CONSTRAINTS
         poi_ci = MOI.add_constraint(model, pf, set)
     elseif model.constraints_interpretation == BOUNDS_AND_CONSTRAINTS
-        if length(pf.v) == 1 && isone(MOI.coefficient(pf.v[]))
+        if length(affine_variable_terms(pf)) == 1 &&
+           isone(MOI.coefficient(affine_variable_terms(pf)[]))
             poi_ci = _add_vi_constraint(model, pf, set)
         else
             poi_ci = MOI.add_constraint(model, pf, set)
@@ -896,7 +898,7 @@ function MOI.add_constraint(
     _update_cache!(pf, model)
     inner_ci = MOI.add_constraint(
         model.optimizer,
-        MOI.ScalarAffineFunction{T}(pf.v, 0.0),
+        MOI.ScalarAffineFunction{T}(affine_variable_terms(pf), 0.0),
         _set_with_new_constant(set, pf.current_constant),
     )
     model.last_affine_added += 1
@@ -919,7 +921,7 @@ function _add_vi_constraint(
     _update_cache!(pf, model)
     inner_ci = MOI.add_constraint(
         model.optimizer,
-        pf.v[].variable,
+        affine_variable_terms(pf)[].variable,
         _set_with_new_constant(set, pf.current_constant),
     )
     model.last_affine_added += 1
@@ -1920,7 +1922,7 @@ function MOI.compute_conflict!(model::Optimizer)
                 ) == MOI.NOT_IN_CONFLICT
                     continue
                 end
-                for term in pf.p
+                for term in affine_parameter_terms(pf)
                     push!(model.parameters_in_conflict, term.variable)
                 end
             end
@@ -1936,14 +1938,14 @@ function MOI.compute_conflict!(model::Optimizer)
                 ) == MOI.NOT_IN_CONFLICT
                     continue
                 end
-                for term in pf.p
+                for term in affine_parameter_terms(pf)
                     push!(model.parameters_in_conflict, term.variable)
                 end
-                for term in pf.pp
+                for term in quadratic_parameter_parameter_terms(pf)
                     push!(model.parameters_in_conflict, term.variable_1)
                     push!(model.parameters_in_conflict, term.variable_2)
                 end
-                for term in pf.pv
+                for term in quadratic_parameter_variable_terms(pf)
                     push!(model.parameters_in_conflict, term.variable_1)
                 end
             end
@@ -1959,7 +1961,7 @@ function MOI.compute_conflict!(model::Optimizer)
                 ) == MOI.NOT_IN_CONFLICT
                     continue
                 end
-                for term in pf.p
+                for term in vector_affine_parameter_terms(pf)
                     push!(
                         model.parameters_in_conflict,
                         term.scalar_term.variable,

@@ -189,7 +189,11 @@ function _current_function(f::ParametricQuadraticFunction{T}) where {T}
     for (v, c) in f.affine_data_np
         push!(affine, MOI.ScalarAffineTerm{T}(c, v))
     end
-    return MOI.ScalarQuadraticFunction{T}(f.vv, affine, f.current_constant)
+    return MOI.ScalarQuadraticFunction{T}(
+        quadratic_variable_variable_terms(f),
+        affine,
+        f.current_constant,
+    )
 end
 
 function _parametric_constant(
@@ -720,7 +724,7 @@ function _delta_parametric_constant(
     delta_constants = zeros(T, length(f.current_constant))
 
     # Handle parameter-only affine terms
-    for term in f.p
+    for term in vector_affine_parameter_terms(f)
         p_idx_val = p_idx(term.scalar_term.variable)
         output_idx = term.output_index
 
@@ -733,7 +737,7 @@ function _delta_parametric_constant(
     end
 
     # Handle parameter-parameter quadratic terms
-    for term in f.pp
+    for term in vector_quadratic_parameter_parameter_terms(f)
         idx = term.output_index
         var1 = term.scalar_term.variable_1
         var2 = term.scalar_term.variable_2
@@ -767,7 +771,7 @@ function _delta_parametric_affine_terms(
     )
 
     # Handle parameter-variable quadratic terms (px) that become affine (x) when p is updated
-    for term in f.pv
+    for term in vector_quadratic_parameter_variable_terms(f)
         p_idx_val = p_idx(term.scalar_term.variable_1)
         var = term.scalar_term.variable_2
         output_idx = term.output_index
@@ -835,7 +839,10 @@ end
 
 function _current_function(f::ParametricVectorQuadraticFunction{T}) where {T}
     affine_terms = MOI.VectorAffineTerm{T}[]
-    sizehint!(affine_terms, length(f.current_constant) + length(f.v))
+    sizehint!(
+        affine_terms,
+        length(f.current_constant) + length(vector_affine_variable_terms(f)),
+    )
     for ((var, idx), coef) in f.current_terms_with_p
         push!(
             affine_terms,

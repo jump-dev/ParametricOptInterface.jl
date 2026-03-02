@@ -71,7 +71,7 @@ function _compute_parameters_in_ci!(
     ci::MOI.ConstraintIndex{F,S},
 ) where {F,S,T}
     cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
-    for term in pf.p
+    for term in affine_parameter_terms(pf)
         model.dual_value_of_parameters[p_val(term.variable)] -=
             cons_dual * term.coefficient
     end
@@ -84,11 +84,11 @@ function _compute_parameters_in_ci!(
     ci::MOI.ConstraintIndex{F,S},
 ) where {F,S,T}
     cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
-    for term in pf.p
+    for term in affine_parameter_terms(pf)
         model.dual_value_of_parameters[p_val(term.variable)] -=
             cons_dual * term.coefficient
     end
-    for term in pf.pp
+    for term in quadratic_parameter_parameter_terms(pf)
         mult = cons_dual * term.coefficient
         if term.variable_1 == term.variable_2
             mult /= 2
@@ -107,7 +107,7 @@ function _compute_parameters_in_ci!(
     ci::MOI.ConstraintIndex{F,S},
 ) where {F<:MOI.VectorAffineFunction{T},S} where {T}
     cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
-    for term in pf.p
+    for term in vector_affine_parameter_terms(pf)
         model.dual_value_of_parameters[p_val(term.scalar_term.variable)] -=
             cons_dual[term.output_index] * term.scalar_term.coefficient
     end
@@ -116,7 +116,7 @@ end
 
 function _update_duals_from_objective!(model::Optimizer{T}, pf) where {T}
     is_min = MOI.get(model.optimizer, MOI.ObjectiveSense()) == MOI.MIN_SENSE
-    for param in pf.p
+    for param in affine_parameter_terms(pf)
         model.dual_value_of_parameters[p_val(param.variable)] +=
             ifelse(is_min, 1, -1) * param.coefficient
     end
@@ -130,12 +130,12 @@ function _update_duals_from_objective!(
     is_min = MOI.get(model.optimizer, MOI.ObjectiveSense()) == MOI.MIN_SENSE
     sign = ifelse(is_min, one(T), -one(T))
     # p terms: ∂(c·p_i)/∂p_i = c
-    for term in pf.p
+    for term in affine_parameter_terms(pf)
         model.dual_value_of_parameters[p_val(term.variable)] +=
             sign * term.coefficient
     end
     # pp terms: ∂(c·p_i·p_j)/∂p_i = c·p_j
-    for term in pf.pp
+    for term in quadratic_parameter_parameter_terms(pf)
         mult = sign * term.coefficient
         if term.variable_1 == term.variable_2
             mult /= 2
@@ -155,12 +155,12 @@ function _update_duals_from_objective!(
     is_min = MOI.get(model.optimizer, MOI.ObjectiveSense()) == MOI.MIN_SENSE
     sign = ifelse(is_min, one(T), -one(T))
     # p terms: ∂(c·p_i)/∂p_i = c
-    for term in pf.p
+    for term in cubic_affine_parameter_terms(pf)
         model.dual_value_of_parameters[p_val(term.variable)] +=
             sign * term.coefficient
     end
     # pp terms: ∂(c·p_i·p_j)/∂p_i = c·p_j (diagonal: c/2·2·p_i = c·p_i)
-    for term in pf.pp
+    for term in cubic_parameter_parameter_terms(pf)
         mult = sign * term.coefficient
         if term.variable_1 == term.variable_2
             mult /= 2
@@ -171,7 +171,7 @@ function _update_duals_from_objective!(
             mult * model.parameters[p_idx(term.variable_1)]
     end
     # ppp terms: ∂(c·p_i·p_j·p_k)/∂p_i = c·p_j·p_k
-    for term in pf.ppp
+    for term in cubic_parameter_parameter_parameter_terms(pf)
         coef = sign * term.coefficient
         p1_val = model.parameters[p_idx(term.index_1)]
         p2_val = model.parameters[p_idx(term.index_2)]
@@ -225,11 +225,11 @@ function _compute_parameters_in_ci!(
     ci::MOI.ConstraintIndex{F,S},
 ) where {F,S,T}
     cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
-    for term in pf.p
+    for term in vector_affine_parameter_terms(pf)
         model.dual_value_of_parameters[p_val(term.scalar_term.variable)] -=
             cons_dual[term.output_index] * term.scalar_term.coefficient
     end
-    for t in pf.pp
+    for t in vector_quadratic_parameter_parameter_terms(pf)
         mult = cons_dual[t.output_index] * t.scalar_term.coefficient
         if t.scalar_term.variable_1 == t.scalar_term.variable_2
             mult /= 2
