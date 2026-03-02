@@ -7,6 +7,20 @@ CurrentModule = ParametricOptInterface
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Version 0.15.1 (March 2, 2026)
+
+### Added
+
+- Uniformly expose terms getters (#229)
+
+### Fixed
+
+- Fix getter of `MOI.VectorAffineFunction` (#228)
+
+### Other
+
+- Code cleanup and minor performance improvements (#226) (#227) (#228)
+
 ## Version 0.15.0 (February 24, 2026)
 
 This breaking release removes a number of ParametricOptInterface-specific
