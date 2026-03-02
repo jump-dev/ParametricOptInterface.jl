@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>How and why ParametricOptInterface is needed · ParametricOptInterface.jl</title><meta name="title" content="How and why ParametricOptInterface is needed · ParametricOptInterface.jl"/><meta property="og:title" content="How and why ParametricOptInterface is needed · ParametricOptInterface.jl"/><meta property="twitter:title" content="How and why ParametricOptInterface is needed · ParametricOptInterface.jl"/><meta name="description" content="Documentation for ParametricOptInterface.jl."/><meta property="og:description" content="Documentation for ParametricOptInterface.jl."/><meta property="twitter:description" content="Documentation for ParametricOptInterface.jl."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script><link href="../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">ParametricOptInterface.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li class="is-active"><a class="tocitem" href>How and why ParametricOptInterface is needed</a><ul class="internal"><li><a class="tocitem" href="#Some-solvers-have-native-support-for-parameters"><span>Some solvers have native support for parameters</span></a></li><li><a class="tocitem" href="#Why-parameters-are-useful"><span>Why parameters are useful</span></a></li><li><a class="tocitem" href="#Some-solvers-do-not-have-native-support-for-parameters"><span>Some solvers do not have native support for parameters</span></a></li><li><a class="tocitem" href="#ParametricOptInterface"><span>ParametricOptInterface</span></a></li><li><a class="tocitem" href="#When-to-use-ParametricOptInterface"><span>When to use ParametricOptInterface</span></a></li></ul></li><li><a class="tocitem" href="../reference/">Reference</a></li><li><a class="tocitem" href="../release_notes/">Release notes</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>How and why ParametricOptInterface is needed</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>How and why ParametricOptInterface is needed</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/jump-dev/ParametricOptInterface.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/jump-dev/ParametricOptInterface.jl/blob/master/docs/src/background.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="How-and-why-ParametricOptInterface-is-needed"><a class="docs-heading-anchor" href="#How-and-why-ParametricOptInterface-is-needed">How and why ParametricOptInterface is needed</a><a id="How-and-why-ParametricOptInterface-is-needed-1"></a><a class="docs-heading-anchor-permalink" href="#How-and-why-ParametricOptInterface-is-needed" title="Permalink"></a></h1><p>JuMP and MathOptInterface have support for <em>parameters</em>. Parameters are decision variables that belong to the <code>Parameter</code> set. The <code>Parameter</code> set is conceptually similar to the <code>EqualTo</code> set, except that solvers may treat a decision variable constrained to the <code>Parameter</code> set as a constant, and they do not need to add it as a decision variable to the model.</p><p>In JuMP, a parameter can be added using the following syntax:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; using JuMP</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; model = Model();</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @variable(model, p in Parameter(2))</code><code class="nohighlight hljs ansi" style="display:block;">p</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; parameter_value(p)</code><code class="nohighlight hljs ansi" style="display:block;">2.0</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; set_parameter_value(p, 3.0)</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; parameter_value(p)</code><code class="nohighlight hljs ansi" style="display:block;">3.0</code></pre><p>In MathOptInterface, a parameter can be added using the following syntax:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; import MathOptInterface as MOI</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; model = MOI.Utilities.Model{Float64}();</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; p, p_con = MOI.add_constrained_variable(model, MOI.Parameter(2.0))</code><code class="nohighlight hljs ansi" style="display:block;">(MOI.VariableIndex(1), MathOptInterface.ConstraintIndex{MathOptInterface.VariableIndex, MathOptInterface.Parameter{Float64}}(1))</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; MOI.get(model, MOI.ConstraintSet(), p_con)</code><code class="nohighlight hljs ansi" style="display:block;">MathOptInterface.Parameter{Float64}(2.0)</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; new_set = MOI.Parameter(3.0)</code><code class="nohighlight hljs ansi" style="display:block;">MathOptInterface.Parameter{Float64}(3.0)</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; MOI.set(model, MOI.ConstraintSet(), p_con, new_set)</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; MOI.get(model, MOI.ConstraintSet(), p_con)</code><code class="nohighlight hljs ansi" style="display:block;">MathOptInterface.Parameter{Float64}(3.0)</code></pre><h2 id="Some-solvers-have-native-support-for-parameters"><a class="docs-heading-anchor" href="#Some-solvers-have-native-support-for-parameters">Some solvers have native support for parameters</a><a id="Some-solvers-have-native-support-for-parameters-1"></a><a class="docs-heading-anchor-permalink" href="#Some-solvers-have-native-support-for-parameters" title="Permalink"></a></h2><p>Some solvers have native support for parameters. One example is Ipopt. To demonstrate, look at the following example. Even though there are two <code>@variable</code> calls, the log of Ipopt shows that it solved a problem with only one decision variable:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; using JuMP, Ipopt</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; model = Model(Ipopt.Optimizer)</code><code class="nohighlight hljs ansi" style="display:block;">A JuMP Model
+├ solver: Ipopt
+├ objective_sense: FEASIBILITY_SENSE
+├ num_variables: 0
+├ num_constraints: 0
+└ Names registered in the model: none</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @variable(model, x)</code><code class="nohighlight hljs ansi" style="display:block;">x</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @variable(model, p in Parameter(1))</code><code class="nohighlight hljs ansi" style="display:block;">p</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @constraint(model, x + p &gt;= 3)</code><code class="nohighlight hljs ansi" style="display:block;">x + p ≥ 3</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @objective(model, Min, 2x)</code><code class="nohighlight hljs ansi" style="display:block;">2 x</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; optimize!(model)</code><code class="nohighlight hljs ansi" style="display:block;">
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.8.2.
+
+Number of nonzeros in equality constraint Jacobian...:        0
+Number of nonzeros in inequality constraint Jacobian.:        1
+Number of nonzeros in Lagrangian Hessian.............:        0
+
+Total number of variables............................:        1
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        0
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        0
+Total number of inequality constraints...............:        1
+        inequality constraints with only lower bounds:        1
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0  0.0000000e+00 2.00e+00 5.00e-01  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1  4.1399999e+00 0.00e+00 1.00e-06  -1.0 2.07e+00    -  1.00e+00 1.00e+00h  1
+   2  4.0028284e+00 0.00e+00 2.83e-08  -2.5 6.86e-02    -  1.00e+00 1.00e+00f  1
+   3  4.0001504e+00 0.00e+00 1.50e-09  -3.8 1.34e-03    -  1.00e+00 1.00e+00f  1
+   4  4.0000018e+00 0.00e+00 1.84e-11  -5.7 7.43e-05    -  1.00e+00 1.00e+00f  1
+   5  3.9999999e+00 0.00e+00 2.49e-14  -8.6 9.21e-07    -  1.00e+00 1.00e+00f  1
+
+Number of Iterations....: 5
+
+                                   (scaled)                 (unscaled)
+Objective...............:   3.9999999425059038e+00    3.9999999425059038e+00
+Dual infeasibility......:   2.4868995751603507e-14    2.4868995751603507e-14
+Constraint violation....:   0.0000000000000000e+00    0.0000000000000000e+00
+Variable bound violation:   0.0000000000000000e+00    0.0000000000000000e+00
+Complementarity.........:   2.5059039288067052e-09    2.5059039288067052e-09
+Overall NLP error.......:   2.5059039288067052e-09    2.5059039288067052e-09
+
+
+Number of objective function evaluations             = 6
+Number of objective gradient evaluations             = 6
+Number of equality constraint evaluations            = 0
+Number of inequality constraint evaluations          = 6
+Number of equality constraint Jacobian evaluations   = 0
+Number of inequality constraint Jacobian evaluations = 1
+Number of Lagrangian Hessian evaluations             = 1
+Total seconds in IPOPT                               = 3.795
+
+EXIT: Optimal Solution Found.</code></pre><p>Internally, Ipopt replaced the parameter <code>p</code> with the constant <code>1.0</code>, and solved the problem:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; using JuMP, Ipopt</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; model = Model(Ipopt.Optimizer)</code><code class="nohighlight hljs ansi" style="display:block;">A JuMP Model
+├ solver: Ipopt
+├ objective_sense: FEASIBILITY_SENSE
+├ num_variables: 0
+├ num_constraints: 0
+└ Names registered in the model: none</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @variable(model, x)</code><code class="nohighlight hljs ansi" style="display:block;">x</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @constraint(model, x + 1 &gt;= 3)</code><code class="nohighlight hljs ansi" style="display:block;">x ≥ 2</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @objective(model, Min, 2x)</code><code class="nohighlight hljs ansi" style="display:block;">2 x</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; optimize!(model)</code><code class="nohighlight hljs ansi" style="display:block;">This is Ipopt version 3.14.19, running with linear solver MUMPS 5.8.2.
+
+Number of nonzeros in equality constraint Jacobian...:        0
+Number of nonzeros in inequality constraint Jacobian.:        1
+Number of nonzeros in Lagrangian Hessian.............:        0
+
+Total number of variables............................:        1
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        0
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        0
+Total number of inequality constraints...............:        1
+        inequality constraints with only lower bounds:        1
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0  0.0000000e+00 2.00e+00 5.00e-01  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1  4.1599999e+00 0.00e+00 1.00e-06  -1.0 2.08e+00    -  1.00e+00 1.00e+00h  1
+   2  4.0028285e+00 0.00e+00 2.83e-08  -2.5 7.86e-02    -  1.00e+00 1.00e+00f  1
+   3  4.0001504e+00 0.00e+00 1.50e-09  -3.8 1.34e-03    -  1.00e+00 1.00e+00f  1
+   4  4.0000018e+00 0.00e+00 1.84e-11  -5.7 7.43e-05    -  1.00e+00 1.00e+00f  1
+   5  4.0000000e+00 0.00e+00 2.49e-14  -8.6 9.21e-07    -  1.00e+00 1.00e+00f  1
+
+Number of Iterations....: 5
+
+                                   (scaled)                 (unscaled)
+Objective...............:   3.9999999625059033e+00    3.9999999625059033e+00
+Dual infeasibility......:   2.4868995751603507e-14    2.4868995751603507e-14
+Constraint violation....:   0.0000000000000000e+00    0.0000000000000000e+00
+Variable bound violation:   0.0000000000000000e+00    0.0000000000000000e+00
+Complementarity.........:   2.5059034847174954e-09    2.5059034847174954e-09
+Overall NLP error.......:   2.5059034847174954e-09    2.5059034847174954e-09
+
+
+Number of objective function evaluations             = 6
+Number of objective gradient evaluations             = 6
+Number of equality constraint evaluations            = 0
+Number of inequality constraint evaluations          = 6
+Number of equality constraint Jacobian evaluations   = 0
+Number of inequality constraint Jacobian evaluations = 1
+Number of Lagrangian Hessian evaluations             = 1
+Total seconds in IPOPT                               = 0.002
+
+EXIT: Optimal Solution Found.</code></pre><h2 id="Why-parameters-are-useful"><a class="docs-heading-anchor" href="#Why-parameters-are-useful">Why parameters are useful</a><a id="Why-parameters-are-useful-1"></a><a class="docs-heading-anchor-permalink" href="#Why-parameters-are-useful" title="Permalink"></a></h2><p>Parameters are most useful when you want to solve a sequence of problems in which some of the data changes between iterations:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; using JuMP, Ipopt</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; model = Model(Ipopt.Optimizer)</code><code class="nohighlight hljs ansi" style="display:block;">A JuMP Model
+├ solver: Ipopt
+├ objective_sense: FEASIBILITY_SENSE
+├ num_variables: 0
+├ num_constraints: 0
+└ Names registered in the model: none</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; set_silent(model)</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @variable(model, x)</code><code class="nohighlight hljs ansi" style="display:block;">x</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @variable(model, p in Parameter(1))</code><code class="nohighlight hljs ansi" style="display:block;">p</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @constraint(model, x + p &gt;= 3)</code><code class="nohighlight hljs ansi" style="display:block;">x + p ≥ 3</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @objective(model, Min, 2x)</code><code class="nohighlight hljs ansi" style="display:block;">2 x</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; solution = Dict{Int,Float64}()</code><code class="nohighlight hljs ansi" style="display:block;">Dict{Int64, Float64}()</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; for p_value in 0:5
+           set_parameter_value(p, p_value)
+           optimize!(model)
+           assert_is_solved_and_feasible(model)
+           solution[p_value] = value(x)
+       end</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; solution</code><code class="nohighlight hljs ansi" style="display:block;">Dict{Int64, Float64} with 6 entries:
+  0 =&gt; 3.0
+  4 =&gt; -1.0
+  5 =&gt; -2.0
+  2 =&gt; 1.0
+  3 =&gt; -2.8747e-8
+  1 =&gt; 2.0</code></pre><h2 id="Some-solvers-do-not-have-native-support-for-parameters"><a class="docs-heading-anchor" href="#Some-solvers-do-not-have-native-support-for-parameters">Some solvers do not have native support for parameters</a><a id="Some-solvers-do-not-have-native-support-for-parameters-1"></a><a class="docs-heading-anchor-permalink" href="#Some-solvers-do-not-have-native-support-for-parameters" title="Permalink"></a></h2><p>Even though solvers like Ipopt support parameters, many solvers do not. One example is HiGHS. Despite the fact that HiGHS doesn&#39;t support parameters, you can still build and solve a model with parameters:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; using JuMP, HiGHS</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; model = Model(HiGHS.Optimizer)</code><code class="nohighlight hljs ansi" style="display:block;">A JuMP Model
+├ solver: HiGHS
+├ objective_sense: FEASIBILITY_SENSE
+├ num_variables: 0
+├ num_constraints: 0
+└ Names registered in the model: none</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @variable(model, x)</code><code class="nohighlight hljs ansi" style="display:block;">x</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @variable(model, p in Parameter(1))</code><code class="nohighlight hljs ansi" style="display:block;">p</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @constraint(model, x + p &gt;= 3)</code><code class="nohighlight hljs ansi" style="display:block;">x + p ≥ 3</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @objective(model, Min, 2x)</code><code class="nohighlight hljs ansi" style="display:block;">2 x</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; optimize!(model)</code><code class="nohighlight hljs ansi" style="display:block;">Running HiGHS 1.13.1 (git hash: 1d267d97c): Copyright (c) 2026 under Apache 2.0 license terms
+Using BLAS: blastrampoline 
+LP has 1 row; 2 cols; 2 nonzeros
+Coefficient ranges:
+  Matrix  [1e+00, 1e+00]
+  Cost    [2e+00, 2e+00]
+  Bound   [1e+00, 1e+00]
+  RHS     [3e+00, 3e+00]
+Presolving model
+0 rows, 0 cols, 0 nonzeros  0s
+0 rows, 0 cols, 0 nonzeros  0s
+Presolve reductions: rows 0(-1); columns 0(-2); nonzeros 0(-2) - Reduced to empty
+Performed postsolve
+Solving the original LP from the solution after postsolve
+
+Model status        : Optimal
+Objective value     :  4.0000000000e+00
+P-D objective error :  0.0000000000e+00
+HiGHS run time      :          0.00</code></pre><p>This works because, behind the scenes, the bridges in MathOptInterface rewrote <code>p in Parameter(1)</code> to <code>p in MOI.EqualTo(1.0)</code>:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; print_active_bridges(model)</code><code class="nohighlight hljs ansi" style="display:block;"> * <span class="sgr32">Supported objective: MOI.ScalarAffineFunction{Float64}</span>
+ * <span class="sgr32">Supported constraint: MOI.ScalarAffineFunction{Float64}-in-MOI.GreaterThan{Float64}</span>
+ * <span class="sgr31">Unsupported variable: MOI.Parameter{Float64}</span>
+ |  bridged by:
+ |    MOIB.Variable.ParameterToEqualToBridge{Float64}
+ |  may introduce:
+ |   * <span class="sgr32">Supported variable: MOI.EqualTo{Float64}</span></code></pre><p>Thus, HiGHS solved the problem:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; using JuMP, HiGHS</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; model = Model(HiGHS.Optimizer)</code><code class="nohighlight hljs ansi" style="display:block;">A JuMP Model
+├ solver: HiGHS
+├ objective_sense: FEASIBILITY_SENSE
+├ num_variables: 0
+├ num_constraints: 0
+└ Names registered in the model: none</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @variable(model, x)</code><code class="nohighlight hljs ansi" style="display:block;">x</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @variable(model, p == 1)</code><code class="nohighlight hljs ansi" style="display:block;">p</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @constraint(model, x + p &gt;= 3)</code><code class="nohighlight hljs ansi" style="display:block;">x + p ≥ 3</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @objective(model, Min, 2x)</code><code class="nohighlight hljs ansi" style="display:block;">2 x</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; optimize!(model)</code><code class="nohighlight hljs ansi" style="display:block;">Running HiGHS 1.13.1 (git hash: 1d267d97c): Copyright (c) 2026 under Apache 2.0 license terms
+Using BLAS: blastrampoline 
+LP has 1 row; 2 cols; 2 nonzeros
+Coefficient ranges:
+  Matrix  [1e+00, 1e+00]
+  Cost    [2e+00, 2e+00]
+  Bound   [1e+00, 1e+00]
+  RHS     [3e+00, 3e+00]
+Presolving model
+0 rows, 0 cols, 0 nonzeros  0s
+0 rows, 0 cols, 0 nonzeros  0s
+Presolve reductions: rows 0(-1); columns 0(-2); nonzeros 0(-2) - Reduced to empty
+Performed postsolve
+Solving the original LP from the solution after postsolve
+
+Model status        : Optimal
+Objective value     :  4.0000000000e+00
+P-D objective error :  0.0000000000e+00
+HiGHS run time      :          0.00</code></pre><p>The downside to the bridge approach is that it adds a new decision variable with fixed bounds for every parameter in the problem. Moreover, the bridge approach does not handle <code>parameter * variable</code> terms, because the resulting problem is a quadratic constraint:</p><pre><code class="language-julia-repl hljs">julia&gt; using JuMP, HiGHS
+
+julia&gt; model = Model(HiGHS.Optimizer);
+
+julia&gt; @variable(model, x);
+
+julia&gt; @variable(model, p in Parameter(1));
+
+julia&gt; @constraint(model, p * x &gt;= 3)
+ERROR: Constraints of type MathOptInterface.ScalarQuadraticFunction{Float64}-in-MathOptInterface.GreaterThan{Float64} are not supported by the solver.
+
+If you expected the solver to support your problem, you may have an error in your formulation. Otherwise, consider using a different solver.
+
+The list of available solvers, along with the problem types they support, is available at https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers.
+Stacktrace:
+[...]</code></pre><h2 id="ParametricOptInterface"><a class="docs-heading-anchor" href="#ParametricOptInterface">ParametricOptInterface</a><a id="ParametricOptInterface-1"></a><a class="docs-heading-anchor-permalink" href="#ParametricOptInterface" title="Permalink"></a></h2><p>ParametricOptInterface provides <a href="../reference/#Optimizer"><code>Optimizer</code></a>, which is a meta-optimizer that wraps another optimizer. Instead of adding fixed variables to the model, POI substitutes out the parameters with their value before passing the constraint or objective to the inner optimizer. When the parameter value is changed, POI efficiently modifies the inner optimizer to reflect the new parameter values.</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; using JuMP, HiGHS</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; import ParametricOptInterface as POI</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; model = Model(() -&gt; POI.Optimizer(HiGHS.Optimizer()));</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @variable(model, x);</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @variable(model, p in Parameter(1));</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @constraint(model, x + p &gt;= 3);</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @objective(model, Min, 2x);</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; optimize!(model)</code><code class="nohighlight hljs ansi" style="display:block;">Running HiGHS 1.13.1 (git hash: 1d267d97c): Copyright (c) 2026 under Apache 2.0 license terms
+Using BLAS: blastrampoline 
+LP has 1 row; 1 col; 1 nonzero
+Coefficient ranges:
+  Matrix  [1e+00, 1e+00]
+  Cost    [2e+00, 2e+00]
+  Bound   [0e+00, 0e+00]
+  RHS     [2e+00, 2e+00]
+Presolving model
+0 rows, 0 cols, 0 nonzeros  0s
+0 rows, 0 cols, 0 nonzeros  0s
+Presolve reductions: rows 0(-1); columns 0(-1); nonzeros 0(-1) - Reduced to empty
+Performed postsolve
+Solving the original LP from the solution after postsolve
+
+Model status        : Optimal
+Objective value     :  4.0000000000e+00
+P-D objective error :  0.0000000000e+00
+HiGHS run time      :          0.00</code></pre><p>Note how HiGHS now solves a problem with one decision variable.</p><p>Because POI replaces parameters with their constant value, POI supports <code>parameter * variable</code> terms:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; using JuMP, HiGHS</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; import ParametricOptInterface as POI</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; model = Model(() -&gt; POI.Optimizer(HiGHS.Optimizer()));</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @variable(model, x);</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @variable(model, p in Parameter(1));</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @constraint(model, p * x &gt;= 3)</code><code class="nohighlight hljs ansi" style="display:block;">p*x ≥ 3</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; @objective(model, Min, 2x)</code><code class="nohighlight hljs ansi" style="display:block;">2 x</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; optimize!(model)</code><code class="nohighlight hljs ansi" style="display:block;">Running HiGHS 1.13.1 (git hash: 1d267d97c): Copyright (c) 2026 under Apache 2.0 license terms
+Using BLAS: blastrampoline 
+LP has 1 row; 1 col; 1 nonzero
+Coefficient ranges:
+  Matrix  [1e+00, 1e+00]
+  Cost    [2e+00, 2e+00]
+  Bound   [0e+00, 0e+00]
+  RHS     [3e+00, 3e+00]
+Presolving model
+0 rows, 0 cols, 0 nonzeros  0s
+0 rows, 0 cols, 0 nonzeros  0s
+Presolve reductions: rows 0(-1); columns 0(-1); nonzeros 0(-1) - Reduced to empty
+Performed postsolve
+Solving the original LP from the solution after postsolve
+
+Model status        : Optimal
+Objective value     :  6.0000000000e+00
+P-D objective error :  0.0000000000e+00
+HiGHS run time      :          0.00</code></pre><h2 id="When-to-use-ParametricOptInterface"><a class="docs-heading-anchor" href="#When-to-use-ParametricOptInterface">When to use ParametricOptInterface</a><a id="When-to-use-ParametricOptInterface-1"></a><a class="docs-heading-anchor-permalink" href="#When-to-use-ParametricOptInterface" title="Permalink"></a></h2><p>To summarize, you should use ParametricOptInterface when:</p><ul><li>you are using a solver that does not have native support for parameters</li><li>you are solving a single problem for multiple values of the parameters.</li></ul><p>For problems with a small number of parameters, and in which the parameters appear additively in the constraints and the objective, it may be more efficient to use the bridge approach. In general, you should try with and without POI and choose the approach which works best for your model.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../reference/">Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Monday 2 March 2026 02:13">Monday 2 March 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
