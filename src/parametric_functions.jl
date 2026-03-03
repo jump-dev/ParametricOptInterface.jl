@@ -708,10 +708,8 @@ function _parametric_affine_terms(
 
     # affine data only contain variables that appear in pv
     for ((var, output_idx), coef) in f.affine_data
-        if !haskey(param_terms_dict, (var, output_idx))
-            param_terms_dict[(var, output_idx)] = zero(T)
-        end
-        param_terms_dict[(var, output_idx)] += coef
+        data = get!(param_terms_dict, (var, output_idx), zero(T))
+        param_terms_dict[(var, output_idx)] = data + coef
     end
 
     return param_terms_dict
@@ -750,8 +748,8 @@ function _delta_parametric_constant(
         if !isnan_1 || !isnan_2
             old_p1 = model.parameters[p1]
             old_p2 = model.parameters[p2]
-            new_1 = isnan_1 ? old_p1 : new_p1
-            new_2 = isnan_2 ? old_p2 : new_p2
+            new_1 = ifelse(isnan_1, old_p1, new_p1)
+            new_2 = ifelse(isnan_2, old_p2, new_p2)
             coef = term.scalar_term.coefficient / (var1 == var2 ? 2 : 1)
             delta_constants[idx] += coef * (new_1 * new_2 - old_p1 * old_p2)
         end
