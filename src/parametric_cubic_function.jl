@@ -66,7 +66,9 @@ function ParametricCubicFunction(parsed::_ParsedCubicExpression{T}) where {T}
 
     # Split affine data
     affine_data = Dict{MOI.VariableIndex,T}()
+    sizehint!(affine_data, length(v_in_param_terms))
     affine_data_np = Dict{MOI.VariableIndex,T}()
+    sizehint!(affine_data_np, length(parsed.v))
     for term in parsed.v
         if term.variable in v_in_param_terms
             affine_data[term.variable] =
@@ -319,8 +321,7 @@ function _delta_parametric_constant(
     # From p terms
     for term in cubic_affine_parameter_terms(f)
         p_i = p_idx(term.variable)
-        if haskey(model.updated_parameters, p_i) &&
-           !isnan(model.updated_parameters[p_i])
+        if !isnan(model.updated_parameters[p_i])
             old_val = model.parameters[p_i]
             new_val = model.updated_parameters[p_i]
             delta += term.coefficient * (new_val - old_val)
@@ -331,12 +332,8 @@ function _delta_parametric_constant(
     for term in cubic_parameter_parameter_terms(f)
         pi1 = p_idx(term.variable_1)
         pi2 = p_idx(term.variable_2)
-        updated1 =
-            haskey(model.updated_parameters, pi1) &&
-            !isnan(model.updated_parameters[pi1])
-        updated2 =
-            haskey(model.updated_parameters, pi2) &&
-            !isnan(model.updated_parameters[pi2])
+        updated1 = !isnan(model.updated_parameters[pi1])
+        updated2 = !isnan(model.updated_parameters[pi2])
 
         if updated1 || updated2
             divisor = term.variable_1 == term.variable_2 ? 2 : 1
@@ -358,15 +355,9 @@ function _delta_parametric_constant(
         pi1 = p_idx(term.index_1)
         pi2 = p_idx(term.index_2)
         pi3 = p_idx(term.index_3)
-        updated1 =
-            haskey(model.updated_parameters, pi1) &&
-            !isnan(model.updated_parameters[pi1])
-        updated2 =
-            haskey(model.updated_parameters, pi2) &&
-            !isnan(model.updated_parameters[pi2])
-        updated3 =
-            haskey(model.updated_parameters, pi3) &&
-            !isnan(model.updated_parameters[pi3])
+        updated1 = !isnan(model.updated_parameters[pi1])
+        updated2 = !isnan(model.updated_parameters[pi2])
+        updated3 = !isnan(model.updated_parameters[pi3])
 
         if updated1 || updated2 || updated3
             old_val =
@@ -402,8 +393,7 @@ function _delta_parametric_affine_terms(
     # From pv terms (parameter * variable, always off-diagonal)
     for term in cubic_parameter_variable_terms(f)
         p_i = p_idx(term.variable_1)
-        if haskey(model.updated_parameters, p_i) &&
-           !isnan(model.updated_parameters[p_i])
+        if !isnan(model.updated_parameters[p_i])
             var = term.variable_2
             coef = term.coefficient  # Off-diagonal: use as-is
             old_val = model.parameters[p_i]
@@ -418,12 +408,8 @@ function _delta_parametric_affine_terms(
         var = term.index_3
         pi1 = p_idx(term.index_1)
         pi2 = p_idx(term.index_2)
-        updated1 =
-            haskey(model.updated_parameters, pi1) &&
-            !isnan(model.updated_parameters[pi1])
-        updated2 =
-            haskey(model.updated_parameters, pi2) &&
-            !isnan(model.updated_parameters[pi2])
+        updated1 = !isnan(model.updated_parameters[pi1])
+        updated2 = !isnan(model.updated_parameters[pi2])
 
         if updated1 || updated2
             old_val =
@@ -459,8 +445,7 @@ function _delta_parametric_quadratic_terms(
         v2 = ifelse(first_is_greater, term.index_2, term.index_3)
         var_pair = (v1, v2)
 
-        if haskey(model.updated_parameters, p_i) &&
-           !isnan(model.updated_parameters[p_i])
+        if !isnan(model.updated_parameters[p_i])
             old_val = model.parameters[p_i]
             new_val = model.updated_parameters[p_i]
             delta = term.coefficient * (new_val - old_val)
