@@ -136,20 +136,26 @@ function _try_incremental_cubic_update!(
     # Get the current objective function type from the inner optimizer
     F = MOI.get(model.optimizer, MOI.ObjectiveFunctionType())
 
-    # Compute full new values (not deltas) for robustness
-    # The delta was used to detect changes; now apply full new coefficients
-    new_quad_terms = _parametric_quadratic_terms(model, pf)
-    new_affine_terms = _parametric_affine_terms(model, pf)
-    new_constant = _parametric_constant(model, pf)
-
-    # Apply quadratic coefficient changes
+    # Apply quadratic coefficient changes.
+    # For each changed (var1, var2) pair, recompute its new coefficient from the
+    # base vv (pf.quadratic_data) data plus current pvv contributions
+    # (avoids full copy + full iteration).
     # MOI convention:
     #   - Off-diagonal (v1 != v2): coefficient C means C*v1*v2 (use as-is)
     #   - Diagonal (v1 == v2): coefficient C means (C/2)*v1^2 (multiply by 2)
-    for ((var1, var2), _) in delta_quadratic
-        new_coef = new_quad_terms[(var1, var2)]
-        # Apply MOI coefficient convention
-        moi_coef = var1 == var2 ? new_coef * 2 : new_coef
+    for (var1, var2) in keys(delta_quadratic)
+        new_coef = get(pf.quadratic_data, (var1, var2), zero(T))
+        for term in pf.pvv
+            p = term.index_1
+            first_is_greater = term.index_2.value > term.index_3.value
+            v1 = ifelse(first_is_greater, term.index_3, term.index_2)
+            v2 = ifelse(first_is_greater, term.index_2, term.index_3)
+            if (v1, v2) == (var1, var2)
+                new_coef +=
+                    term.coefficient * _effective_param_value(model, p_idx(p))
+            end
+        end
+        moi_coef = new_coef * ifelse(var1 == var2, 2, 1)
         MOI.modify(
             model.optimizer,
             MOI.ObjectiveFunction{F}(),
@@ -157,9 +163,25 @@ function _try_incremental_cubic_update!(
         )
     end
 
-    # Apply affine coefficient changes (use full new coefficient)
-    for (var, _) in delta_affine
-        new_coef = new_affine_terms[var]
+    # Apply affine coefficient changes.
+    # For each changed variable, recompute its new coefficient from the base
+    # affine_data plus current pv and ppv contributions.
+    for var in keys(delta_affine)
+        new_coef = get(pf.affine_data, var, zero(T))
+        for term in pf.pv
+            if term.variable_2 == var
+                new_coef +=
+                    term.coefficient *
+                    _effective_param_value(model, p_idx(term.variable_1))
+            end
+        end
+        for term in pf.ppv
+            if term.index_3 == var
+                p1_val = _effective_param_value(model, p_idx(term.index_1))
+                p2_val = _effective_param_value(model, p_idx(term.index_2))
+                new_coef += term.coefficient * p1_val * p2_val
+            end
+        end
         MOI.modify(
             model.optimizer,
             MOI.ObjectiveFunction{F}(),
@@ -167,9 +189,9 @@ function _try_incremental_cubic_update!(
         )
     end
 
-    # Apply constant change
+    # Apply constant change using the tracked current_constant (no full recompute).
     if !iszero(delta_constant)
-        pf.current_constant = new_constant
+        pf.current_constant += delta_constant
         MOI.modify(
             model.optimizer,
             MOI.ObjectiveFunction{F}(),

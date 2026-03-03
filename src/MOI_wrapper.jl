@@ -600,7 +600,7 @@ function MOI.supports(
     # needing to support names for both quadratic and affine constraints.
     # TODO:
     # switch to only check support name for the case of linear
-    # is a solver does not support quadratic constraints it will fain in add_
+    # is a solver does not support quadratic constraints it will fail in add_
     if MOI.supports_constraint(model.optimizer, F, S)
         return MOI.supports(model.optimizer, attr, MOI.ConstraintIndex{F,S}) &&
                MOI.supports(model.optimizer, attr, MOI.ConstraintIndex{G,S})
@@ -1910,7 +1910,7 @@ end
 #
 
 function MOI.optimize!(model::Optimizer)
-    if !isempty(model.updated_parameters)
+    if any(!isnan, values(model.updated_parameters))
         MOI.Utilities.final_touch(model, nothing)
         update_parameters!(model)
     end

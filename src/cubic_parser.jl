@@ -296,23 +296,91 @@ function _expand_power(args, ::Type{T}) where {T}
 end
 
 """
+    _sort3(a, b, c) -> (a, b, c) sorted ascending
+
+Sort three integers without heap allocation (in-place bubble sort).
+"""
+function _sort3(a::Int, b::Int, c::Int)
+    if a > b
+        a, b = b, a
+    end
+    if b > c
+        b, c = c, b
+    end
+    if a > b
+        a, b = b, a
+    end
+    return a, b, c
+end
+
+"""
+    _monomial_key(m::_Monomial)::NTuple{4,Int}
+
+Compute a canonical hash key for a monomial: (degree, sorted_val1, sorted_val2, sorted_val3).
+Uses integer tuple instead of a sorted Vector for faster hashing.
+"""
+function _monomial_key(m::_Monomial)
+    n = length(m.variables)
+    if n == 0
+        return (0, 0, 0, 0)
+    elseif n == 1
+        a = m.variables[1].value
+        return (1, a, 0, 0)
+    elseif n == 2
+        a, b = m.variables[1].value, m.variables[2].value
+        lo, hi = a <= b ? (a, b) : (b, a)
+        return (2, lo, hi, 0)
+    else  # n >= 3; degree > 3 is rejected at classification stage
+        a, b, c = _sort3(
+            m.variables[1].value,
+            m.variables[2].value,
+            m.variables[3].value,
+        )
+        return (n, a, b, c)
+    end
+end
+
+"""
+    _monomial_vars(key::NTuple{4,Int})::Vector{MOI.VariableIndex}
+
+Given a monomial key, reconstruct the list of variables.
+"""
+function _monomial_vars(key::NTuple{4,Int})
+    degree = key[1]
+    if degree == 0
+        return MOI.VariableIndex[]
+    elseif degree == 1
+        return [MOI.VariableIndex(key[2])]
+    elseif degree == 2
+        return [MOI.VariableIndex(key[2]), MOI.VariableIndex(key[3])]
+    else  # degree == 3
+        return [
+            MOI.VariableIndex(key[2]),
+            MOI.VariableIndex(key[3]),
+            MOI.VariableIndex(key[4]),
+        ]
+    end
+end
+
+"""
     _combine_like_monomials(monomials::Vector{_Monomial{T}}) where {T}
 
 Combine like monomials (same variables, regardless of order).
+Assumes all monomials have degree ≤ 3.
 """
 function _combine_like_monomials(monomials::Vector{_Monomial{T}}) where {T}
-    # Use a dict keyed by sorted variable tuple
-    combined = Dict{Vector{MOI.VariableIndex},T}()
+    # Key: NTuple{4,Int} (degree + up to 3 sorted variable indices).
+    combined = Dict{NTuple{4,Int},T}()
 
     for m in monomials
-        # Sort variables for canonical key
-        key = sort(m.variables, by = v -> v.value)
+        key = _monomial_key(m)
         combined[key] = get(combined, key, zero(T)) + m.coefficient
     end
 
     result = _Monomial{T}[]
-    for (vars, coef) in combined
+    for (key, coef) in combined
         if !iszero(coef)
+            vars = _monomial_vars(key)
             push!(result, _Monomial{T}(coef, vars))
         end
     end
@@ -341,7 +409,7 @@ function _classify_monomial(m::_Monomial)
         else
             return :pp
         end
-    elseif degree == 3
+    else  # degree == 3 (degree > 3 rejected early in _parse_cubic_expression)
         if num_params == 0
             return :vvv  # Invalid - no parameter
         elseif num_params == 1
@@ -351,8 +419,6 @@ function _classify_monomial(m::_Monomial)
         else
             return :ppp
         end
-    else
-        return :invalid  # Degree > 3
     end
 end
 
@@ -377,12 +443,17 @@ function _parse_cubic_expression(
         return nothing
     end
 
+    # Reject any monomial with degree > 3 before combining
+    for m in monomials
+        if _monomial_degree(m) > 3
+            return nothing
+        end
+    end
+
     # Combine like terms
     monomials = _combine_like_monomials(monomials)
 
     # Classify and collect terms
-    cubic_terms = _ScalarCubicTerm{T}[]
-
     cubic_ppp = _ScalarCubicTerm{T}[]
     cubic_ppv = _ScalarCubicTerm{T}[]
     cubic_pvv = _ScalarCubicTerm{T}[]
@@ -399,8 +470,8 @@ function _parse_cubic_expression(
     for m in monomials
         classification = _classify_monomial(m)
 
-        if classification == :invalid || classification == :vvv
-            return nothing  # Invalid degree or no parameter in cubic
+        if classification == :vvv
+            return nothing  # No parameter in cubic term
         elseif classification == :constant
             constant += m.coefficient
         elseif classification == :v
