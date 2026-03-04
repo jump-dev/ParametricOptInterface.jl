@@ -300,7 +300,7 @@ end
 
 Sort three integers without heap allocation (in-place bubble sort).
 """
-function _sort3(a::Int, b::Int, c::Int)
+function _sort3(a::Real, b::Real, c::Real)
     if a > b
         a, b = b, a
     end
@@ -314,7 +314,7 @@ function _sort3(a::Int, b::Int, c::Int)
 end
 
 """
-    _monomial_key(m::_Monomial)::NTuple{4,Int}
+    _monomial_key(m::_Monomial)::NTuple{4,Int64}
 
 Compute a canonical hash key for a monomial: (degree, sorted_val1, sorted_val2, sorted_val3).
 Uses integer tuple instead of a sorted Vector for faster hashing.
@@ -322,30 +322,30 @@ Uses integer tuple instead of a sorted Vector for faster hashing.
 function _monomial_key(m::_Monomial)
     n = length(m.variables)
     if n == 0
-        return (0, 0, 0, 0)
+        return (Int64(0), Int64(0), Int64(0), Int64(0))
     elseif n == 1
         a = m.variables[1].value
-        return (1, a, 0, 0)
+        return (Int64(1), Int64(a), Int64(0), Int64(0))
     elseif n == 2
         a, b = m.variables[1].value, m.variables[2].value
         lo, hi = a <= b ? (a, b) : (b, a)
-        return (2, lo, hi, 0)
+        return (Int64(2), Int64(lo), Int64(hi), Int64(0))
     else  # n >= 3; degree > 3 is rejected at classification stage
         a, b, c = _sort3(
             m.variables[1].value,
             m.variables[2].value,
             m.variables[3].value,
         )
-        return (n, a, b, c)
+        return (Int64(n), Int64(a), Int64(b), Int64(c))
     end
 end
 
 """
-    _monomial_vars(key::NTuple{4,Int})::Vector{MOI.VariableIndex}
+    _monomial_vars(key::NTuple{4,Int64})::Vector{MOI.VariableIndex}
 
 Given a monomial key, reconstruct the list of variables.
 """
-function _monomial_vars(key::NTuple{4,Int})
+function _monomial_vars(key::NTuple{4,Int64})
     degree = key[1]
     if degree == 0
         return MOI.VariableIndex[]
@@ -369,8 +369,8 @@ Combine like monomials (same variables, regardless of order).
 Assumes all monomials have degree ≤ 3.
 """
 function _combine_like_monomials(monomials::Vector{_Monomial{T}}) where {T}
-    # Key: NTuple{4,Int} (degree + up to 3 sorted variable indices).
-    combined = Dict{NTuple{4,Int},T}()
+    # Key: NTuple{4,Int64} (degree + up to 3 sorted variable indices).
+    combined = Dict{NTuple{4,Int64},T}()
 
     for m in monomials
         key = _monomial_key(m)
