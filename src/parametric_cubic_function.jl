@@ -143,12 +143,9 @@ cubic_parameter_parameter_parameter_terms(f::ParametricCubicFunction) = f.ppp
 
 Get the effective parameter value: updated value if available, otherwise current value.
 """
-function _effective_param_value(model, pi::ParameterIndex)
-    if haskey(model.updated_parameters, pi) &&
-       !isnan(model.updated_parameters[pi])
-        return model.updated_parameters[pi]
-    end
-    return model.parameters[pi]
+function _effective_param_value(model, p::ParameterIndex)
+    val = model.updated_parameters[p]
+    return isnan(val) ? model.parameters[p] : val
 end
 
 """

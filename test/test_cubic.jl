@@ -74,6 +74,50 @@ function test_normalize_cubic_indices_mixed()
     return
 end
 
+function test_normalize_cubic_indices_all_cases()
+    x = MOI.VariableIndex(1)
+    y = MOI.VariableIndex(2)
+    p = POI.v_idx(POI.ParameterIndex(1))
+    q = POI.v_idx(POI.ParameterIndex(2))
+    r = POI.v_idx(POI.ParameterIndex(3))
+
+    is_p = POI._is_parameter
+    is_v = !POI._is_parameter
+
+    # ppp: all three are parameters
+    n1, n2, n3 = POI._normalize_cubic_indices(p, q, r)
+    @test is_p(n1) && is_p(n2) && is_p(n3)
+
+    # ppv: (p, q, x) — already ordered
+    n1, n2, n3 = POI._normalize_cubic_indices(p, q, x)
+    @test is_p(n1) && is_p(n2) && is_v(n3)
+
+    # pvp -> ppv: (p, x, q)
+    n1, n2, n3 = POI._normalize_cubic_indices(p, x, q)
+    @test is_p(n1) && is_p(n2) && is_v(n3)
+
+    # vpp -> ppv: (x, p, q)
+    n1, n2, n3 = POI._normalize_cubic_indices(x, p, q)
+    @test is_p(n1) && is_p(n2) && is_v(n3)
+
+    # pvv: (p, x, y) — already ordered
+    n1, n2, n3 = POI._normalize_cubic_indices(p, x, y)
+    @test is_p(n1) && is_v(n2) && is_v(n3)
+
+    # vpv -> pvv: (x, p, y) (tested by test_normalize_cubic_indices_mixed too)
+    n1, n2, n3 = POI._normalize_cubic_indices(x, p, y)
+    @test is_p(n1) && is_v(n2) && is_v(n3)
+
+    # vvp -> pvv: (x, y, p)
+    n1, n2, n3 = POI._normalize_cubic_indices(x, y, p)
+    @test is_p(n1) && is_v(n2) && is_v(n3)
+
+    # vvv: no parameters (degenerate, caller validates)
+    n1, n2, n3 = POI._normalize_cubic_indices(x, y, MOI.VariableIndex(3))
+    @test is_v(n1) && is_v(n2) && is_v(n3)
+    return
+end
+
 function test_make_cubic_term_normalization()
     x = MOI.VariableIndex(2)
     y = MOI.VariableIndex(1)
@@ -89,6 +133,47 @@ end
 # ============================================================================
 # Parser - Valid cubic terms (pvv)
 # ============================================================================
+
+function test_sort3_all_permutations()
+    # Exercise all swap branches of _sort3.
+    # Branch 1 (a>b swap): triggered when a > b initially.
+    # Branch 2 (b>c swap): triggered when new b > c.
+    # Branch 3 (a>b swap): triggered when new a > new b after second swap.
+    @test POI._sort3(1, 2, 3) == (1, 2, 3)  # already sorted, no swaps
+    @test POI._sort3(1, 3, 2) == (1, 2, 3)  # swap 2
+    @test POI._sort3(2, 1, 3) == (1, 2, 3)  # swap 1
+    @test POI._sort3(2, 3, 1) == (1, 2, 3)  # swaps 1+2+3
+    @test POI._sort3(3, 1, 2) == (1, 2, 3)  # swaps 1+2+3
+    @test POI._sort3(3, 2, 1) == (1, 2, 3)  # swaps 1+2
+    return
+end
+
+function test_monomial_key_all_degrees()
+    x = MOI.VariableIndex(1)
+    y = MOI.VariableIndex(2)
+    z = MOI.VariableIndex(3)
+
+    # Degree 0
+    m0 = POI._Monomial{Float64}(1.0)
+    @test POI._monomial_key(m0) == (0, 0, 0, 0)
+
+    # Degree 1
+    m1 = POI._Monomial{Float64}(2.0, x)
+    @test POI._monomial_key(m1) == (1, 1, 0, 0)
+
+    # Degree 2 — sorted (lo, hi)
+    m2a = POI._Monomial{Float64}(1.0, [x, y])  # already sorted
+    m2b = POI._Monomial{Float64}(1.0, [y, x])  # reversed
+    @test POI._monomial_key(m2a) == POI._monomial_key(m2b)  # same key
+    @test POI._monomial_key(m2a) == (2, 1, 2, 0)
+
+    # Degree 3
+    m3a = POI._Monomial{Float64}(1.0, [x, y, z])
+    m3b = POI._Monomial{Float64}(1.0, [z, y, x])
+    @test POI._monomial_key(m3a) == POI._monomial_key(m3b)  # same key
+    @test POI._monomial_key(m3a) == (3, 1, 2, 3)
+    return
+end
 
 function test_cubic_parse_single_pvv_term()
     x = MOI.VariableIndex(1)
@@ -1427,6 +1512,140 @@ function test_jump_cubic_pvv_update_no_change()
     optimize!(model)
     @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
     @test objective_value(model) ≈ obj1 atol = ATOL
+    return
+end
+
+function test_jump_cubic_objective_skips_when_unrelated_param_changes()
+    # Cubic objective uses parameter p. Parameter q is unrelated (no cubic term).
+    # Updating q triggers update_parameters! -> _update_cubic_objective!, but all
+    # deltas are empty because p was not updated, so the early return is taken.
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    set_silent(model)
+
+    @variable(model, 0 <= x <= 10)
+    @variable(model, p in MOI.Parameter(1.0))
+    @variable(model, q in MOI.Parameter(0.0))
+
+    @objective(model, Min, p * x^2 - 2 * x)
+
+    optimize!(model)
+    @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
+    @test value(x) ≈ 1.0 atol = ATOL
+
+    # Update q only — p (in cubic objective) unchanged
+    set_parameter_value(q, 5.0)
+    optimize!(model)
+    @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
+    @test value(x) ≈ 1.0 atol = ATOL
+    return
+end
+
+function test_optimize_skips_update_without_parameter_change()
+    # Call optimize! twice with no parameter updates between calls.
+    # After the first optimize!, all updated_parameters are reset to NaN.
+    # The second optimize! should take the fast path (no update_parameters! call)
+    # and still return the same result.
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    set_silent(model)
+
+    @variable(model, 0 <= x <= 10)
+    @variable(model, p in MOI.Parameter(1.0))
+
+    @constraint(model, x >= 0)
+    @objective(model, Min, p * x^2 - 4 * x)
+
+    optimize!(model)
+    @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
+    obj1 = objective_value(model)
+    x1 = value(x)
+
+    # Second optimize! with NO parameter changes
+    optimize!(model)
+    @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
+    @test objective_value(model) ≈ obj1 atol = ATOL
+    @test value(x) ≈ x1 atol = ATOL
+    return
+end
+
+function test_jump_cubic_pvv_partial_pair_update()
+    # Two pvv terms with different parameters: p1*x*y and p2*x*z.
+    # Update only p1 -> delta_quadratic has only (x,y).
+    # The pvv inner loop must skip the (x,z) term (false branch of pair check).
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    set_silent(model)
+
+    @variable(model, 0 <= x <= 10)
+    @variable(model, 0 <= y <= 10)
+    @variable(model, 0 <= z <= 10)
+    @variable(model, p1 in MOI.Parameter(0.0))
+    @variable(model, p2 in MOI.Parameter(0.0))
+
+    # x^2 + y^2 + z^2 + p1*x*y + p2*x*z - 6x - 4y - 2z
+    # With p1=p2=0: separable, x=3, y=2, z=1, obj=-14
+    @constraint(model, x >= 0)
+    @constraint(model, y >= 0)
+    @constraint(model, z >= 0)
+    @objective(
+        model,
+        Min,
+        x^2 + y^2 + z^2 + p1 * x * y + p2 * x * z - 6 * x - 4 * y - 2 * z,
+    )
+
+    optimize!(model)
+    @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
+    @test objective_value(model) ≈ -14.0 atol = ATOL
+
+    # Update only p1 — p2 unchanged
+    set_parameter_value(p1, 1.0)
+    optimize!(model)
+    @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
+    x_val = value(x)
+    y_val = value(y)
+    z_val = value(z)
+    expected =
+        x_val^2 +
+        y_val^2 +
+        z_val^2 +
+        1.0 * x_val * y_val +
+        0.0 * x_val * z_val - 6 * x_val - 4 * y_val - 2 * z_val
+    @test objective_value(model) ≈ expected atol = ATOL
+    return
+end
+
+function test_jump_cubic_pv_partial_var_update()
+    # Two pv terms: p1*x and p2*y, plus vv term to force cubic path.
+    # Update only p1 -> delta_affine has only x.
+    # The pv inner loop must skip the p2*y term for x (false branch of var check).
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    set_silent(model)
+
+    @variable(model, 0 <= x <= 10)
+    @variable(model, 0 <= y <= 10)
+    @variable(model, p1 in MOI.Parameter(0.0))
+    @variable(model, p2 in MOI.Parameter(1.0))
+    @variable(model, q in MOI.Parameter(1.0))
+
+    # q*x*y (pvv to force cubic) + p1*x + p2*y + x^2 + y^2
+    # With q=1, p1=0, p2=1: x*y + y + x^2 + y^2
+    @constraint(model, x >= 0)
+    @constraint(model, y >= 0)
+    @objective(model, Min, q * x * y + p1 * x + p2 * y + x^2 + y^2)
+
+    optimize!(model)
+    @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
+    x0 = value(x)
+    y0 = value(y)
+    @test objective_value(model) ≈ x0^2 + y0^2 + x0 * y0 + 0 * x0 + 1 * y0 atol =
+        ATOL
+
+    # Update only p1 — p2 unchanged
+    set_parameter_value(p1, 2.0)
+    optimize!(model)
+    @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
+    x1 = value(x)
+    y1 = value(y)
+    @test objective_value(model) ≈ x1^2 + y1^2 + x1 * y1 + 2 * x1 + 1 * y1 atol =
+        ATOL
     return
 end
 

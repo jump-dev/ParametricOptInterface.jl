@@ -40,17 +40,27 @@ function _normalize_cubic_indices(
     idx2::MOI.VariableIndex,
     idx3::MOI.VariableIndex,
 )
-    params = MOI.VariableIndex[]
-    vars = MOI.VariableIndex[]
-    for idx in (idx1, idx2, idx3)
-        if _is_parameter(idx)
-            push!(params, idx)
-        else
-            push!(vars, idx)
-        end
+    p1 = _is_parameter(idx1)
+    p2 = _is_parameter(idx2)
+    p3 = _is_parameter(idx3)
+    # Place parameters before variables, preserving relative order within each group.
+    if p1 && p2 && p3
+        return idx1, idx2, idx3  # ppp — already ordered
+    elseif p1 && p2             # p p v
+        return idx1, idx2, idx3
+    elseif p1 && p3             # p v p → p p v
+        return idx1, idx3, idx2
+    elseif p2 && p3             # v p p → p p v
+        return idx2, idx3, idx1
+    elseif p1                   # p v v — already ordered
+        return idx1, idx2, idx3
+    elseif p2                   # v p v → p v v
+        return idx2, idx1, idx3
+    elseif p3                   # v v p → p v v
+        return idx3, idx1, idx2
+    else                        # v v v — no parameter (caller validates)
+        return idx1, idx2, idx3
     end
-    all_indices = vcat(params, vars)
-    return all_indices[1], all_indices[2], all_indices[3]
 end
 
 """
