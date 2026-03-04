@@ -1515,6 +1515,31 @@ function test_jump_cubic_pvv_update_no_change()
     return
 end
 
+function test_jump_cubic_objective_skips_when_unrelated_param_changes()
+    # Cubic objective uses parameter p. Parameter q is unrelated (no cubic term).
+    # Updating q triggers update_parameters! -> _update_cubic_objective!, but all
+    # deltas are empty because p was not updated, so the early return is taken.
+    model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+    set_silent(model)
+
+    @variable(model, 0 <= x <= 10)
+    @variable(model, p in MOI.Parameter(1.0))
+    @variable(model, q in MOI.Parameter(0.0))
+
+    @objective(model, Min, p * x^2 - 2 * x)
+
+    optimize!(model)
+    @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
+    @test value(x) ≈ 1.0 atol = ATOL
+
+    # Update q only — p (in cubic objective) unchanged
+    set_parameter_value(q, 5.0)
+    optimize!(model)
+    @test termination_status(model) in (OPTIMAL, LOCALLY_SOLVED)
+    @test value(x) ≈ 1.0 atol = ATOL
+    return
+end
+
 function test_optimize_skips_update_without_parameter_change()
     # Call optimize! twice with no parameter updates between calls.
     # After the first optimize!, all updated_parameters are reset to NaN.
