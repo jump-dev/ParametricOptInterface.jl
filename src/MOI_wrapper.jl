@@ -135,6 +135,7 @@ function MOI.is_empty(model::Optimizer)
            # obj
            model.affine_objective_cache === nothing &&
            model.quadratic_objective_cache === nothing &&
+           model.cubic_objective_cache === nothing &&
            MOI.is_empty(model.original_objective_cache) &&
            #
            isempty(model.vector_affine_constraint_cache) &&
@@ -878,7 +879,7 @@ function _add_constraint_with_parameters_on_function(
         end
     elseif model.constraints_interpretation == ONLY_CONSTRAINTS
         poi_ci = MOI.add_constraint(model, pf, set)
-    elseif model.constraints_interpretation == BOUNDS_AND_CONSTRAINTS
+    else #if model.constraints_interpretation == BOUNDS_AND_CONSTRAINTS
         if length(affine_variable_terms(pf)) == 1 &&
            isone(MOI.coefficient(affine_variable_terms(pf)[]))
             poi_ci = _add_vi_constraint(model, pf, set)
@@ -1886,23 +1887,25 @@ ParametricOptInterface.Optimizer{Float64, MOIU.Model{Float64}}
 └ NumberOfConstraints: 0
 
 julia> MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
-ONLY_BOUNDS::ConstraintsInterpretationCode = 1
 
 julia> MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_CONSTRAINTS)
-ONLY_CONSTRAINTS::ConstraintsInterpretationCode = 0
 
 julia> MOI.set(model, POI.ConstraintsInterpretation(), POI.BOUNDS_AND_CONSTRAINTS)
-BOUNDS_AND_CONSTRAINTS::ConstraintsInterpretationCode = 2
 ```
 """
 struct ConstraintsInterpretation <: MOI.AbstractOptimizerAttribute end
+
+function MOI.get(model::Optimizer, ::ConstraintsInterpretation)
+    return model.constraints_interpretation
+end
 
 function MOI.set(
     model::Optimizer,
     ::ConstraintsInterpretation,
     value::ConstraintsInterpretationCode,
 )
-    return model.constraints_interpretation = value
+    model.constraints_interpretation = value
+    return
 end
 
 #

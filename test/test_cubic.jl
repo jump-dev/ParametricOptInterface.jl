@@ -1567,6 +1567,32 @@ function test_optimize_skips_update_without_parameter_change()
     return
 end
 
+function test_is_empty_with_cubic_objective()
+    # Regression test: cubic_objective_cache must be checked in MOI.is_empty.
+    # Before the fix, is_empty ignored this cache and returned true incorrectly.
+    model = POI.Optimizer(HiGHS.Optimizer())
+    MOI.set(model, MOI.Silent(), true)
+    @test MOI.is_empty(model)
+
+    # Set a cubic objective to populate cubic_objective_cache
+    x = MOI.add_variable(model)
+    p, _ = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
+    p_v = POI.v_idx(POI.p_idx(p))
+    f = MOI.ScalarNonlinearFunction(:*, Any[1.0, p_v, x, x])
+    MOI.set(model, MOI.ObjectiveFunction{MOI.ScalarNonlinearFunction}(), f)
+    @test !MOI.is_empty(model)
+
+    # After full empty!, model must be empty
+    cubic_cache = model.cubic_objective_cache
+    MOI.empty!(model)
+    @test MOI.is_empty(model)
+
+    # Restore only the cubic cache — is_empty must now return false
+    model.cubic_objective_cache = cubic_cache
+    @test !MOI.is_empty(model)
+    return
+end
+
 function test_jump_cubic_pvv_partial_pair_update()
     # Two pvv terms with different parameters: p1*x*y and p2*x*z.
     # Update only p1 -> delta_quadratic has only (x,y).
