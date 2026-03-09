@@ -38,7 +38,7 @@ function MOI.set(
             "optimizer. " *
             "This may be due to unsupported features in the cubic " *
             "expression. " *
-            "Original error: $(e.msg)",
+            "Original error: $(sprint(showerror, e))",
         )
     end
 

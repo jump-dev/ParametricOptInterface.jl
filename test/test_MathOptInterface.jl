@@ -2181,6 +2181,40 @@ function test_name_from_bound()
     return
 end
 
+function test_constraints_interpretation_get_set()
+    model = POI.Optimizer(MOI.Utilities.Model{Float64}())
+    # Default value
+    @test MOI.get(model, POI.ConstraintsInterpretation()) ==
+          POI.ONLY_CONSTRAINTS
+    # Round-trip for each value
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
+    @test MOI.get(model, POI.ConstraintsInterpretation()) == POI.ONLY_BOUNDS
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_CONSTRAINTS)
+    @test MOI.get(model, POI.ConstraintsInterpretation()) ==
+          POI.ONLY_CONSTRAINTS
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.BOUNDS_AND_CONSTRAINTS)
+    @test MOI.get(model, POI.ConstraintsInterpretation()) ==
+          POI.BOUNDS_AND_CONSTRAINTS
+    return
+end
+
+function test_only_bounds_coefficient_not_one_errors()
+    # ONLY_BOUNDS with coefficient ≠ 1 must error.
+    # The function must contain a parameter so that the parametric path is taken;
+    # a plain ScalarAffineFunction without parameters bypasses the check entirely.
+    model = POI.Optimizer(MOI.Utilities.Model{Float64}())
+    x = MOI.add_variable(model)
+    p, _ = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
+    MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
+    # 2.0 * x + 1.0 * p: single variable term with coefficient 2.0 ≠ 1 — must throw
+    f = MOI.ScalarAffineFunction(
+        [MOI.ScalarAffineTerm(2.0, x), MOI.ScalarAffineTerm(1.0, p)],
+        0.0,
+    )
+    @test_throws ErrorException MOI.add_constraint(model, f, MOI.LessThan(5.0))
+    return
+end
+
 function test_get_constraint_set()
     model = POI.Optimizer(MOI.Utilities.Model{Float64}())
     x = MOI.add_variable(model)

@@ -50,24 +50,14 @@ function _update_affine_constraints!(
         MOI.AbstractScalarSet,
     },
 ) where {F,S<:Union{MOI.LessThan,MOI.GreaterThan,MOI.EqualTo},V}
-    # cis = MOI.ConstraintIndex{F,S}[]
-    # sets = S[]
-    # sizehint!(cis, length(affine_constraint_cache_inner))
-    # sizehint!(sets, length(affine_constraint_cache_inner))
     for (inner_ci, pf) in affine_constraint_cache_inner
         delta_constant = _delta_parametric_constant(model, pf)
         if !iszero(delta_constant)
             pf.current_constant += delta_constant
             new_set = S(pf.set_constant - pf.current_constant)
-            # new_set = _set_with_new_constant(set, param_constant)
             MOI.set(model.optimizer, MOI.ConstraintSet(), inner_ci, new_set)
-            # push!(cis, inner_ci)
-            # push!(sets, new_set)
         end
     end
-    # if !isempty(cis)
-    #     MOI.set(model.optimizer, MOI.ConstraintSet(), cis, sets)
-    # end
     return
 end
 
@@ -192,19 +182,12 @@ function _update_quadratic_constraints!(
         MOI.AbstractScalarSet,
     },
 ) where {F,S<:Union{MOI.LessThan,MOI.GreaterThan,MOI.EqualTo},V}
-    # cis = MOI.ConstraintIndex{F,S}[]
-    # sets = S[]
-    # sizehint!(cis, length(quadratic_constraint_cache_inner))
-    # sizehint!(sets, length(quadratic_constraint_cache_inner))
     for (inner_ci, pf) in quadratic_constraint_cache_inner
         delta_constant = _delta_parametric_constant(model, pf)
         if !iszero(delta_constant)
             pf.current_constant += delta_constant
             new_set = S(pf.set_constant - pf.current_constant)
-            # new_set = _set_with_new_constant(set, param_constant)
             MOI.set(model.optimizer, MOI.ConstraintSet(), inner_ci, new_set)
-            # push!(cis, inner_ci)
-            # push!(sets, new_set)
         end
         delta_terms = _delta_parametric_affine_terms(model, pf)
         if !isempty(delta_terms)
@@ -213,9 +196,6 @@ function _update_quadratic_constraints!(
             MOI.modify(model.optimizer, cis, changes)
         end
     end
-    # if !isempty(cis)
-    #     MOI.set(model.optimizer, MOI.ConstraintSet(), cis, sets)
-    # end
     return
 end
 
