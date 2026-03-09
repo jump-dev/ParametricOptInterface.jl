@@ -1887,13 +1887,10 @@ ParametricOptInterface.Optimizer{Float64, MOIU.Model{Float64}}
 └ NumberOfConstraints: 0
 
 julia> MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_BOUNDS)
-ONLY_BOUNDS::ConstraintsInterpretationCode = 1
 
 julia> MOI.set(model, POI.ConstraintsInterpretation(), POI.ONLY_CONSTRAINTS)
-ONLY_CONSTRAINTS::ConstraintsInterpretationCode = 0
 
 julia> MOI.set(model, POI.ConstraintsInterpretation(), POI.BOUNDS_AND_CONSTRAINTS)
-BOUNDS_AND_CONSTRAINTS::ConstraintsInterpretationCode = 2
 ```
 """
 struct ConstraintsInterpretation <: MOI.AbstractOptimizerAttribute end
