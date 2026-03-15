@@ -2524,6 +2524,36 @@ function test_vector_quadratic_no_parameters_affine_get_constraint_function()
     return
 end
 
+function test_delete_variable_errors()
+    model = POI.Optimizer(MOI.Utilities.Model{Float64}())
+    p, _ = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
+    @test_throws(
+        ErrorException("Cannot delete parameters in ParametricOptInterface."),
+        MOI.delete(model, p),
+    )
+    @test_throws MOI.InvalidIndex MOI.delete(model, MOI.VariableIndex(999999))
+    return
+end
+
+function test_parameter_only_affine_objective()
+    # Objective with only parameter terms (no decision variable terms).
+    # This tests MOI.ScalarConstantChange in isolation.
+    model = POI.Optimizer(HiGHS.Optimizer)
+    MOI.set(model, MOI.Silent(), true)
+    x = MOI.add_variable(model)
+    MOI.add_constraint(model, x, MOI.GreaterThan(0.0))
+    p, pc = MOI.add_constrained_variable(model, MOI.Parameter(3.0))
+    f = MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(2.0, p)], 1.0)
+    MOI.set(model, MOI.ObjectiveFunction{typeof(f)}(), f)
+    MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    MOI.optimize!(model)
+    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 7.0  # 2*3 + 1
+    MOI.set(model, MOI.ConstraintSet(), pc, MOI.Parameter(5.0))
+    MOI.optimize!(model)
+    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 11.0  # 2*5 + 1
+    return
+end
+
 end # module
 
 TestMathOptInterfaceTests.runtests()
