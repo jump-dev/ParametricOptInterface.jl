@@ -1072,6 +1072,7 @@ function _add_constraint_with_parameters_on_function(
     # Create parametric vector quadratic function
     pf = ParametricVectorQuadraticFunction(f)
     _cache_multiplicative_params!(model, pf)
+    # _cache_set_constant!(pf, set) # there is no constant in vector sets
     _update_cache!(pf, model)
 
     # Get the current function after parameter substitution
@@ -1768,6 +1769,10 @@ function MOI.get(
         DoubleDicts.nonempty_outer_keys(model.quadratic_constraint_cache)
         push!(output, (F, S, ParametricQuadraticFunction{T}))
     end
+    for (F, S) in
+        DoubleDicts.nonempty_outer_keys(model.vector_quadratic_constraint_cache)
+        push!(output, (F, S, ParametricVectorQuadraticFunction{T}))
+    end
     return collect(output)
 end
 
@@ -1987,6 +1992,32 @@ function MOI.compute_conflict!(model::Optimizer)
                         model.parameters_in_conflict,
                         term.scalar_term.variable,
                     )
+                end
+            end
+        end
+        for (F, S) in keys(model.vector_quadratic_constraint_cache.dict)
+            vector_quadratic_constraint_cache_inner =
+                model.vector_quadratic_constraint_cache[F, S]
+            for (inner_ci, pf) in vector_quadratic_constraint_cache_inner
+                if MOI.get(
+                    model.optimizer,
+                    MOI.ConstraintConflictStatus(),
+                    inner_ci,
+                ) == MOI.NOT_IN_CONFLICT
+                    continue
+                end
+                for term in vector_affine_parameter_terms(pf)
+                    push!(
+                        model.parameters_in_conflict,
+                        term.scalar_term.variable,
+                    )
+                end
+                for term in vector_quadratic_parameter_parameter_terms(pf)
+                    push!(model.parameters_in_conflict, term.scalar_term.variable_1)
+                    push!(model.parameters_in_conflict, term.scalar_term.variable_2)
+                end
+                for term in vector_quadratic_parameter_variable_terms(pf)
+                    push!(model.parameters_in_conflict, term.scalar_term.variable_1)
                 end
             end
         end
