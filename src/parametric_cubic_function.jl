@@ -130,12 +130,46 @@ function ParametricCubicFunction(parsed::_ParsedCubicExpression{T}) where {T}
     )
 end
 
-# Accessors for cubic terms by type (direct field access)
+"""
+    cubic_affine_parameter_terms(f::ParametricCubicFunction)
+
+Return the affine parameter terms (`p`) of `f`.
+"""
 cubic_affine_parameter_terms(f::ParametricCubicFunction) = f.p
+
+"""
+    cubic_parameter_variable_terms(f::ParametricCubicFunction)
+
+Return the parameter × variable quadratic terms (`pv`) of `f`.
+"""
 cubic_parameter_variable_terms(f::ParametricCubicFunction) = f.pv
+
+"""
+    cubic_parameter_parameter_terms(f::ParametricCubicFunction)
+
+Return the parameter × parameter quadratic terms (`pp`) of `f`.
+"""
 cubic_parameter_parameter_terms(f::ParametricCubicFunction) = f.pp
+
+"""
+    cubic_parameter_variable_variable_terms(f::ParametricCubicFunction)
+
+Return the parameter × variable × variable cubic terms (`pvv`) of `f`.
+"""
 cubic_parameter_variable_variable_terms(f::ParametricCubicFunction) = f.pvv
+
+"""
+    cubic_parameter_parameter_variable_terms(f::ParametricCubicFunction)
+
+Return the parameter × parameter × variable cubic terms (`ppv`) of `f`.
+"""
 cubic_parameter_parameter_variable_terms(f::ParametricCubicFunction) = f.ppv
+
+"""
+    cubic_parameter_parameter_parameter_terms(f::ParametricCubicFunction)
+
+Return the parameter × parameter × parameter cubic terms (`ppp`) of `f`.
+"""
 cubic_parameter_parameter_parameter_terms(f::ParametricCubicFunction) = f.ppp
 
 """
