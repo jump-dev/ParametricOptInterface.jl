@@ -2013,11 +2013,20 @@ function MOI.compute_conflict!(model::Optimizer)
                     )
                 end
                 for term in vector_quadratic_parameter_parameter_terms(pf)
-                    push!(model.parameters_in_conflict, term.scalar_term.variable_1)
-                    push!(model.parameters_in_conflict, term.scalar_term.variable_2)
+                    push!(
+                        model.parameters_in_conflict,
+                        term.scalar_term.variable_1,
+                    )
+                    push!(
+                        model.parameters_in_conflict,
+                        term.scalar_term.variable_2,
+                    )
                 end
                 for term in vector_quadratic_parameter_variable_terms(pf)
-                    push!(model.parameters_in_conflict, term.scalar_term.variable_1)
+                    push!(
+                        model.parameters_in_conflict,
+                        term.scalar_term.variable_1,
+                    )
                 end
             end
         end

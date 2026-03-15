@@ -2425,7 +2425,7 @@ function test_list_of_parametric_constraint_types_with_vector_quadratic()
     MOI.add_constraint(model, f, MOI.Nonnegatives(1))
     types = MOI.get(model, POI.ListOfParametricConstraintTypesPresent())
     @test any(types) do (_, _, P)
-        P == POI.ParametricVectorQuadraticFunction{T}
+        return P == POI.ParametricVectorQuadraticFunction{T}
     end
     return
 end
