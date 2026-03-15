@@ -2380,6 +2380,131 @@ function test_constraint_primal_start_get_for_parameter()
     return
 end
 
+function test_vector_quadratic_parameter_update_round_trip()
+    # Maximize x s.t. x >= 0, p*x <= 1.
+    # Initial p=2 → x=0.5; update p=4 → x=0.25.
+    model = POI.Optimizer(SCS.Optimizer)
+    MOI.set(model, MOI.Silent(), true)
+    x = MOI.add_variable(model)
+    p, cp = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    MOI.add_constraint(model, x, MOI.GreaterThan(0.0))
+    # VectorQuadratic: [1.0 - p*x] ∈ Nonnegatives(1)  →  p*x ≤ 1
+    f = MOI.VectorQuadraticFunction(
+        [MOI.VectorQuadraticTerm(1, MOI.ScalarQuadraticTerm(-1.0, p, x))],
+        MOI.VectorAffineTerm{Float64}[],
+        [1.0],
+    )
+    MOI.add_constraint(model, f, MOI.Nonnegatives(1))
+    # Minimize -x (maximize x)
+    MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    MOI.set(
+        model,
+        MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
+        MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(-1.0, x)], 0.0),
+    )
+    MOI.optimize!(model)
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 0.5 atol = ATOL
+    # Update p = 4 → now x ≤ 0.25
+    MOI.set(model, MOI.ConstraintSet(), cp, MOI.Parameter(4.0))
+    MOI.optimize!(model)
+    @test MOI.get(model, MOI.VariablePrimal(), x) ≈ 0.25 atol = ATOL
+    return
+end
+
+function test_list_of_parametric_constraint_types_with_vector_quadratic()
+    T = Float64
+    model = POI.Optimizer(MOI.Utilities.Model{T}())
+    x = MOI.add_variable(model)
+    p, _cp = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    # VectorQuadratic constraint with a pv term
+    f = MOI.VectorQuadraticFunction(
+        [MOI.VectorQuadraticTerm(1, MOI.ScalarQuadraticTerm(-1.0, p, x))],
+        MOI.VectorAffineTerm{T}[],
+        [1.0],
+    )
+    MOI.add_constraint(model, f, MOI.Nonnegatives(1))
+    types = MOI.get(model, POI.ListOfParametricConstraintTypesPresent())
+    @test any(types) do (_, _, P)
+        return P == POI.ParametricVectorQuadraticFunction{T}
+    end
+    return
+end
+
+function test_compute_conflict_vector_quadratic()
+    T = Float64
+    mock = MOI.Utilities.MockOptimizer(MOI.Utilities.Model{T}())
+    MOI.set(mock, MOI.ConflictStatus(), MOI.COMPUTE_CONFLICT_NOT_CALLED)
+    model = POI.Optimizer(
+        MOI.Utilities.CachingOptimizer(MOI.Utilities.Model{T}(), mock),
+    )
+    x = MOI.add_variable(model)
+    p, p_ci = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    p2, p2_ci = MOI.add_constrained_variable(model, MOI.Parameter(3.0))
+    p3, p3_ci = MOI.add_constrained_variable(model, MOI.Parameter(4.0))
+    p4, p4_ci = MOI.add_constrained_variable(model, MOI.Parameter(5.0))
+    # f1: pv term (IN_CONFLICT) — covers the pv push branch
+    f1 = MOI.VectorQuadraticFunction(
+        [MOI.VectorQuadraticTerm(1, MOI.ScalarQuadraticTerm(-1.0, p, x))],
+        MOI.VectorAffineTerm{T}[],
+        [1.0],
+    )
+    # f2: affine parameter term only (IN_CONFLICT) — covers the affine-p push branch
+    f2 = MOI.VectorQuadraticFunction(
+        MOI.VectorQuadraticTerm{T}[],
+        [MOI.VectorAffineTerm(1, MOI.ScalarAffineTerm(1.0, p2))],
+        [0.0],
+    )
+    # f3: pp term (IN_CONFLICT) — covers the pp push branch
+    f3 = MOI.VectorQuadraticFunction(
+        [MOI.VectorQuadraticTerm(1, MOI.ScalarQuadraticTerm(1.0, p3, p3))],
+        MOI.VectorAffineTerm{T}[],
+        [0.0],
+    )
+    # f4: pv term (NOT_IN_CONFLICT) — covers the continue branch
+    f4 = MOI.VectorQuadraticFunction(
+        [MOI.VectorQuadraticTerm(1, MOI.ScalarQuadraticTerm(-1.0, p4, x))],
+        MOI.VectorAffineTerm{T}[],
+        [1.0],
+    )
+    MOI.add_constraint(model, f1, MOI.Nonnegatives(1))
+    MOI.add_constraint(model, f2, MOI.Nonnegatives(1))
+    MOI.add_constraint(model, f3, MOI.Nonnegatives(1))
+    MOI.add_constraint(model, f4, MOI.Nonnegatives(1))
+    MOI.Utilities.set_mock_optimize!(
+        mock,
+        mock::MOI.Utilities.MockOptimizer -> begin
+            MOI.Utilities.mock_optimize!(
+                mock,
+                MOI.INFEASIBLE,
+                MOI.NO_SOLUTION,
+                MOI.NO_SOLUTION;
+                constraint_conflict_status = [
+                    (MOI.VectorAffineFunction{T}, MOI.Nonnegatives) => [
+                        MOI.IN_CONFLICT,     # f1 (pv)
+                        MOI.IN_CONFLICT,     # f2 (affine-p)
+                        MOI.IN_CONFLICT,     # f3 (pp)
+                        MOI.NOT_IN_CONFLICT, # f4 (pv, not conflicting)
+                    ],
+                ],
+            )
+            MOI.set(mock, MOI.ConflictStatus(), MOI.CONFLICT_FOUND)
+        end,
+    )
+    MOI.optimize!(model)
+    @test MOI.get(model, MOI.TerminationStatus()) == MOI.INFEASIBLE
+    MOI.compute_conflict!(model)
+    @test MOI.get(model, MOI.ConflictStatus()) == MOI.CONFLICT_FOUND
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), p_ci) ==
+          MOI.MAYBE_IN_CONFLICT  # p in f1 (IN_CONFLICT, pv)
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), p2_ci) ==
+          MOI.MAYBE_IN_CONFLICT  # p2 in f2 (IN_CONFLICT, affine-p)
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), p3_ci) ==
+          MOI.MAYBE_IN_CONFLICT  # p3 in f3 (IN_CONFLICT, pp)
+    @test MOI.get(model, MOI.ConstraintConflictStatus(), p4_ci) ==
+          MOI.NOT_IN_CONFLICT    # p4 in f4 (NOT_IN_CONFLICT)
+    return
+end
+
 function test_vector_quadratic_no_parameters_affine_get_constraint_function()
     # A VectorQuadraticFunction with no parameters and no quadratic terms
     # (empty quadratic_terms) should use the affine fast path. The outer

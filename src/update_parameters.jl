@@ -152,19 +152,17 @@ end
 
 function _affine_build_change_and_up_param_func(
     pf::ParametricVectorQuadraticFunction{T},
-    delta_terms,
+    delta_terms::Dict,
 ) where {T}
+    new_terms = Dict{MOI.VariableIndex,Vector{Tuple{Int64,T}}}()
     for ((var, output_idx), coef) in delta_terms
         base_coef = pf.current_terms_with_p[(var, output_idx)]
         new_coef = base_coef + coef
         pf.current_terms_with_p[(var, output_idx)] = new_coef
-    end
-    new_terms = Dict{MOI.VariableIndex,Vector{Tuple{Int64,T}}}()
-    for ((var, output_idx), coef) in pf.current_terms_with_p
-        if !iszero(coef)
-            base = get!(new_terms, var, Tuple{Int64,T}[])
-            push!(base, (output_idx, coef))
-        end
+        base = get!(new_terms, var, Tuple{Int64,T}[])
+        # we can rely on push because delta_terms if a Dict so coef are
+        # unique per (var, output_idx)
+        push!(base, (output_idx, new_coef))
     end
     changes = Vector{MOI.MultirowChange}(undef, length(new_terms))
     for (i, (var, tuples)) in enumerate(new_terms)
