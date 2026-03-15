@@ -377,9 +377,13 @@ function test_moi_ListOfConstraintTypesPresent()
     model = POI.Optimizer(ipopt)
     MOI.set(model, MOI.Silent(), true)
     x = MOI.add_variables(model, N / 2)
-    y = first.(
-        MOI.add_constrained_variable.(model, MOI.Parameter.(ones(Int(N / 2)))),
-    )
+    y =
+        first.(
+            MOI.add_constrained_variable.(
+                model,
+                MOI.Parameter.(ones(Int(N / 2))),
+            ),
+        )
 
     MOI.add_constraint(
         model,
@@ -673,10 +677,11 @@ function test_vector_parameter_affine_nonnegatives()
     t, ct = MOI.add_constrained_variable(model, MOI.Parameter(5.0))
     A = [1.0 0 -1; 0 1 -1]
     b = [1.0; 2]
-    terms = MOI.VectorAffineTerm.(
-        1:2,
-        MOI.ScalarAffineTerm.(A, reshape([x, y, t], 1, 3)),
-    )
+    terms =
+        MOI.VectorAffineTerm.(
+            1:2,
+            MOI.ScalarAffineTerm.(A, reshape([x, y, t], 1, 3)),
+        )
     f = MOI.VectorAffineFunction(vec(terms), b)
     set = MOI.Nonnegatives(2)
     cnn = MOI.add_constraint(model, f, MOI.Nonnegatives(2))
@@ -725,10 +730,11 @@ function test_vector_parameter_affine_nonpositives()
     t, ct = MOI.add_constrained_variable(model, MOI.Parameter(5.0))
     A = [-1.0 0 1; 0 -1 1]
     b = [-1.0; -2]
-    terms = MOI.VectorAffineTerm.(
-        1:2,
-        MOI.ScalarAffineTerm.(A, reshape([x, y, t], 1, 3)),
-    )
+    terms =
+        MOI.VectorAffineTerm.(
+            1:2,
+            MOI.ScalarAffineTerm.(A, reshape([x, y, t], 1, 3)),
+        )
     f = MOI.VectorAffineFunction(vec(terms), b)
     set = MOI.Nonnegatives(2)
     cnn = MOI.add_constraint(model, f, MOI.Nonpositives(2))
@@ -2521,6 +2527,36 @@ function test_vector_quadratic_no_parameters_affine_get_constraint_function()
     @test MOI.is_valid(model, ci)
     f2 = MOI.get(model, MOI.ConstraintFunction(), ci)
     @test canonical_compare(f, f2)
+    return
+end
+
+function test_delete_variable_errors()
+    model = POI.Optimizer(MOI.Utilities.Model{Float64}())
+    p, _ = MOI.add_constrained_variable(model, MOI.Parameter(1.0))
+    @test_throws(
+        ErrorException("Cannot delete parameters in ParametricOptInterface."),
+        MOI.delete(model, p),
+    )
+    @test_throws MOI.InvalidIndex MOI.delete(model, MOI.VariableIndex(999999))
+    return
+end
+
+function test_parameter_only_affine_objective()
+    # Objective with only parameter terms (no decision variable terms).
+    # This tests MOI.ScalarConstantChange in isolation.
+    model = POI.Optimizer(HiGHS.Optimizer)
+    MOI.set(model, MOI.Silent(), true)
+    x = MOI.add_variable(model)
+    MOI.add_constraint(model, x, MOI.GreaterThan(0.0))
+    p, pc = MOI.add_constrained_variable(model, MOI.Parameter(3.0))
+    f = MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(2.0, p)], 1.0)
+    MOI.set(model, MOI.ObjectiveFunction{typeof(f)}(), f)
+    MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    MOI.optimize!(model)
+    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 7.0  # 2*3 + 1
+    MOI.set(model, MOI.ConstraintSet(), pc, MOI.Parameter(5.0))
+    MOI.optimize!(model)
+    @test MOI.get(model, MOI.ObjectiveValue()) ≈ 11.0  # 2*5 + 1
     return
 end
 
