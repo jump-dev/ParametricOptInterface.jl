@@ -22,7 +22,7 @@ function _Monomial{T}(coefficient::T, var::MOI.VariableIndex) where {T}
 end
 
 """
-    _monomial_degree(m::_Monomial) -> Int
+    _monomial_degree(m::_Monomial)::Int
 
 Total degree of a monomial (number of variable/parameter factors).
 """
@@ -72,7 +72,7 @@ struct _ParsedCubicExpression{T}
 end
 
 """
-    _expand_to_monomials(arg, ::Type{T}) where {T} -> Union{Vector{_Monomial{T}}, Nothing}
+    _expand_to_monomials(arg, ::Type{T}) where {T}::Union{Vector{_Monomial{T}}, Nothing}
 
 Expand an expression argument to a list of monomials.
 Returns `nothing` if the expression is not a valid polynomial.
@@ -389,7 +389,7 @@ function _combine_like_monomials(monomials::Vector{_Monomial{T}}) where {T}
 end
 
 """
-    _classify_monomial(m::_Monomial) -> Symbol
+    _classify_monomial(m::_Monomial)::Symbol
 
 Classify a monomial by its structure.
 """
@@ -423,7 +423,7 @@ function _classify_monomial(m::_Monomial)
 end
 
 """
-    _parse_cubic_expression(f::MOI.ScalarNonlinearFunction, ::Type{T}) where {T} -> Union{_ParsedCubicExpression{T}, Nothing}
+    _parse_cubic_expression(f::MOI.ScalarNonlinearFunction, ::Type{T}) where {T}::Union{_ParsedCubicExpression{T}, Nothing}
 
 Parse a ScalarNonlinearFunction and return a _ParsedCubicExpression if it represents
 a valid cubic polynomial (with parameters multiplying at most quadratic variable terms).

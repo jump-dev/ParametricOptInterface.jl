@@ -3,6 +3,12 @@
 # Use of this source code is governed by an MIT-style license that can be found
 # in the LICENSE.md file or at https://opensource.org/licenses/MIT.
 
+"""
+    _set_with_new_constant(s, val)
+
+Return a new set of the same type as `s` with its bound(s) shifted by `-val`.
+Used to absorb the evaluated parametric constant into the constraint's RHS.
+"""
 function _set_with_new_constant(s::MOI.LessThan{T}, val::T) where {T}
     return MOI.LessThan{T}(s.upper - val)
 end
@@ -19,9 +25,15 @@ function _set_with_new_constant(s::MOI.Interval{T}, val::T) where {T}
     return MOI.Interval{T}(s.lower - val, s.upper - val)
 end
 
-# Affine
-# change to use only inner_ci all around so tha tupdates are faster
-# modifications should not be used any ways, afterall we have param all around
+"""
+    _update_affine_constraints!(model)
+
+Push parameter value changes to all scalar affine constraints in the inner
+optimizer by updating each constraint's set RHS incrementally.
+Iterates over `(F, S)` type keys as a type-instability barrier.
+"""
+# change to use only inner_ci all around so that updates are faster
+# modifications should not be used anyway, afterall we have param all around
 function _update_affine_constraints!(model::Optimizer)
     for (F, S) in keys(model.affine_constraint_cache.dict)
         affine_constraint_cache_inner = model.affine_constraint_cache[F, S]
@@ -83,6 +95,12 @@ function _update_affine_constraints!(
     return
 end
 
+"""
+    _update_vector_affine_constraints!(model)
+
+Push parameter value changes to all vector affine constraints in the inner
+optimizer by updating each constraint's constant vector incrementally.
+"""
 function _update_vector_affine_constraints!(model::Optimizer)
     for (F, S) in keys(model.vector_affine_constraint_cache.dict)
         vector_affine_constraint_cache_inner =
@@ -116,6 +134,12 @@ function _update_vector_affine_constraints!(
     return
 end
 
+"""
+    _update_quadratic_constraints!(model)
+
+Push parameter value changes to all quadratic constraints in the inner
+optimizer, updating both the set RHS and linear coefficients from `p*v` terms.
+"""
 function _update_quadratic_constraints!(model::Optimizer)
     for (F, S) in keys(model.quadratic_constraint_cache.dict)
         quadratic_constraint_cache_inner =
@@ -134,6 +158,12 @@ function _update_quadratic_constraints!(model::Optimizer)
     return
 end
 
+"""
+    _affine_build_change_and_up_param_func(pf, delta_terms)
+
+Apply `delta_terms` to `pf.current_terms_with_p` and return a vector of MOI
+coefficient-change objects ready to pass to `MOI.modify`. Mutates `pf`.
+"""
 function _affine_build_change_and_up_param_func(
     pf::ParametricQuadraticFunction{T},
     delta_terms,
@@ -225,6 +255,12 @@ function _update_quadratic_constraints!(
     return
 end
 
+"""
+    _update_affine_objective!(model)
+
+Update the constant term of the affine objective in the inner optimizer to
+reflect the current parameter values.
+"""
 function _update_affine_objective!(model::Optimizer{T}) where {T}
     if model.affine_objective_cache === nothing
         return
@@ -243,6 +279,12 @@ function _update_affine_objective!(model::Optimizer{T}) where {T}
     return
 end
 
+"""
+    _update_quadratic_objective!(model)
+
+Update the constant term and linear coefficients of the quadratic objective
+in the inner optimizer to reflect the current parameter values.
+"""
 function _update_quadratic_objective!(model::Optimizer{T}) where {T}
     if model.quadratic_objective_cache === nothing
         return
@@ -267,6 +309,17 @@ function _update_quadratic_objective!(model::Optimizer{T}) where {T}
     return
 end
 
+"""
+    update_parameters!(model::Optimizer)
+
+Propagate all pending parameter value changes to the inner optimizer and
+commit them. After this call, `model.parameters` reflects the new values and
+`model.updated_parameters` is reset to `NaN` (indicating no pending update).
+
+Must be called after modifying parameter values via
+`MOI.set(model, MOI.ConstraintSet(), cp, MOI.Parameter(new_value))` and
+before the next `MOI.optimize!` for the changes to take effect.
+"""
 function update_parameters!(model::Optimizer)
     _update_affine_constraints!(model)
     _update_vector_affine_constraints!(model)
@@ -288,6 +341,12 @@ function update_parameters!(model::Optimizer)
     return
 end
 
+"""
+    _update_vector_quadratic_constraints!(model)
+
+Push parameter value changes to all vector quadratic constraints in the inner
+optimizer, updating both the constant vector and linear coefficients.
+"""
 function _update_vector_quadratic_constraints!(model::Optimizer)
     for (F, S) in keys(model.vector_quadratic_constraint_cache.dict)
         vector_quadratic_constraint_cache_inner =

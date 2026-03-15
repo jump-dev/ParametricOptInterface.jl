@@ -24,14 +24,33 @@ struct ParameterIndex
     index::Int64
 end
 
+"""
+    p_idx(vi::MOI.VariableIndex)::ParameterIndex
+
+Convert a `VariableIndex` that represents a parameter into a `ParameterIndex`
+by stripping the `PARAMETER_INDEX_THRESHOLD` offset.
+"""
 function p_idx(vi::MOI.VariableIndex)::ParameterIndex
     return ParameterIndex(vi.value - PARAMETER_INDEX_THRESHOLD)
 end
 
+"""
+    v_idx(pi::ParameterIndex)::MOI.VariableIndex
+
+Convert a `ParameterIndex` back into a `VariableIndex` by adding the
+`PARAMETER_INDEX_THRESHOLD` offset.
+"""
 function v_idx(pi::ParameterIndex)::MOI.VariableIndex
     return MOI.VariableIndex(pi.index + PARAMETER_INDEX_THRESHOLD)
 end
 
+"""
+    p_val(vi::MOI.VariableIndex)::Int64
+    p_val(ci::MOI.ConstraintIndex)::Int64
+
+Return the integer parameter index (1-based position in `model.parameters`)
+corresponding to the given variable or constraint index.
+"""
 function p_val(vi::MOI.VariableIndex)::Int64
     return vi.value - PARAMETER_INDEX_THRESHOLD
 end
@@ -299,6 +318,11 @@ function Optimizer{T}(
     return Optimizer{T}(inner; kwargs...)
 end
 
+"""
+    _parameter_in_model(model, v)
+
+Return `true` if `v` is a parameter index and that parameter exists in `model`.
+"""
 function _parameter_in_model(model::Optimizer, v::MOI.VariableIndex)
     return _is_parameter(v) && haskey(model.parameters, p_idx(v))
 end

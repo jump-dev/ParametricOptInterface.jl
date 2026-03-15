@@ -3,12 +3,27 @@
 # Use of this source code is governed by an MIT-style license that can be found
 # in the LICENSE.md file or at https://opensource.org/licenses/MIT.
 
-_is_variable(v::MOI.VariableIndex) = !_is_parameter(v)
+"""
+    _is_parameter(v::MOI.VariableIndex)::Bool
 
+Return `true` if `v` encodes a parameter (index above `PARAMETER_INDEX_THRESHOLD`).
+"""
 function _is_parameter(v::MOI.VariableIndex)
     return PARAMETER_INDEX_THRESHOLD < v.value <= PARAMETER_INDEX_THRESHOLD_MAX
 end
 
+"""
+    _is_variable(v::MOI.VariableIndex)::Bool
+
+Return `true` if `v` is a true decision variable (not a parameter).
+"""
+_is_variable(v::MOI.VariableIndex) = !_is_parameter(v)
+
+"""
+    _has_parameters(f)::Bool
+
+Return `true` if any term in `f` contains a parameter index.
+"""
 function _has_parameters(f::MOI.ScalarAffineFunction{T}) where {T}
     for term in f.terms
         if _is_parameter(term.variable)
@@ -67,6 +82,13 @@ function _has_parameters(f::MOI.VectorQuadraticFunction)
     return false
 end
 
+"""
+    _cache_multiplicative_params!(model, f)
+
+Record all parameters that appear in `p*v` (or higher) product terms into
+`model.multiplicative_parameters_pv`. This is used to reject dual queries for
+parameters whose dual is not well-defined.
+"""
 function _cache_multiplicative_params!(
     model::Optimizer{T},
     f::ParametricQuadraticFunction{T},
@@ -265,6 +287,13 @@ function MOI.get(model::Optimizer, tp::Type{MOI.VariableIndex}, attr::String)
     return MOI.get(model.optimizer, tp, attr)
 end
 
+"""
+    _add_variable(model, inner_vi)
+
+Validate that `inner_vi` is not a parameter index and return it unchanged.
+Raises an error if the inner solver accidentally created a variable index in
+the parameter range.
+"""
 function _add_variable(model::Optimizer, inner_vi)
     if _is_parameter(inner_vi)
         error(
@@ -307,6 +336,11 @@ function MOI.supports_add_constrained_variables(
     return MOI.supports_add_constrained_variables(model.optimizer, S)
 end
 
+"""
+    _assert_parameter_is_finite(set::MOI.Parameter)
+
+Throw an `AssertionError` if `set.value` is not finite.
+"""
 function _assert_parameter_is_finite(set::MOI.Parameter{T}) where {T}
     if !isfinite(set.value)
         throw(
@@ -356,6 +390,12 @@ function MOI.add_constrained_variables(
     return _add_variable.(model, inner_vis), inner_ci
 end
 
+"""
+    _add_to_constraint_map!(model, ci)
+
+Register `ci` in `model.constraint_outer_to_inner` (mapping outer to inner
+index). Specialized methods also increment the affine or quadratic counter.
+"""
 function _add_to_constraint_map!(model::Optimizer, ci)
     model.constraint_outer_to_inner[ci] = ci
     return
@@ -472,6 +512,13 @@ function MOI.delete(model::Optimizer, v::MOI.VariableIndex)
     return
 end
 
+"""
+    _delete_variable_index_constraint(model, d, F, S, v)
+
+Remove stale entries from constraint dict `d` after variable `v` is deleted.
+Specialized for `VectorOfVariables` (prunes invalidated constraints) and
+`VariableIndex` (removes the entry keyed by `v`). The default method is a no-op.
+"""
 _delete_variable_index_constraint(model, d, F, S, v) = nothing
 
 function _delete_variable_index_constraint(
@@ -843,6 +890,12 @@ function MOI.modify(
     return
 end
 
+"""
+    _add_constraint_direct_and_cache_map!(model, f, set)
+
+Add constraint `(f, set)` directly to the inner optimizer and register it in
+`model.constraint_outer_to_inner`. Used for constraints with no parameters.
+"""
 function _add_constraint_direct_and_cache_map!(model::Optimizer, f, set)
     ci = MOI.add_constraint(model.optimizer, f, set)
     _add_to_constraint_map!(model, ci)
@@ -862,6 +915,13 @@ function MOI.add_constraint(
     return _add_constraint_direct_and_cache_map!(model, f, set)
 end
 
+"""
+    _add_constraint_with_parameters_on_function(model, f, set)
+
+Add a constraint whose function `f` contains at least one parameter.
+Constructs the appropriate `Parametric*Function`, caches it, and registers the
+outer-to-inner constraint index mapping. Dispatches on `f` type.
+"""
 function _add_constraint_with_parameters_on_function(
     model::Optimizer,
     f::MOI.ScalarAffineFunction{T},
@@ -913,6 +973,13 @@ function MOI.add_constraint(
     return outer_ci
 end
 
+"""
+    _add_vi_constraint(model, pf, set)
+
+Add a parametric affine constraint as a variable bound in the inner optimizer
+(i.e. `VariableIndex`-in-set form). Used when `ConstraintsInterpretation` allows
+converting single-variable constraints with a unit coefficient into bounds.
+"""
 function _add_vi_constraint(
     model::Optimizer,
     pf::ParametricAffineFunction{T},
@@ -1026,6 +1093,11 @@ function _add_constraint_with_parameters_on_function(
     return outer_ci
 end
 
+"""
+    _is_affine(f::MOI.ScalarQuadraticFunction)::Bool
+
+Return `true` if `f` has no quadratic terms (i.e., reduces to an affine function).
+"""
 _is_affine(f::MOI.ScalarQuadraticFunction) = isempty(f.quadratic_terms)
 
 function MOI.add_constraint(
@@ -1062,6 +1134,11 @@ function MOI.add_constraint(
     return _add_constraint_with_parameters_on_function(model, f, set)
 end
 
+"""
+    _is_vector_affine(f::MOI.VectorQuadraticFunction)::Bool
+
+Return `true` if `f` has no quadratic terms (i.e., reduces to a vector affine function).
+"""
 _is_vector_affine(f::MOI.VectorQuadraticFunction) = isempty(f.quadratic_terms)
 
 function _add_constraint_with_parameters_on_function(
@@ -1283,6 +1360,12 @@ function MOI.get(model::Optimizer, attr::MOI.ObjectiveFunction)
     return MOI.get(model.original_objective_cache, attr)
 end
 
+"""
+    _empty_objective_function_caches!(model::Optimizer)
+
+Clear all cached objective function data and reset `original_objective_cache`.
+Called before setting a new objective to avoid stale cached terms.
+"""
 function _empty_objective_function_caches!(model::Optimizer{T}) where {T}
     model.affine_objective_cache = nothing
     model.quadratic_objective_cache = nothing

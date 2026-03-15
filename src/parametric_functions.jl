@@ -5,6 +5,13 @@
 
 abstract type ParametricFunction{T} end
 
+"""
+    _cache_set_constant!(f, s)
+
+Store the bound constant of set `s` into `f.set_constant` for fast incremental
+updates. No-op for set types that do not carry a scalar constant (e.g. `Interval`
+is handled via a separate `_set_with_new_constant` path).
+"""
 function _cache_set_constant!(
     f::ParametricFunction{T},
     s::Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
@@ -20,6 +27,19 @@ function _cache_set_constant!(
     return
 end
 
+"""
+    ParametricQuadraticFunction{T}
+
+Internal representation of a scalar quadratic function that may contain
+parameters. Terms are split at construction time into:
+- `pv`: parameter × variable quadratic terms (become linear after substitution)
+- `pp`: parameter × parameter quadratic terms (become constant after substitution)
+- `vv`: variable × variable quadratic terms (passed through unchanged)
+- `p` / `v`: affine parameter / variable terms
+- `affine_data`: precomputed per-variable sums of `p*v` coefficients (variables that appear in `pv`)
+- `affine_data_np`: affine coefficients for variables that do not appear in any `pv` term
+- `current_constant` / `current_terms_with_p`: cached values currently set in the inner solver
+"""
 mutable struct ParametricQuadraticFunction{T} <: ParametricFunction{T}
     # helper to efficiently update affine terms
     affine_data::Dict{MOI.VariableIndex,T}
@@ -88,26 +108,58 @@ function ParametricQuadraticFunction(
     )
 end
 
+"""
+    affine_parameter_terms(f)
+
+Return the affine terms of `f` whose variable index is a parameter.
+"""
 function affine_parameter_terms(f::ParametricQuadraticFunction)
     return f.p
 end
 
+"""
+    affine_variable_terms(f)
+
+Return the affine terms of `f` whose variable index is a true variable.
+"""
 function affine_variable_terms(f::ParametricQuadraticFunction)
     return f.v
 end
 
+"""
+    quadratic_parameter_variable_terms(f)
+
+Return the `p*v` quadratic terms of `f` (parameter is normalized to `variable_1`).
+"""
 function quadratic_parameter_variable_terms(f::ParametricQuadraticFunction)
     return f.pv
 end
 
+"""
+    quadratic_parameter_parameter_terms(f)
+
+Return the `p*p` quadratic terms of `f`.
+"""
 function quadratic_parameter_parameter_terms(f::ParametricQuadraticFunction)
     return f.pp
 end
 
+"""
+    quadratic_variable_variable_terms(f)
+
+Return the `v*v` quadratic terms of `f`.
+"""
 function quadratic_variable_variable_terms(f::ParametricQuadraticFunction)
     return f.vv
 end
 
+"""
+    _split_quadratic_terms(terms)
+
+Partition scalar quadratic terms into `(pv, pp, vv)` vectors where `p` indices
+are parameters and `v` indices are variables. `pv` terms are normalized so the
+parameter is always `variable_1`.
+"""
 function _split_quadratic_terms(
     terms::Vector{MOI.ScalarQuadraticTerm{T}},
 ) where {T}
@@ -144,6 +196,12 @@ function _split_quadratic_terms(
     return pv, pp, vv
 end
 
+"""
+    _count_scalar_quadratic_terms_types(terms)
+
+Return `(num_vv, num_pp, num_pv)` counts for a vector of scalar quadratic terms.
+Used to pre-allocate the output vectors of `_split_quadratic_terms`.
+"""
 function _count_scalar_quadratic_terms_types(
     terms::Vector{MOI.ScalarQuadraticTerm{T}},
 ) where {T}
@@ -168,6 +226,12 @@ function _count_scalar_quadratic_terms_types(
     return num_vv, num_pp, num_pv
 end
 
+"""
+    _original_function(f)
+
+Reconstruct the original MOI function from a parametric function, with
+parameter indices treated as ordinary variable indices.
+"""
 function _original_function(f::ParametricQuadraticFunction{T}) where {T}
     return MOI.ScalarQuadraticFunction{T}(
         vcat(
@@ -180,6 +244,12 @@ function _original_function(f::ParametricQuadraticFunction{T}) where {T}
     )
 end
 
+"""
+    _current_function(f)
+
+Build the MOI function with all parameter values substituted and cached
+affine coefficients applied. Used when setting the function in the inner solver.
+"""
 function _current_function(f::ParametricQuadraticFunction{T}) where {T}
     affine = MOI.ScalarAffineTerm{T}[]
     sizehint!(affine, length(f.current_terms_with_p) + length(f.affine_data_np))
@@ -196,6 +266,12 @@ function _current_function(f::ParametricQuadraticFunction{T}) where {T}
     )
 end
 
+"""
+    _parametric_constant(model, f)
+
+Evaluate the scalar (or vector) constant of `f` after substituting the current
+parameter values. Does not include the set constant.
+"""
 function _parametric_constant(
     model,
     f::ParametricQuadraticFunction{T},
@@ -218,6 +294,12 @@ function _parametric_constant(
     return param_constant
 end
 
+"""
+    _delta_parametric_constant(model, f)
+
+Compute the change in the parametric constant of `f` due to pending parameter
+updates in `model.updated_parameters`. Returns zero when no parameters changed.
+"""
 function _delta_parametric_constant(
     model,
     f::ParametricQuadraticFunction{T},
@@ -252,6 +334,12 @@ function _delta_parametric_constant(
     return delta_constant
 end
 
+"""
+    _parametric_affine_terms(model, f)
+
+Return a dict mapping each variable to its total affine coefficient after
+substituting current parameter values into all `p*v` quadratic terms.
+"""
 function _parametric_affine_terms(
     model,
     f::ParametricQuadraticFunction{T},
@@ -271,6 +359,12 @@ function _parametric_affine_terms(
     return param_terms_dict
 end
 
+"""
+    _delta_parametric_affine_terms(model, f)
+
+Return a dict of coefficient changes for each variable in `p*v` terms, based
+on pending parameter updates. Empty dict when no parameters changed.
+"""
 function _delta_parametric_affine_terms(
     model,
     f::ParametricQuadraticFunction{T},
@@ -290,12 +384,27 @@ function _delta_parametric_affine_terms(
     return delta_terms_dict
 end
 
+"""
+    _update_cache!(f, model)
+
+Recompute and store `f.current_constant` (and `f.current_terms_with_p` for
+quadratic types) from the current parameter values. Called when a constraint
+is first added to the inner solver.
+"""
 function _update_cache!(f::ParametricQuadraticFunction{T}, model) where {T}
     f.current_constant = _parametric_constant(model, f)
     f.current_terms_with_p = _parametric_affine_terms(model, f)
     return nothing
 end
 
+"""
+    ParametricAffineFunction{T}
+
+Internal representation of a scalar affine function that may contain
+parameters. Stores parameter terms (`p`) and variable terms (`v`) separately.
+`current_constant` caches the evaluated constant (including parameter contributions)
+currently set in the inner solver.
+"""
 mutable struct ParametricAffineFunction{T} <: ParametricFunction{T}
     # constant * parameter
     p::Vector{MOI.ScalarAffineTerm{T}}
@@ -336,6 +445,12 @@ function affine_variable_terms(f::ParametricAffineFunction)
     return f.v
 end
 
+"""
+    _split_affine_terms(terms)
+
+Partition scalar affine terms into `(v, p)` where `v` are pure variable terms
+and `p` are parameter terms.
+"""
 function _split_affine_terms(terms::Vector{MOI.ScalarAffineTerm{T}}) where {T}
     num_v, num_p = _count_scalar_affine_terms_types(terms)
     v = Vector{MOI.ScalarAffineTerm{T}}(undef, num_v)
@@ -354,6 +469,12 @@ function _split_affine_terms(terms::Vector{MOI.ScalarAffineTerm{T}}) where {T}
     return v, p
 end
 
+"""
+    _count_scalar_affine_terms_types(terms)
+
+Return `(num_vars, num_params)` counts for a vector of scalar affine terms.
+Used to pre-allocate the output vectors of `_split_affine_terms`.
+"""
 function _count_scalar_affine_terms_types(
     terms::Vector{MOI.ScalarAffineTerm{T}},
 ) where {T}
@@ -413,6 +534,14 @@ function _update_cache!(f::ParametricAffineFunction{T}, model) where {T}
     return nothing
 end
 
+"""
+    ParametricVectorAffineFunction{T}
+
+Internal representation of a vector affine function that may contain
+parameters. Stores parameter terms (`p`) and variable terms (`v`) separately.
+`current_constant` caches the evaluated constant vector currently set in the
+inner solver.
+"""
 mutable struct ParametricVectorAffineFunction{T}
     # constant * parameter
     p::Vector{MOI.VectorAffineTerm{T}}
@@ -439,14 +568,30 @@ function ParametricVectorAffineFunction(
     )
 end
 
+"""
+    vector_affine_parameter_terms(f)
+
+Return the affine terms of `f` whose variable index is a parameter.
+"""
 function vector_affine_parameter_terms(f::ParametricVectorAffineFunction)
     return f.p
 end
 
+"""
+    vector_affine_variable_terms(f)
+
+Return the affine terms of `f` whose variable index is a true variable.
+"""
 function vector_affine_variable_terms(f::ParametricVectorAffineFunction)
     return f.v
 end
 
+"""
+    _split_vector_affine_terms(terms)
+
+Partition vector affine terms into `(v, p)` where `v` are pure variable terms
+and `p` are parameter terms.
+"""
 function _split_vector_affine_terms(
     terms::Vector{MOI.VectorAffineTerm{T}},
 ) where {T}
@@ -467,6 +612,12 @@ function _split_vector_affine_terms(
     return v, p
 end
 
+"""
+    _count_vector_affine_terms_types(terms)
+
+Return `(num_vars, num_params)` counts for a vector of vector affine terms.
+Used to pre-allocate the output vectors of `_split_vector_affine_terms`.
+"""
 function _count_vector_affine_terms_types(
     terms::Vector{MOI.VectorAffineTerm{T}},
 ) where {T}
@@ -531,6 +682,14 @@ function _update_cache!(f::ParametricVectorAffineFunction{T}, model) where {T}
     return nothing
 end
 
+"""
+    ParametricVectorQuadraticFunction{T}
+
+Internal representation of a vector quadratic function that may contain
+parameters. Mirrors `ParametricQuadraticFunction` but for vector-valued
+constraints; `affine_data` keys are `(variable, output_index)` tuples because
+the same variable can appear in different output rows.
+"""
 mutable struct ParametricVectorQuadraticFunction{T}
     # helper to efficiently update affine terms
     affine_data::Dict{Tuple{MOI.VariableIndex,Int},T}
@@ -605,18 +764,33 @@ function ParametricVectorQuadraticFunction(
     )
 end
 
+"""
+    vector_quadratic_parameter_variable_terms(f)
+
+Return the `p*v` quadratic terms of `f` (parameter is normalized to `variable_1`).
+"""
 function vector_quadratic_parameter_variable_terms(
     f::ParametricVectorQuadraticFunction,
 )
     return f.pv
 end
 
+"""
+    vector_quadratic_parameter_parameter_terms(f)
+
+Return the `p*p` quadratic terms of `f`.
+"""
 function vector_quadratic_parameter_parameter_terms(
     f::ParametricVectorQuadraticFunction,
 )
     return f.pp
 end
 
+"""
+    vector_quadratic_variable_variable_terms(f)
+
+Return the `v*v` quadratic terms of `f`.
+"""
 function vector_quadratic_variable_variable_terms(
     f::ParametricVectorQuadraticFunction,
 )
@@ -631,6 +805,12 @@ function vector_affine_variable_terms(f::ParametricVectorQuadraticFunction)
     return f.v
 end
 
+"""
+    _split_vector_quadratic_terms(terms)
+
+Partition vector quadratic terms into `(pv, pp, vv)`. `pv` terms are
+normalized so the parameter index is always `variable_1`.
+"""
 function _split_vector_quadratic_terms(
     terms::Vector{MOI.VectorQuadraticTerm{T}},
 ) where {T}
