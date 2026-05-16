@@ -2134,7 +2134,8 @@ function test_constraint_bridging_cost_quadratic()
         )
     end
     optimizer = POI.Optimizer(HiGHS.Optimizer)
-    for S in (MOI.LessThan{Float64}, MOI.GreaterThan{Float64}, MOI.EqualTo{Float64})
+    for S in
+        (MOI.LessThan{Float64}, MOI.GreaterThan{Float64}, MOI.EqualTo{Float64})
         @test MOI.supports_constraint(
             optimizer,
             MOI.ScalarQuadraticFunction{Float64},
