@@ -601,6 +601,16 @@ function MOI.supports_constraint(
     )
 end
 
+function MOI.get(
+    model::Optimizer{T},
+    ::MOI.ConstraintBridgingCost{MOI.ScalarQuadraticFunction{T},S},
+) where {T,S<:MOI.AbstractSet}
+    return MOI.get(
+        model.optimizer,
+        MOI.ConstraintBridgingCost{MOI.ScalarAffineFunction{T},S}(),
+    )
+end
+
 function MOI.supports_constraint(
     model::Optimizer,
     ::Type{MOI.VectorQuadraticFunction{T}},
@@ -610,6 +620,16 @@ function MOI.supports_constraint(
         model.optimizer,
         MOI.VectorAffineFunction{T},
         S,
+    )
+end
+
+function MOI.get(
+    model::Optimizer{T},
+    ::MOI.ConstraintBridgingCost{MOI.VectorQuadraticFunction{T},S},
+) where {T,S<:MOI.AbstractSet}
+    return MOI.get(
+        model.optimizer,
+        MOI.ConstraintBridgingCost{MOI.VectorAffineFunction{T},S}(),
     )
 end
 
