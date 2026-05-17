@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Benders Quantile Regression · ParametricOptInterface.jl</title><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">ParametricOptInterface.jl</a></span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../manual/">Manual</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../example/">Basic Examples</a></li><li class="is-active"><a class="tocitem" href>Benders Quantile Regression</a></li><li><a class="tocitem" href="../markowitz/">Markowitz Efficient Frontier</a></li></ul></li><li><a class="tocitem" href="../../reference/">Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Benders Quantile Regression</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Benders Quantile Regression</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/jump-dev/ParametricOptInterface.jl/blob/master/docs/src/Examples/benders.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Benders-Quantile-Regression"><a class="docs-heading-anchor" href="#Benders-Quantile-Regression">Benders Quantile Regression</a><a id="Benders-Quantile-Regression-1"></a><a class="docs-heading-anchor-permalink" href="#Benders-Quantile-Regression" title="Permalink"></a></h1><p>We will apply Norm-1 regression to the <a href="https://en.wikipedia.org/wiki/Linear_regression">Linear Regression</a> problem. Linear regression is a statistical tool to obtain the relation between one <strong>dependent variable</strong> and other <strong>explanatory variables</strong>. In other words, given a set of <span>$n$</span> explanatory variables <span>$X = \{ X_1, \dots, X_n \}$</span> we would like to obtain the best possible estimate for <span>$Y$</span>. In order to accomplish such a task we make the hypothesis that <span>$Y$</span> is approximately linear function of <span>$X$</span>:</p><p class="math-container">\[Y = \sum_{j =1}^n \beta_j X_j + \varepsilon\]</p><p>where <span>$\varepsilon$</span> is some random error.</p><p>The estimation of the <span>$\beta$</span> values relies on observations of the variables: <span>$\{y^i, x_1^i, \dots, x_n^i\}_i$</span>.</p><p>In this example we will solve a problem where the explanatory variables are sinusoids of differents frequencies. First, we define the number of explanatory variables and observations</p><pre><code class="language-julia hljs">using ParametricOptInterface,MathOptInterface,JuMP,HiGHS
+using TimerOutputs,LinearAlgebra,Random
+
+const POI = ParametricOptInterface
+const MOI = MathOptInterface
+const OPTIMIZER = HiGHS.Optimizer;
+
+const N_Candidates = 200
+const N_Observations = 2000
+const N_Nodes = 200
+
+const Observations = 1:N_Observations
+const Candidates = 1:N_Candidates
+const Nodes = 1:N_Nodes;</code></pre><p>Initialize a random number generator to keep results deterministic</p><pre><code class="language-julia hljs">rng = Random.MersenneTwister(123);</code></pre><p>Building regressors (explanatory) sinusoids</p><pre><code class="language-julia hljs">const X = zeros(N_Candidates, N_Observations)
+const time = [obs / N_Observations * 1 for obs in Observations]
+for obs in Observations, cand in Candidates
+    t = time[obs]
+    f = cand
+    X[cand, obs] = sin(2 * pi * f * t)
+end</code></pre><p>Define coefficients</p><pre><code class="language-julia hljs">β = zeros(N_Candidates)
+for i in Candidates
+    if rand(rng) &lt;= (1 - i / N_Candidates)^2 &amp;&amp; i &lt;= 100
+        β[i] = 4 * rand(rng) / i
+    end
+end</code></pre><p>Create noisy observations</p><pre><code class="language-julia hljs">const y = X&#39; * β .+ 0.1 * randn(rng, N_Observations)</code></pre><h3 id="Benders-Decomposition"><a class="docs-heading-anchor" href="#Benders-Decomposition">Benders Decomposition</a><a id="Benders-Decomposition-1"></a><a class="docs-heading-anchor-permalink" href="#Benders-Decomposition" title="Permalink"></a></h3><p>Benders decomposition is used to solve large optimization problems with some special characteristics. LP&#39;s can be solved with classical linear optimization methods such as the Simplex method or Interior point methods provided by solvers like HiGHS. However, these methods do not scale linearly with the problem size. In the Benders decomposition framework we break the problem in two pieces: A outer and a inner problem. Of course some variables will belong to both problems, this is where the cleverness of Benders kicks in: The outer problem is solved and passes the shared variables to the inner. The inner problem is solved with the shared variables FIXED to the values given by the outer problem. The solution of the inner problem can be used to generate a constraint to the outer problem to describe the linear approximation of the cost function of the shared variables. In many cases, like stochastic programming, the inner problems have a interesting structure and might be broken in smaller problem to be solved in parallel.</p><p>We will descibe the decomposition similarly to what is done in: Introduction to Linear Optimization, Bertsimas &amp; Tsitsiklis (Chapter 6.5): Where the problem in question has the form</p><p class="math-container">\[\begin{align}
+   &amp; \min_{x, y_k}     &amp;&amp;  c^T x &amp;&amp; + f_1^T y_1 &amp;&amp; + \dots &amp;&amp; + f_n^T y_n  &amp;&amp;  \notag \\
+   &amp; \text{subject to} &amp;&amp;  Ax    &amp;&amp;             &amp;&amp;         &amp;&amp;              &amp;&amp; = b \notag \\
+   &amp;                   &amp;&amp;  B_1 x &amp;&amp; + D_1 y_1   &amp;&amp;         &amp;&amp;              &amp;&amp; = d_1 \notag \\
+   &amp;                   &amp;&amp;  \dots &amp;&amp;             &amp;&amp;  \dots  &amp;&amp;              &amp;&amp;       \notag \\
+   &amp;                   &amp;&amp;  B_n x &amp;&amp;             &amp;&amp;         &amp;&amp; + D_n y_n    &amp;&amp; = d_n \notag \\
+   &amp;                   &amp;&amp;   x,   &amp;&amp;     y_1,    &amp;&amp;         &amp;&amp;       y_n    &amp;&amp; \geq 0 \notag \\
+\end{align}\]</p><h3 id="Inner-Problem"><a class="docs-heading-anchor" href="#Inner-Problem">Inner Problem</a><a id="Inner-Problem-1"></a><a class="docs-heading-anchor-permalink" href="#Inner-Problem" title="Permalink"></a></h3><p>Given a solution for the <span>$x$</span> variables we can define the inner problem as</p><p class="math-container">\[\begin{align}
+ z_k(x) \ = \ &amp; \min_{y_k}        &amp;&amp;  f_k^T y_k &amp;&amp;                  \notag \\
+              &amp; \text{subject to} &amp;&amp;  D_k y_k   &amp;&amp;  = d_k - B_k x \notag \\
+              &amp;                   &amp;&amp;  y_k       &amp;&amp; \geq 0          \notag \\
+\end{align}\]</p><p>The <span>$z_k(x)$</span> function represents the cost of the subproblem given a solution for <span>$x$</span>. This function is a convex function because <span>$x$</span> affects only the right hand side of the problem (this is a standard results in LP theory).</p><p>For the special case of the Norm-1 reggression the problem is written as:</p><p class="math-container">\[\begin{align}
+z_k(\beta) \ = \ &amp; \min_{\varepsilon^{up}, \varepsilon^{dw}}         &amp;&amp;  \sum_{i \in ObsSet(k)} {\varepsilon^{up}}_i + {\varepsilon^{dw}}_i               &amp;&amp; \notag \\
+                 &amp; \text{subject to}     &amp;&amp;  {\varepsilon^{up}}_i \geq + y_i - \sum_{j \in Candidates} \beta_j x_{i,j} &amp;&amp; \forall i \in ObsSet(k) \notag \\
+                 &amp;                       &amp;&amp;  {\varepsilon^{dw}}_i \geq - y_i + \sum_{j \in Candidates} \beta_j x_{i,j} &amp;&amp; \forall i \in ObsSet(k) \notag \\
+                 &amp;                       &amp;&amp;  {\varepsilon^{up}}_i, {\varepsilon^{dw}}_i \geq 0                             &amp;&amp; \forall i \in ObsSet(k) \notag \\
+\end{align}\]</p><p>The collection <span>$ObsSet(k)$</span> is a sub-set of the <code>N_Observations</code>. Any partition of the <code>N_Observations</code> collection is valid. In this example we will partition with the function:</p><pre><code class="language-julia hljs">function ObsSet(K)
+    obs_per_block = div(N_Observations, N_Nodes)
+    return (1+(K-1)*obs_per_block):(K*obs_per_block)
+end</code></pre><p>Which can be written in POI as follows:</p><pre><code class="language-julia hljs">function inner_model(K)
+
+    # initialize the POI model
+    inner = direct_model(POI.Optimizer(OPTIMIZER()))
+
+    # Define local optimization variables for norm-1 error
+    @variables(inner, begin
+        ɛ_up[ObsSet(K)] &gt;= 0
+        ɛ_dw[ObsSet(K)] &gt;= 0
+    end)
+
+    # create the regression coefficient representation
+    # Create parameters
+    β = [@variable(inner, set = MOI.Parameter(0.0)) for i in 1:N_Candidates]
+    for (i, βi) in enumerate(β)
+        set_name(βi, &quot;β[$i]&quot;)
+    end
+
+    # create local constraints
+    # Note that *parameter* algebra is implemented just like variables
+    # algebra. We can multiply parameters by constants, add parameters,
+    # sum parameters and variables and so on.
+    @constraints(
+        inner,
+        begin
+            ɛ_up_ctr[i in ObsSet(K)],
+            ɛ_up[i] &gt;= +sum(X[j, i] * β[j] for j in Candidates) - y[i]
+            ɛ_dw_ctr[i in ObsSet(K)],
+            ɛ_dw[i] &gt;= -sum(X[j, i] * β[j] for j in Candidates) + y[i]
+        end
+    )
+
+    # create local objective function
+    @objective(inner, Min, sum(ɛ_up[i] + ɛ_dw[i] for i in ObsSet(K)))
+
+    # return the correct group of parameters
+    return (inner, β)
+end</code></pre><h3 id="Outer-Problem"><a class="docs-heading-anchor" href="#Outer-Problem">Outer Problem</a><a id="Outer-Problem-1"></a><a class="docs-heading-anchor-permalink" href="#Outer-Problem" title="Permalink"></a></h3><p>Now that all pieces of the original problem can be representad by the convex <span>$z_k(x)$</span> functions we can recast the problem in the the equivalent form:</p><p class="math-container">\[\begin{align}
+  &amp; \min_{x}          &amp;&amp;  c^T x + z_1(x) + \dots + z_n(x) &amp;&amp; \notag \\
+  &amp; \text{subject to} &amp;&amp;  Ax = b                          &amp;&amp; \notag \\
+  &amp;                   &amp;&amp;  x \geq 0                        &amp;&amp; \notag \\
+\end{align}\]</p><p>However we cannot pass a problem in this form to a linear programming solver (it could be passed to other kinds of solvers).</p><p>Another standart result of optimization theory is that a convex function can be represented by its supporting hyper-planes:</p><p class="math-container">\[\begin{align}
+  z_k(x) \ = \ &amp; \min_{z, x}       &amp;&amp;  z &amp;&amp; \notag \\
+               &amp; \text{subject to} &amp;&amp;  z \geq \pi_k(\hat{x}) (x - \hat{x}) + z_k(\hat{x}), \ \forall \hat{x} \in dom(z_k) &amp;&amp; \notag \\
+\end{align}\]</p><p>Then we can re-write (again) the outer problem as</p><p class="math-container">\[\begin{align}
+  &amp; \min_{x, z_k}     &amp;&amp;  c^T x + z_1 + \dots + z_n \notag \\
+  &amp; \text{subject to} &amp;&amp;  z_i \geq \pi_i(\hat{x}) (x - \hat{x}) + z_i(\hat{x}), \ \forall \hat{x} \in dom(z_i), i \in \{1, \dots, n\} \notag \\
+  &amp;                   &amp;&amp;  Ax = b \notag \\
+  &amp;                   &amp;&amp;  x \geq 0 \notag \\
+\end{align}\]</p><p>Which is a linear program! However, it has infinitely many constraints !!</p><p>We can relax the infinite constraints and write:</p><p class="math-container">\[\begin{align}
+  &amp; \min_{x, z_k}     &amp;&amp;  c^T x + z_1 + \dots + z_n \notag \\
+  &amp; \text{subject to} &amp;&amp;  Ax = b \notag \\
+  &amp;                   &amp;&amp;  x \geq 0 \notag \\
+\end{align}\]</p><p>But now its only an underestimated problem. In the case of our problem it can be written as:</p><p class="math-container">\[\begin{align}
+  &amp; \min_{\varepsilon, \beta} &amp;&amp;  \sum_{i \in Nodes} \varepsilon_i \notag \\
+  &amp; \text{subject to} &amp;&amp;  \varepsilon_i \geq 0 \notag \\
+\end{align}\]</p><p>This model can be written in JuMP:</p><pre><code class="language-julia hljs">function outer_model()
+    outer = Model(OPTIMIZER)
+    @variables(outer, begin
+        ɛ[Nodes] &gt;= 0
+        β[1:N_Candidates]
+    end)
+    @objective(outer, Min, sum(ɛ[i] for i in Nodes))
+    sol = zeros(N_Candidates)
+    return (outer, ɛ, β, sol)
+end</code></pre><p>The method to solve the outer problem and query its solution is given here:</p><pre><code class="language-julia hljs">function outer_solve(outer_model)
+    model = outer_model[1]
+    β = outer_model[3]
+    optimize!(model)
+    return (value.(β), objective_value(model))
+end</code></pre><h3 id="Supporting-Hyperplanes"><a class="docs-heading-anchor" href="#Supporting-Hyperplanes">Supporting Hyperplanes</a><a id="Supporting-Hyperplanes-1"></a><a class="docs-heading-anchor-permalink" href="#Supporting-Hyperplanes" title="Permalink"></a></h3><p>With these building blocks in hand, we can start building the algorithm. So far we know how to:</p><ul><li>Solve the relaxed outer problem</li><li>Obtain the solution for the <span>$\hat{x}$</span> (or <span>$\beta$</span> in our case)</li></ul><p>Now we can:</p><ul><li>Fix the values of <span>$\hat{x}$</span> in the inner problems</li><li>Solve the inner problems</li><li>query the solution of the inner problems to obtain the supporting hyperplane</li></ul><p>the value of <span>$z_k(\hat{x})$</span>, which is the objective value of the inner problem</p><p>and the derivative <span>$\pi_k(\hat{x}) = \frac{d z_k(x)}{d x} \Big|_{x = \hat{x}}$</span> The derivative is the dual variable associated to the variable <span>$\hat{x}$</span>, which results by applying the chain rule on the constraints duals. These new steps are executed by the function:</p><pre><code class="language-julia hljs">function inner_solve(model, outer_solution)
+    β0 = outer_solution[1]
+    inner = model[1]
+
+    # The first step is to fix the values given by the outer problem
+    @timeit &quot;fix&quot; begin
+        β = model[2]
+        MOI.set.(inner, POI.ParameterValue(), β, β0)
+    end
+
+    # here the inner problem is solved
+    @timeit &quot;opt&quot; optimize!(inner)
+
+    # query dual variables, which are sensitivities
+    # They represent the subgradient (almost a derivative)
+    # of the objective function for infinitesimal variations
+    # of the constants in the linear constraints
+    # POI: we can query dual values of *parameters*
+    π = MOI.get.(inner, POI.ParameterDual(), β)
+
+    # π2 = shadow_price.(β_fix)
+    obj = objective_value(inner)
+    rhs = obj - dot(π, β0)
+    return (rhs, π, obj)
+end</code></pre><p>Now that we have cutting plane in hand we can add them to the outer problem</p><pre><code class="language-julia hljs">function outer_add_cut(outer_model, cut_info, node)
+    outer = outer_model[1]
+    ɛ = outer_model[2]
+    β = outer_model[3]
+
+    rhs = cut_info[1]
+    π = cut_info[2]
+
+    @constraint(outer, ɛ[node] &gt;= sum(π[j] * β[j] for j in Candidates) + rhs)
+end</code></pre><h3 id="Algorithm-wrap-up"><a class="docs-heading-anchor" href="#Algorithm-wrap-up">Algorithm wrap up</a><a id="Algorithm-wrap-up-1"></a><a class="docs-heading-anchor-permalink" href="#Algorithm-wrap-up" title="Permalink"></a></h3><p>The complete algorithm is</p><ul><li>Solve the relaxed master problem</li><li>Obtain the solution for the <span>$\hat{x}$</span> (or <span>$\beta$</span> in our case)</li><li>Fix the values of <span>$\hat{x}$</span> in the slave problems</li><li>Solve the slave problem</li><li>query the solution of the slave problem to obtain the supporting hyperplane</li><li>add hyperplane to master problem</li><li>repeat</li></ul><p>Now we grab all the pieces that we built and we write the benders algorithm by calling the above function in a proper order.</p><p>The macros <code>@timeit</code> are use to time each step of the algorithm.</p><pre><code class="language-julia hljs">function decomposed_model(;print_timer_outputs::Bool = true)
+    reset_timer!() # reset timer fo comparision
+    time_init = @elapsed @timeit &quot;Init&quot; begin
+        # Create the outer problem with no cuts
+        @timeit &quot;outer&quot; outer = outer_model()
+
+        # initialize solution for the regression coefficients in zero
+        @timeit &quot;Sol&quot; solution = (zeros(N_Candidates), Inf)
+        best_sol = deepcopy(solution)
+
+        # Create the inner problems
+        @timeit &quot;inners&quot; inners =
+            [inner_model(i) for i in Candidates]
+
+        # Save initial version of the inner problems and create
+        # the first set of cuts
+        @timeit &quot;Cuts&quot; cuts =
+            [inner_solve(inners[i], solution) for i in Candidates]
+    end
+
+    UB = +Inf
+    LB = -Inf
+
+    # println(&quot;Initialize Iterative step&quot;)
+    time_loop = @elapsed @timeit &quot;Loop&quot; for k in 1:80
+
+        # Add cuts generated from each inner problem to the outer problem
+        @timeit &quot;add cuts&quot; for i in Candidates
+            outer_add_cut(outer, cuts[i], i)
+        end
+
+        # Solve the outer problem with the new set of cuts
+        # Obtain new solution candidate for the regression coefficients
+        @timeit &quot;solve outer&quot; solution = outer_solve( outer)
+
+        # Pass the new candidate solution to each of the inner problems
+        # Solve the inner problems and obtain cutting planes
+        @timeit &quot;solve nodes&quot; for i in Candidates
+            cuts[i] = inner_solve( inners[i], solution)
+        end
+
+        LB = solution[2]
+        new_UB = sum(cuts[i][3] for i in Candidates)
+        if new_UB &lt;= UB
+            best_sol = deepcopy(solution)
+        end
+        UB = min(UB, new_UB)
+
+        if abs(UB - LB) / (abs(UB) + abs(LB)) &lt; 0.05
+            break
+        end
+    end
+
+    print_timer_outputs &amp;&amp; print_timer()
+
+    return best_sol[1]
+end</code></pre><p>Run benders decomposition with POI</p><pre><code class="language-julia hljs">β2 = decomposed_model(; print_timer_outputs = false);
+GC.gc()
+β2 = decomposed_model();</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../example/">« Basic Examples</a><a class="docs-footer-nextpage" href="../markowitz/">Markowitz Efficient Frontier »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Thursday 3 April 2025 20:32">Thursday 3 April 2025</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
