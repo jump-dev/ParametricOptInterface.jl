@@ -2111,6 +2111,47 @@ function test_constrained_variables()
     return
 end
 
+function test_constraint_bridging_cost_quadratic()
+    # POI rewrites `Vector/ScalarQuadraticFunction` constraints into their
+    # affine counterparts at solve time, so `supports_constraint` for the
+    # quadratic variant delegates to the affine one. `ConstraintBridgingCost`
+    # must do the same: otherwise `LazyBridgeOptimizer` sees
+    # `supports = true, cost = Inf` and treats the node as unreachable when
+    # building the bridge graph.
+    optimizer = POI.Optimizer(SCS.Optimizer)
+    for S in (MOI.Zeros, MOI.Nonnegatives, MOI.SecondOrderCone)
+        @test MOI.supports_constraint(
+            optimizer,
+            MOI.VectorQuadraticFunction{Float64},
+            S,
+        )
+        @test MOI.get(
+            optimizer,
+            MOI.ConstraintBridgingCost{MOI.VectorQuadraticFunction{Float64},S}(),
+        ) == MOI.get(
+            optimizer,
+            MOI.ConstraintBridgingCost{MOI.VectorAffineFunction{Float64},S}(),
+        )
+    end
+    optimizer = POI.Optimizer(HiGHS.Optimizer)
+    for S in
+        (MOI.LessThan{Float64}, MOI.GreaterThan{Float64}, MOI.EqualTo{Float64})
+        @test MOI.supports_constraint(
+            optimizer,
+            MOI.ScalarQuadraticFunction{Float64},
+            S,
+        )
+        @test MOI.get(
+            optimizer,
+            MOI.ConstraintBridgingCost{MOI.ScalarQuadraticFunction{Float64},S}(),
+        ) == MOI.get(
+            optimizer,
+            MOI.ConstraintBridgingCost{MOI.ScalarAffineFunction{Float64},S}(),
+        )
+    end
+    return
+end
+
 function test_parameter_index_error()
     model = POI.Optimizer(MOI.Utilities.Model{Float64}())
     POI._add_variable(model, MOI.VariableIndex(1))
