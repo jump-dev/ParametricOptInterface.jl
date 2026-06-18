@@ -76,16 +76,17 @@ include("parametric_cubic_function.jl")
         evaluate_duals::Bool = true,
         save_original_objective_and_constraints::Bool = true,
         with_bridge_type = nothing,
-        with_cache_type = nothing,
+        with_cache_type = missing,
     )
 
 Create an `Optimizer`, which allows the handling of parameters in an
 optimization model.
 
+If `ismissing(with_cache_type)`, the optimizer is instantiated with
+`MOI.instantiate(optimizer; with_bridge_type)`.
 If `optimizer` is not a `MOI.ModelLike,` the inner optimizer is constructed
-using `MOI.instantiate(optimizer; with_cache_type)`.
+using `MOI.instantiate(optimizer; with_bridge_type, with_cache_type)`.
 
-If `with_bridge_type !== nothing`, a `MOI.Bridges.full_bridge_optimizer` is
 applied as an outer layer.
 
 The `{T}` type parameter is optional; it defaults to `Float64`.
@@ -296,25 +297,26 @@ Optimizer(arg; kwargs...) = Optimizer{Float64}(arg; kwargs...)
 
 function Optimizer{T}(
     optimizer_fn;
-    with_bridge_type = nothing,
-    with_cache_type = nothing,
+    with_bridge_type::Union{Nothing,Type} = nothing,
+    with_cache_type::Union{Nothing,Type} = nothing,
     kwargs...,
 ) where {T}
-    inner = MOI.instantiate(optimizer_fn; with_cache_type)
-    if !MOI.supports_incremental_interface(inner)
-        # Don't use `default_cache` for the cache because, for example, SCS's
-        # default cache doesn't support modifying coefficients of the constraint
-        # matrix. JuMP uses the default cache with SCS because it has an outer
-        # layer of caching; we don't have that here, so we can't use the
-        # default.
-        #
-        # We could revert to using the default cache if we fix this in MOI.
-        cache = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{T}())
-        inner = MOI.Utilities.CachingOptimizer(cache, inner)
+    # Dualization needs an incremental interface.
+    # In `MOI.instantiate`, there a mechanism in place to enforce a cache
+    # to be used if `with_bridge_type` is `true` because bridges also need the
+    # incremental interface.
+    # So we just hook into this mechanism by setting the following to `true`
+    # if the user didn't explictly ask for a cache.
+    cache_only_if_incremental_interface_not_supported = isnothing(with_cache_type)
+    if isnothing(with_cache_type)
+        with_cache_type = T
     end
-    if with_bridge_type !== nothing
-        inner = MOI.Bridges.full_bridge_optimizer(inner, with_bridge_type)
-    end
+    inner = MOI.instantiate(
+        optimizer_fn;
+        with_bridge_type,
+        with_cache_type,
+        cache_only_if_incremental_interface_not_supported,
+    )
     return Optimizer{T}(inner; kwargs...)
 end
 
