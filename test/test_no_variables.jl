@@ -24,11 +24,9 @@ struct ThrowingSet <: MOI.AbstractVectorSet
     dimension::Int
 end
 
-function MOI.Utilities.distance_to_set(
-    ::MOI.Utilities.ProjectionUpperBoundDistance,
-    ::AbstractVector,
-    ::ThrowingSet,
-)
+# the two argument form is what POI calls, and unlike the three argument form it
+# does not depend on `ProjectionUpperBoundDistance` being available
+function MOI.Utilities.distance_to_set(::AbstractVector, ::ThrowingSet)
     return throw(DimensionMismatch("some unrelated failure"))
 end
 
