@@ -71,6 +71,25 @@ include("parametric_functions.jl")
 include("parametric_cubic_function.jl")
 
 """
+    _NoVariablesSolution{T}
+
+The solution of a model that contains parameters but no decision variables.
+
+Such a model has no degrees of freedom, so [`Optimizer`](@ref) solves it itself
+instead of calling the inner optimizer, and caches the result here. The primal
+solution is not stored because it is the vector of parameter values, which
+`model.parameters` already holds, and the constraint duals are not stored
+because they are all zero.
+"""
+struct _NoVariablesSolution{T}
+    termination_status::MOI.TerminationStatusCode
+    primal_status::MOI.ResultStatusCode
+    dual_status::MOI.ResultStatusCode
+    objective_value::T
+    raw_status_string::String
+end
+
+"""
     Optimizer{T}(
         optimizer::Union{MOI.ModelLike,Any};
         evaluate_duals::Bool = true,
@@ -212,6 +231,10 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
     save_original_objective_and_constraints::Bool
     parameters_in_conflict::Set{MOI.VariableIndex}
     warn_quad_affine_ambiguous::Bool
+    # solving models with parameters but no decision variables
+    solve_without_variables::Bool
+    no_variables_feasibility_tolerance::T
+    no_variables_solution::Union{Nothing,_NoVariablesSolution{T}}
     ext::Dict{Symbol,Any}
 
     function Optimizer{T}(
@@ -286,6 +309,12 @@ mutable struct Optimizer{T,OT<:MOI.ModelLike} <: MOI.AbstractOptimizer
             Set{MOI.VariableIndex}(),
             # warn_quad_affine_ambiguous
             true,
+            # solve_without_variables
+            true,
+            # no_variables_feasibility_tolerance
+            _default_no_variables_feasibility_tolerance(T),
+            # no_variables_solution
+            nothing,
             # ext
             Dict{Symbol,Any}(),
         )
@@ -331,5 +360,6 @@ include("duals.jl")
 include("update_parameters.jl")
 include("MOI_wrapper.jl")
 include("cubic_objective.jl")
+include("no_variables.jl")
 
 end # module

@@ -232,6 +232,10 @@ function MOI.empty!(model::Optimizer{T}) where {T}
     # parameters_in_conflict
     empty!(model.parameters_in_conflict)
     # [SKIP] warn_quad_affine_ambiguous
+    # [SKIP] solve_without_variables
+    # [SKIP] no_variables_feasibility_tolerance
+    # no_variables_solution
+    model.no_variables_solution = nothing
     # ext
     empty!(model.ext)
     return
@@ -1660,18 +1664,79 @@ function MOI.get(
     return MOI.get(model.optimizer, attr, v)
 end
 
+function MOI.get(model::Optimizer, attr::MOI.TerminationStatus)
+    solution = model.no_variables_solution
+    if solution !== nothing
+        return solution.termination_status
+    end
+    return MOI.get(model.optimizer, attr)
+end
+
+function MOI.get(model::Optimizer, attr::MOI.PrimalStatus)
+    solution = model.no_variables_solution
+    if solution !== nothing
+        return attr.result_index == 1 ? solution.primal_status : MOI.NO_SOLUTION
+    end
+    return MOI.get(model.optimizer, attr)
+end
+
+function MOI.get(model::Optimizer, attr::MOI.DualStatus)
+    solution = model.no_variables_solution
+    if solution !== nothing
+        return attr.result_index == 1 ? solution.dual_status : MOI.NO_SOLUTION
+    end
+    return MOI.get(model.optimizer, attr)
+end
+
+function MOI.get(model::Optimizer, attr::MOI.ResultCount)
+    if model.no_variables_solution !== nothing
+        return 1
+    end
+    return MOI.get(model.optimizer, attr)
+end
+
+function MOI.get(model::Optimizer, attr::MOI.RawStatusString)
+    solution = model.no_variables_solution
+    if solution !== nothing
+        return solution.raw_status_string
+    end
+    return MOI.get(model.optimizer, attr)
+end
+
+function MOI.get(model::Optimizer, attr::MOI.SolveTimeSec)
+    if model.no_variables_solution !== nothing
+        return 0.0
+    end
+    return MOI.get(model.optimizer, attr)
+end
+
 function MOI.get(
     model::Optimizer,
     attr::T,
-) where {
-    T<:Union{
-        MOI.TerminationStatus,
-        MOI.ObjectiveValue,
-        MOI.DualObjectiveValue,
-        MOI.PrimalStatus,
-        MOI.DualStatus,
-    },
-}
+) where {T<:Union{MOI.ObjectiveValue,MOI.DualObjectiveValue}}
+    solution = model.no_variables_solution
+    if solution !== nothing
+        MOI.check_result_index_bounds(model, attr)
+        # There are no variables, so the primal and dual objective values
+        # coincide with the objective function evaluated at the parameter
+        # values.
+        return solution.objective_value
+    end
+    return MOI.get(model.optimizer, attr)
+end
+
+function MOI.get(model::Optimizer, attr::MOI.ObjectiveBound)
+    solution = model.no_variables_solution
+    if solution !== nothing
+        return solution.objective_value
+    end
+    return MOI.get(model.optimizer, attr)
+end
+
+function MOI.get(model::Optimizer{T}, attr::MOI.RelativeGap) where {T}
+    if model.no_variables_solution !== nothing
+        return zero(T)
+    end
     return MOI.get(model.optimizer, attr)
 end
 
@@ -1690,6 +1755,37 @@ function MOI.get(
 )
     optimizer_ci = get(model.constraint_outer_to_inner, c, c)
     return MOI.get(model.optimizer, attr, optimizer_ci)
+end
+
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.ConstraintDual,
+    c::MOI.ConstraintIndex{F,S},
+) where {F<:MOI.AbstractScalarFunction,S}
+    if model.no_variables_solution !== nothing
+        MOI.check_result_index_bounds(model, attr)
+    end
+    return _constraint_dual(
+        model,
+        attr,
+        get(model.constraint_outer_to_inner, c, c),
+    )
+end
+
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.ConstraintDual,
+    c::MOI.ConstraintIndex{F,S},
+) where {F<:MOI.AbstractVectorFunction,S}
+    if model.no_variables_solution !== nothing
+        MOI.check_result_index_bounds(model, attr)
+    end
+    return _constraint_dual(
+        model,
+        attr,
+        get(model.constraint_outer_to_inner, c, c),
+        MOI.dimension(MOI.get(model, MOI.ConstraintSet(), c)),
+    )
 end
 
 function MOI.get(
@@ -2016,6 +2112,81 @@ function MOI.set(
     return
 end
 
+"""
+    SolveWithoutVariables <: MOI.AbstractOptimizerAttribute
+
+An attribute that controls whether [`Optimizer`](@ref) solves a model that
+contains parameters but no decision variables, instead of passing it to
+the inner optimizer.
+
+Such a model has no degrees of freedom, so its solution can be written down
+directly: the primal solution is the vector of parameter values, every
+constraint dual is zero, and therefore the dual of each parameter is the
+derivative of the objective function with respect to it.
+
+Most solvers reject a model with no variables, so set this attribute to `false`
+only if the inner optimizer handles such a model itself. Defaults to `true`.
+
+See also [`NoVariablesFeasibilityTolerance`](@ref).
+"""
+struct SolveWithoutVariables <: MOI.AbstractOptimizerAttribute end
+
+MOI.supports(::Optimizer, ::SolveWithoutVariables) = true
+
+function MOI.get(model::Optimizer, ::SolveWithoutVariables)
+    return model.solve_without_variables
+end
+
+function MOI.set(model::Optimizer, ::SolveWithoutVariables, value::Bool)
+    model.solve_without_variables = value
+    return
+end
+
+"""
+    NoVariablesFeasibilityTolerance <: MOI.AbstractOptimizerAttribute
+
+An attribute for the tolerance used to decide whether the parameter values
+satisfy the constraints of a model that contains parameters but no decision
+variables. Such a constraint is a statement about the parameter values alone, so
+it is checked by evaluating it and measuring the distance to its set; a distance
+greater than this tolerance makes the model `MOI.INFEASIBLE`.
+
+Only used when [`SolveWithoutVariables`](@ref) is `true`. Defaults to
+`1e-6` if `T` is a floating point type and to `zero(T)` otherwise,
+because exact arithmetic needs no slack.
+
+# Example
+
+```jldoctest
+julia> import MathOptInterface as MOI
+
+julia> import ParametricOptInterface as POI
+
+julia> model = POI.Optimizer(MOI.Utilities.Model{Float64}());
+
+julia> MOI.set(model, POI.NoVariablesFeasibilityTolerance(), 1e-5)
+
+julia> MOI.get(model, POI.NoVariablesFeasibilityTolerance())
+1.0e-5
+```
+"""
+struct NoVariablesFeasibilityTolerance <: MOI.AbstractOptimizerAttribute end
+
+MOI.supports(::Optimizer, ::NoVariablesFeasibilityTolerance) = true
+
+function MOI.get(model::Optimizer, ::NoVariablesFeasibilityTolerance)
+    return model.no_variables_feasibility_tolerance
+end
+
+function MOI.set(
+    model::Optimizer,
+    ::NoVariablesFeasibilityTolerance,
+    value::Real,
+)
+    model.no_variables_feasibility_tolerance = value
+    return
+end
+
 #
 # Optimize
 #
@@ -2025,9 +2196,16 @@ function MOI.optimize!(model::Optimizer)
         MOI.Utilities.final_touch(model, nothing)
         update_parameters!(model)
     end
-    MOI.optimize!(model.optimizer)
-    if MOI.get(model, MOI.DualStatus()) != MOI.NO_SOLUTION &&
-       model.evaluate_duals
+    model.no_variables_solution = nothing
+    if model.solve_without_variables && _has_no_variables(model)
+        _optimize_without_variables!(model)
+    else
+        MOI.optimize!(model.optimizer)
+    end
+    if model.evaluate_duals && (
+        model.no_variables_solution !== nothing ||
+        MOI.get(model, MOI.DualStatus()) != MOI.NO_SOLUTION
+    )
         _compute_dual_of_parameters!(model)
     end
     return

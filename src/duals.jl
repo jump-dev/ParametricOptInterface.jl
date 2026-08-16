@@ -120,7 +120,7 @@ function _compute_parameters_in_ci!(
     pf::ParametricAffineFunction{T},
     ci::MOI.ConstraintIndex{F,S},
 ) where {F,S,T}
-    cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
+    cons_dual = _constraint_dual(model, MOI.ConstraintDual(), ci)
     for term in affine_parameter_terms(pf)
         model.dual_value_of_parameters[p_val(term.variable)] -=
             cons_dual * term.coefficient
@@ -133,7 +133,7 @@ function _compute_parameters_in_ci!(
     pf::ParametricQuadraticFunction{T},
     ci::MOI.ConstraintIndex{F,S},
 ) where {F,S,T}
-    cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
+    cons_dual = _constraint_dual(model, MOI.ConstraintDual(), ci)
     for term in affine_parameter_terms(pf)
         model.dual_value_of_parameters[p_val(term.variable)] -=
             cons_dual * term.coefficient
@@ -156,7 +156,12 @@ function _compute_parameters_in_ci!(
     pf::ParametricVectorAffineFunction{T},
     ci::MOI.ConstraintIndex{F,S},
 ) where {F<:MOI.VectorAffineFunction{T},S} where {T}
-    cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
+    cons_dual = _constraint_dual(
+        model,
+        MOI.ConstraintDual(),
+        ci,
+        length(pf.current_constant),
+    )
     for term in vector_affine_parameter_terms(pf)
         model.dual_value_of_parameters[p_val(term.scalar_term.variable)] -=
             cons_dual[term.output_index] * term.scalar_term.coefficient
@@ -297,7 +302,12 @@ function _compute_parameters_in_ci!(
     pf::ParametricVectorQuadraticFunction{T},
     ci::MOI.ConstraintIndex{F,S},
 ) where {F,S,T}
-    cons_dual = MOI.get(model.optimizer, MOI.ConstraintDual(), ci)
+    cons_dual = _constraint_dual(
+        model,
+        MOI.ConstraintDual(),
+        ci,
+        length(pf.current_constant),
+    )
     for term in vector_affine_parameter_terms(pf)
         model.dual_value_of_parameters[p_val(term.scalar_term.variable)] -=
             cons_dual[term.output_index] * term.scalar_term.coefficient

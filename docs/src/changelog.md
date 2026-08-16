@@ -7,6 +7,15 @@ CurrentModule = ParametricOptInterface
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Models that contain parameters but no decision variables are now solved by
+  `Optimizer` itself instead of being sent to the inner optimizer, which
+  usually rejects them. The new `SolveWithoutVariables` and
+  `NoVariablesFeasibilityTolerance` attributes control this behavior.
+
 ## Version 0.15.2 (March 15, 2026)
 
 ### Fixed
