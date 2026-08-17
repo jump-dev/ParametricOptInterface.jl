@@ -1664,78 +1664,25 @@ function MOI.get(
     return MOI.get(model.optimizer, attr, v)
 end
 
-function MOI.get(model::Optimizer, attr::MOI.TerminationStatus)
+# The solution attributes that `Optimizer` answers itself when the model was
+# solved without decision variables.
+const _NoVariablesAttribute = Union{
+    MOI.DualObjectiveValue,
+    MOI.DualStatus,
+    MOI.ObjectiveBound,
+    MOI.ObjectiveValue,
+    MOI.PrimalStatus,
+    MOI.RawStatusString,
+    MOI.RelativeGap,
+    MOI.ResultCount,
+    MOI.SolveTimeSec,
+    MOI.TerminationStatus,
+}
+
+function MOI.get(model::Optimizer, attr::_NoVariablesAttribute)
     solution = model.no_variables_solution
     if solution !== nothing
-        return solution.termination_status
-    end
-    return MOI.get(model.optimizer, attr)
-end
-
-function MOI.get(model::Optimizer, attr::MOI.PrimalStatus)
-    solution = model.no_variables_solution
-    if solution !== nothing
-        return attr.result_index == 1 ? solution.primal_status : MOI.NO_SOLUTION
-    end
-    return MOI.get(model.optimizer, attr)
-end
-
-function MOI.get(model::Optimizer, attr::MOI.DualStatus)
-    solution = model.no_variables_solution
-    if solution !== nothing
-        return attr.result_index == 1 ? solution.dual_status : MOI.NO_SOLUTION
-    end
-    return MOI.get(model.optimizer, attr)
-end
-
-function MOI.get(model::Optimizer, attr::MOI.ResultCount)
-    if model.no_variables_solution !== nothing
-        return 1
-    end
-    return MOI.get(model.optimizer, attr)
-end
-
-function MOI.get(model::Optimizer, attr::MOI.RawStatusString)
-    solution = model.no_variables_solution
-    if solution !== nothing
-        return solution.raw_status_string
-    end
-    return MOI.get(model.optimizer, attr)
-end
-
-function MOI.get(model::Optimizer, attr::MOI.SolveTimeSec)
-    if model.no_variables_solution !== nothing
-        return 0.0
-    end
-    return MOI.get(model.optimizer, attr)
-end
-
-function MOI.get(
-    model::Optimizer,
-    attr::T,
-) where {T<:Union{MOI.ObjectiveValue,MOI.DualObjectiveValue}}
-    solution = model.no_variables_solution
-    if solution !== nothing
-        MOI.check_result_index_bounds(model, attr)
-        # There are no variables, so the primal and dual objective values
-        # coincide with the objective function evaluated at the parameter
-        # values.
-        return solution.objective_value
-    end
-    return MOI.get(model.optimizer, attr)
-end
-
-function MOI.get(model::Optimizer, attr::MOI.ObjectiveBound)
-    solution = model.no_variables_solution
-    if solution !== nothing
-        return solution.objective_value
-    end
-    return MOI.get(model.optimizer, attr)
-end
-
-function MOI.get(model::Optimizer{T}, attr::MOI.RelativeGap) where {T}
-    if model.no_variables_solution !== nothing
-        return zero(T)
+        return _no_variables_value(model, attr, solution)
     end
     return MOI.get(model.optimizer, attr)
 end

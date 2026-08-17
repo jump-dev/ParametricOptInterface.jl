@@ -64,6 +64,89 @@ function _optimize_without_variables!(model::Optimizer{T}) where {T}
 end
 
 """
+    _no_variables_value(model::Optimizer, attr, solution::_NoVariablesSolution)
+
+Return the value of the solution attribute `attr` of a model that was solved
+without decision variables. Dispatched on `attr` from the single `MOI.get`
+method for [`_NoVariablesAttribute`](@ref) in `src/MOI_wrapper.jl`.
+"""
+function _no_variables_value(
+    ::Optimizer,
+    ::MOI.TerminationStatus,
+    solution::_NoVariablesSolution,
+)
+    return solution.termination_status
+end
+
+function _no_variables_value(
+    ::Optimizer,
+    attr::MOI.PrimalStatus,
+    solution::_NoVariablesSolution,
+)
+    return attr.result_index == 1 ? solution.primal_status : MOI.NO_SOLUTION
+end
+
+function _no_variables_value(
+    ::Optimizer,
+    attr::MOI.DualStatus,
+    solution::_NoVariablesSolution,
+)
+    return attr.result_index == 1 ? solution.dual_status : MOI.NO_SOLUTION
+end
+
+function _no_variables_value(
+    ::Optimizer,
+    ::MOI.ResultCount,
+    ::_NoVariablesSolution,
+)
+    return 1
+end
+
+function _no_variables_value(
+    ::Optimizer,
+    ::MOI.RawStatusString,
+    solution::_NoVariablesSolution,
+)
+    return solution.raw_status_string
+end
+
+function _no_variables_value(
+    ::Optimizer,
+    ::MOI.SolveTimeSec,
+    ::_NoVariablesSolution,
+)
+    return 0.0
+end
+
+function _no_variables_value(
+    ::Optimizer{T},
+    ::MOI.RelativeGap,
+    ::_NoVariablesSolution{T},
+) where {T}
+    # the solution is exact, so there is no gap
+    return zero(T)
+end
+
+function _no_variables_value(
+    ::Optimizer,
+    ::MOI.ObjectiveBound,
+    solution::_NoVariablesSolution,
+)
+    return solution.objective_value
+end
+
+function _no_variables_value(
+    model::Optimizer,
+    attr::Union{MOI.ObjectiveValue,MOI.DualObjectiveValue},
+    solution::_NoVariablesSolution,
+)
+    MOI.check_result_index_bounds(model, attr)
+    # There are no variables, so the primal and dual objective values coincide
+    # with the objective function evaluated at the parameter values.
+    return solution.objective_value
+end
+
+"""
     _constraint_dual(model::Optimizer, attr::MOI.ConstraintDual, ci)
     _constraint_dual(model::Optimizer, attr::MOI.ConstraintDual, ci, dimension)
 
