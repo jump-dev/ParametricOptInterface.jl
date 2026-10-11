@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   usually rejects them. The new `SolveWithoutVariables` and
   `NoVariablesFeasibilityTolerance` attributes control this behavior.
 
+### Changed
+
+- Setting a `MOI.ScalarNonlinearFunction` objective that is not a valid cubic
+  polynomial, or whose parametric form the inner optimizer does not support,
+  now throws `MOI.UnsupportedAttribute` instead of an `ErrorException`.
+
 ## Version 0.15.2 (March 15, 2026)
 
 ### Fixed
