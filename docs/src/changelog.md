@@ -7,14 +7,25 @@ CurrentModule = ParametricOptInterface
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## Version 0.15.4 (October 11, 2026)
 
 ### Added
 
 - Models that contain parameters but no decision variables are now solved by
   `Optimizer` itself instead of being sent to the inner optimizer, which
   usually rejects them. The new `SolveWithoutVariables` and
-  `NoVariablesFeasibilityTolerance` attributes control this behavior.
+  `NoVariablesFeasibilityTolerance` attributes control this behavior (#241)
+
+### Other
+
+- Tighter SCS tolerances and exact expected values in tests (#243)
+
+## Version 0.15.3 (May 27, 2026)
+
+### Fixed
+
+- The bridging cost of quadratic constraints is transformed along with the
+  constraints, which are converted to affine ones (#240)
 
 ## Version 0.15.2 (March 15, 2026)
 
