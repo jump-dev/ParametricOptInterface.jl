@@ -141,3 +141,39 @@ set_parameter_value(p, 3)
 optimize!(model)
 value(x)  # x = 3 / 2p = 0.5
 ```
+
+## Models with no decision variables
+
+A model that contains parameters but no decision variables has no degrees of
+freedom, so there is nothing for the inner optimizer to solve. Most solvers
+reject such a model. POI solves it instead:
+
+```@repl
+using JuMP, HiGHS
+import ParametricOptInterface as POI
+model = Model(() -> POI.Optimizer(HiGHS.Optimizer()))
+set_silent(model)
+@variable(model, p in Parameter(2))
+@variable(model, q in Parameter(3))
+@objective(model, Min, 4p + 5q)
+optimize!(model)
+objective_value(model)
+dual(VariableInSetRef(p))
+```
+
+The solution is written down directly instead of being computed by the inner
+optimizer:
+
+ * the primal solution is the vector of parameter values;
+ * the objective value is the objective function evaluated at those values;
+ * every constraint is a statement about the parameter values, so it cannot be
+   active in the KKT sense and its dual is zero;
+ * consequently the dual of each parameter is the derivative of the objective
+   function with respect to it.
+
+If the parameter values violate a constraint, the termination status is
+`MOI.INFEASIBLE`. The tolerance used for that check is the
+[`NoVariablesFeasibilityTolerance`](@ref) attribute.
+
+Set the [`SolveWithoutVariables`](@ref) attribute to `false` to send the model
+to the inner optimizer instead.

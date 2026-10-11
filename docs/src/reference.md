@@ -21,3 +21,13 @@ Optimizer
 ```@docs
 ConstraintsInterpretation
 ```
+
+## `SolveWithoutVariables`
+```@docs
+SolveWithoutVariables
+```
+
+## `NoVariablesFeasibilityTolerance`
+```@docs
+NoVariablesFeasibilityTolerance
+```
