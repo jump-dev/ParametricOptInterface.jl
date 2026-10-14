@@ -5,16 +5,23 @@
 
 function MOI.set(
     model::Optimizer{T},
-    ::MOI.ObjectiveFunction{MOI.ScalarNonlinearFunction},
+    attr::MOI.ObjectiveFunction{MOI.ScalarNonlinearFunction},
     f::MOI.ScalarNonlinearFunction,
 ) where {T}
-    # 1. Attempt to parse as cubic
+    # 1. Attempt to parse as cubic. A function that does not parse is an
+    # objective this optimizer does not support, so it is reported with the
+    # MOI exception for that: callers such as bridges or DiffOpt's choice of
+    # differentiation model can then catch it and try something else
     parsed = _parse_cubic_expression(f, T)
     if parsed === nothing
-        error(
-            "ScalarNonlinearFunction must be a valid cubic polynomial with " *
-            "parameters multiplying at most quadratic variable terms. " *
-            "Non-polynomial operations or degree > 3 are not supported.",
+        throw(
+            MOI.UnsupportedAttribute(
+                attr,
+                "ScalarNonlinearFunction must be a valid cubic polynomial " *
+                "with parameters multiplying at most quadratic variable " *
+                "terms. Non-polynomial operations or degree > 3 are not " *
+                "supported.",
+            ),
         )
     end
 
@@ -32,6 +39,15 @@ function MOI.set(
             current,
         )
     catch e
+        msg =
+            "Failed to set cubic objective function, f = $f, on inner " *
+            "optimizer. Original error: $(sprint(showerror, e))"
+        # the inner optimizer not supporting the parametric form means this
+        # optimizer does not support the objective either; any other error is
+        # a genuine failure and keeps its plain report
+        if e isa MOI.UnsupportedError
+            throw(MOI.UnsupportedAttribute(attr, msg))
+        end
         # rethrow the original error with the additional info of the objective function that caused it
         error(
             "Failed to set cubic objective function, f = $f, on inner " *

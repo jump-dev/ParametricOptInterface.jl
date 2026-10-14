@@ -30,13 +30,17 @@ end
 # ============================================================================
 
 """
-Mock optimizer that rejects ScalarQuadraticFunction objectives.
+Mock optimizer that rejects ScalarQuadraticFunction objectives, with a plain
+error or, if `unsupported`, with `MOI.UnsupportedAttribute`.
 """
 struct NoQuadObjModel <: MOI.ModelLike
     inner::MOI.Utilities.Model{Float64}
+    unsupported::Bool
 end
 
-NoQuadObjModel() = NoQuadObjModel(MOI.Utilities.Model{Float64}())
+function NoQuadObjModel(; unsupported::Bool = false)
+    return NoQuadObjModel(MOI.Utilities.Model{Float64}(), unsupported)
+end
 
 MOI.add_variable(m::NoQuadObjModel) = MOI.add_variable(m.inner)
 MOI.is_empty(m::NoQuadObjModel) = MOI.is_empty(m.inner)
@@ -46,10 +50,11 @@ function MOI.is_valid(m::NoQuadObjModel, vi::MOI.VariableIndex)
 end
 
 function MOI.set(
-    ::NoQuadObjModel,
-    ::MOI.ObjectiveFunction{<:MOI.ScalarQuadraticFunction},
+    m::NoQuadObjModel,
+    attr::MOI.ObjectiveFunction{<:MOI.ScalarQuadraticFunction},
     ::MOI.ScalarQuadraticFunction,
 )
+    m.unsupported && throw(MOI.UnsupportedAttribute(attr))
     return error("Quadratic objectives not supported")
 end
 
@@ -865,9 +870,9 @@ function test_cubic_objective_set_invalid_expression()
     y = MOI.add_variable(model)
     z = MOI.add_variable(model)
 
-    # x*y*z (3 variables, no parameter) should error
+    # x*y*z (3 variables, no parameter) is not a supported objective
     f = MOI.ScalarNonlinearFunction(:*, Any[x, y, z])
-    @test_throws ErrorException MOI.set(
+    @test_throws MOI.UnsupportedAttribute MOI.set(
         model,
         MOI.ObjectiveFunction{MOI.ScalarNonlinearFunction}(),
         f,
@@ -894,6 +899,27 @@ function test_cubic_objective_set_error_on_inner_optimizer()
     @test err isa ErrorException
     @test occursin("Failed to set cubic objective function", err.msg)
     @test occursin("Quadratic objectives not supported", err.msg)
+    return
+end
+
+function test_cubic_objective_set_unsupported_by_inner_optimizer()
+    model = POI.Optimizer(NoQuadObjModel(; unsupported = true))
+    x = MOI.add_variable(model)
+    p, _ = MOI.add_constrained_variable(model, MOI.Parameter(2.0))
+    p_v = POI.v_idx(POI.p_idx(p))
+    # p * x^2 parses, but its parametric form is a quadratic objective, which
+    # the inner optimizer does not support, so neither does POI
+    f = MOI.ScalarNonlinearFunction(:*, Any[1.0, p_v, x, x])
+    attr = MOI.ObjectiveFunction{MOI.ScalarNonlinearFunction}()
+    err = try
+        MOI.set(model, attr, f)
+        nothing
+    catch e
+        e
+    end
+    @test err isa MOI.UnsupportedAttribute
+    @test err.attr == attr
+    @test occursin("Failed to set cubic objective function", err.message)
     return
 end
 
